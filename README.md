@@ -1,45 +1,49 @@
-# 酒馆 Lite (Tavern Lite)
+# Tavern Lite (酒馆 Lite)
 
-> **Beta 测试版** — 本项目目前处于积极开发阶段，功能和 API 可能随时变更，欢迎反馈问题和建议。
+> **Beta** — This project is under active development. Features and APIs may change. Issues and feedback are welcome!
 
-一款原生 Android 应用，基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的核心功能进行 Android 端重新实现，以独立 APK 形式运行，无需服务端。
+A native Android application that reimplements the core features of [SillyTavern](https://github.com/SillyTavern/SillyTavern) as a standalone APK — no server required.
 
-**开发者说明：** 本项目由一名大学生独立开发，作为学习和实践项目持续迭代中。如有问题或建议，欢迎提 Issue。
+> **Note:** This project is independently developed by a college student as a learning project and is actively maintained. If you have any questions or suggestions, feel free to open an issue.
 
-## 功能特性
+基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的 Android 端重新实现，以独立 APK 形式运行，无需服务端。由一名大学生独立开发，持续迭代中。
 
-### 已完成 (Phase A-G)
+---
 
-| 模块 | 功能 |
+## Features / 功能特性
+
+### Completed (Phase A-G) / 已完成
+
+| Module / 模块 | Description / 功能 |
 |------|------|
-| **角色卡** | 创建/编辑/删除、PNG 导入导出（tEXt chunk）、chara_card_v2/v3 规范 |
-| **对话系统** | SSE 流式生成（OpenAI/Claude/Ollama/自定义）、编辑/删除/重新生成、滑动切换替代回复、继续生成、对话分支 |
-| **世界书** | CRUD、关键词匹配、selective logic（AND/OR/NOT）、递归深度控制 |
-| **记忆系统** | 自动/手动提取、关键词检索、注入 Prompt、管理 UI |
-| **正则脚本** | 正则/字面量替换、用户/助手/双向、per-character |
-| **视觉体验** | 自定义背景、气泡样式、Material You 动态取色、动画 |
-| **导出导入** | Markdown/HTML/TXT/JSON、单对话/批量、SillyTavern JSONL 导入 |
-| **用户角色** | 多身份管理、默认角色、per-character 覆盖、Prompt 集成 |
-| **作者注释** | 可配置注入深度和位置、per-character |
+| **Character Card / 角色卡** | Create/edit/delete, PNG import/export (tEXt chunk), chara_card_v2/v3 spec |
+| **Chat System / 对话系统** | SSE streaming (OpenAI/Claude/Ollama/Custom), edit/delete/regenerate, swipe alternatives, continue generation, branching |
+| **World Book / 世界书** | CRUD, keyword matching, selective logic (AND/OR/NOT), recursion depth control |
+| **Memory System / 记忆系统** | Auto/manual extraction, keyword retrieval, prompt injection, management UI |
+| **Regex Script / 正则脚本** | Regex/literal replacement, user/assistant/both, per-character |
+| **Visual / 视觉体验** | Custom backgrounds, bubble styles, Material You dynamic colors, animations |
+| **Export/Import / 导出导入** | Markdown/HTML/TXT/JSON, single/batch, SillyTavern JSONL import |
+| **User Persona / 用户角色** | Multi-identity, default persona, per-character override, prompt integration |
+| **Author's Note / 作者注释** | Configurable injection depth and position, per-character |
 
-### 开发中
+### In Progress / 开发中
 
-详见 [ROADMAP.md](ROADMAP.md)。
+See [ROADMAP.md](ROADMAP.md) for upcoming features.
 
-## 技术栈
+## Tech Stack / 技术栈
 
-- **语言**: Kotlin
+- **Language / 语言**: Kotlin
 - **UI**: Jetpack Compose + Material 3
-- **架构**: MVVM (ViewModel + StateFlow)
+- **Architecture / 架构**: MVVM (ViewModel + StateFlow)
 - **DI**: Hilt
-- **数据库**: Room (v8)
-- **网络**: OkHttp + SSE 流式
-- **图片**: Coil
+- **Database / 数据库**: Room (v8)
+- **Network / 网络**: OkHttp + SSE streaming
+- **Image / 图片**: Coil
 - **Markdown**: Markwon
-- **最低 SDK**: 26 (Android 8.0)
-- **目标 SDK**: 35
+- **Min SDK**: 26 (Android 8.0)
+- **Target SDK**: 35
 
-## 构建
+## Build / 构建
 
 ```bash
 # Debug
@@ -48,41 +52,41 @@
 # Release
 ./gradlew assembleRelease
 
-# 测试
+# Tests / 测试
 ./gradlew testDebugUnitTest
 ```
 
-## 项目结构
+## Project Structure / 项目结构
 
 ```
 app/src/main/java/com/tavern/lite/
 ├── data/
-│   ├── db/          # Room 数据库、Entity、DAO
-│   ├── model/       # 数据模型
-│   └── repository/  # 仓库层
-├── di/              # Hilt 依赖注入
-├── network/         # API 服务、Prompt 构建
+│   ├── db/          # Room database, Entity, DAO
+│   ├── model/       # Data models
+│   └── repository/  # Repository layer
+├── di/              # Hilt dependency injection
+├── network/         # API service, Prompt builder
 └── ui/
-    ├── components/  # 通用组件
-    ├── navigation/  # 导航图
-    ├── screens/     # 各页面
-    └── theme/       # 主题
+    ├── components/  # Shared components
+    ├── navigation/  # Navigation graph
+    ├── screens/     # Screens
+    └── theme/       # Theme
 ```
 
-## API 支持
+## API Support / API 支持
 
-| Provider | 状态 |
-|----------|------|
-| OpenAI (GPT-4o 等) | ✅ |
+| Provider | Status |
+|----------|--------|
+| OpenAI (GPT-4o etc.) | ✅ |
 | Claude (Anthropic) | ✅ |
-| Ollama (本地) | ✅ |
-| 自定义 (OpenAI 兼容) | ✅ |
+| Ollama (Local) | ✅ |
+| Custom (OpenAI-compatible) | ✅ |
 
-## 致谢
+## Acknowledgements / 致谢
 
-- [SillyTavern](https://github.com/SillyTavern/SillyTavern) — 原始项目
-- [SillyTavern 社区](https://docs.sillytavern.app/) — 数据格式规范
+- [SillyTavern](https://github.com/SillyTavern/SillyTavern) — Original project
+- [SillyTavern Community](https://docs.sillytavern.app/) — Data format specifications
 
-## 许可证
+## License / 许可证
 
 MIT License

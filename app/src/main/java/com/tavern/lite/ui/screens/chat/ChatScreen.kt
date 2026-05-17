@@ -85,8 +85,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tavern.lite.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
@@ -184,16 +186,16 @@ fun ChatScreen(
     if (deletingMessageId != null) {
         AlertDialog(
             onDismissRequest = { deletingMessageId = null },
-            title = { Text("删除消息") },
-            text = { Text("确定要删除这条消息吗？") },
+            title = { Text(stringResource(R.string.delete_message_title)) },
+            text = { Text(stringResource(R.string.delete_message_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteMessage(deletingMessageId!!)
                     deletingMessageId = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingMessageId = null }) { Text("取消") }
+                TextButton(onClick = { deletingMessageId = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -211,12 +213,12 @@ fun ChatScreen(
                         )
                         Column(modifier = Modifier.padding(start = 12.dp)) {
                             Text(
-                                text = character?.name ?: "加载中...",
+                                text = character?.name ?: stringResource(R.string.loading),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             if (isGenerating) {
                                 Text(
-                                    text = "正在回复...",
+                                    text = stringResource(R.string.replying),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 11.sp
@@ -227,12 +229,12 @@ fun ChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showBackgroundPicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = "更换背景")
+                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.change_background))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -482,7 +484,7 @@ private fun MessageBubble(
                         label = "cursorAlpha"
                     )
                     Text(
-                        text = "正在输入...\u2588",
+                        text = stringResource(R.string.typing) + "\u2588",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cursorAlpha),
                         fontSize = 10.sp,
@@ -520,7 +522,7 @@ private fun MessageBubble(
                     ) {
                         Icon(
                             Icons.Default.ChevronLeft,
-                            contentDescription = "上一条",
+                            contentDescription = stringResource(R.string.swipe_previous),
                             modifier = Modifier,
                             tint = if (message.swipeIndex > 0)
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -542,7 +544,7 @@ private fun MessageBubble(
                     ) {
                         Icon(
                             Icons.Default.ChevronRight,
-                            contentDescription = "下一条",
+                            contentDescription = stringResource(R.string.swipe_next),
                             tint = if (message.swipeIndex < swipeCount - 1)
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             else
@@ -558,16 +560,16 @@ private fun MessageBubble(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("复制") },
+                    text = { Text(stringResource(R.string.copy)) },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                     onClick = {
                         clipboardManager.setText(AnnotatedString(message.content))
-                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("编辑") },
+                    text = { Text(stringResource(R.string.edit)) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     onClick = {
                         onEdit()
@@ -578,7 +580,7 @@ private fun MessageBubble(
                     // 用户消息没有重新生成
                 } else {
                     DropdownMenuItem(
-                        text = { Text("重新生成") },
+                        text = { Text(stringResource(R.string.regenerate)) },
                         leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                         onClick = {
                             onRegenerate()
@@ -587,7 +589,7 @@ private fun MessageBubble(
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("从此处分叉") },
+                    text = { Text(stringResource(R.string.branch_from_here)) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null) },
                     onClick = {
                         onBranch()
@@ -595,7 +597,7 @@ private fun MessageBubble(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                    text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Delete,
@@ -623,7 +625,7 @@ private fun EditMessageDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑消息") },
+        title = { Text(stringResource(R.string.edit_message_title)) },
         text = {
             TextField(
                 value = text,
@@ -634,10 +636,10 @@ private fun EditMessageDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(text) }) { Text("保存") }
+            TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -662,7 +664,7 @@ private fun InputBar(
         TextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text("输入消息...") },
+            placeholder = { Text(stringResource(R.string.input_hint)) },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -684,7 +686,7 @@ private fun InputBar(
             ) {
                 Icon(
                     Icons.Default.Stop,
-                    contentDescription = "停止",
+                    contentDescription = stringResource(R.string.stop),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -697,7 +699,7 @@ private fun InputBar(
                 ) {
                     Icon(
                         Icons.Default.Replay,
-                        contentDescription = "继续生成",
+                        contentDescription = stringResource(R.string.continue_generation),
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
@@ -709,7 +711,7 @@ private fun InputBar(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "发送",
+                    contentDescription = stringResource(R.string.send),
                     tint = if (value.isNotBlank())
                         MaterialTheme.colorScheme.primary
                     else
@@ -754,10 +756,10 @@ private fun BranchNavigationBar(
             onClick = onPrevious,
             enabled = currentIndex > 0
         ) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "上一个分支")
+            Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.branch_previous))
         }
         Text(
-            text = "分支 ${currentIndex + 1} / $totalBranches",
+            text = stringResource(R.string.branch_info, currentIndex + 1, totalBranches),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -765,7 +767,7 @@ private fun BranchNavigationBar(
             onClick = onNext,
             enabled = currentIndex < totalBranches - 1
         ) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "下一个分支")
+            Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.branch_next))
         }
     }
 }

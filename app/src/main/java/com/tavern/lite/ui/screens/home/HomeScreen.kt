@@ -59,8 +59,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.CharacterEntity
@@ -101,16 +103,16 @@ fun HomeScreen(
     if (deletingCharacter != null) {
         AlertDialog(
             onDismissRequest = { deletingCharacter = null },
-            title = { Text("删除角色") },
-            text = { Text("确定要删除「${deletingCharacter!!.name}」吗？该角色的所有聊天记录也会被删除。") },
+            title = { Text(stringResource(R.string.delete_character_title)) },
+            text = { Text(stringResource(R.string.delete_character_text, deletingCharacter!!.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteCharacter(deletingCharacter!!.id)
                     deletingCharacter = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingCharacter = null }) { Text("取消") }
+                TextButton(onClick = { deletingCharacter = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -120,7 +122,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "酒馆 Lite",
+                        stringResource(R.string.home_title),
                         style = MaterialTheme.typography.headlineMedium
                     )
                 },
@@ -129,18 +131,18 @@ fun HomeScreen(
                 ),
                 actions = {
                     IconButton(onClick = { showSearch = !showSearch }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                     }
                     IconButton(onClick = {
                         importLauncher.launch(arrayOf("application/json", "image/png"))
                     }) {
-                        Icon(Icons.Default.FileOpen, contentDescription = "导入角色卡")
+                        Icon(Icons.Default.FileOpen, contentDescription = stringResource(R.string.import_character))
                     }
                     IconButton(onClick = onWorldBookClick) {
-                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "世界书")
+                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = stringResource(R.string.world_book))
                     }
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 }
             )
@@ -150,7 +152,7 @@ fun HomeScreen(
                 onClick = onCreateCharacter,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "新建角色")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_character))
             }
         }
     ) { padding ->
@@ -192,7 +194,7 @@ private fun SearchBar(onQueryChanged: (String) -> Unit) {
             query = it
             onQueryChanged(it)
         },
-        placeholder = { Text("搜索角色...") },
+        placeholder = { Text(stringResource(R.string.search_characters)) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         shape = RoundedCornerShape(24.dp),
         colors = TextFieldDefaults.colors(
@@ -278,7 +280,7 @@ private fun CharacterCard(
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = "更多",
+                        contentDescription = stringResource(R.string.more),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -287,7 +289,7 @@ private fun CharacterCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("导出为 JSON") },
+                        text = { Text(stringResource(R.string.export_json)) },
                         leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
                         onClick = {
                             onExport()
@@ -295,7 +297,7 @@ private fun CharacterCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("导出为 PNG") },
+                        text = { Text(stringResource(R.string.export_png)) },
                         leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
                         onClick = {
                             onExportPng()
@@ -303,7 +305,7 @@ private fun CharacterCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                        text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Delete,
@@ -337,12 +339,12 @@ private fun EmptyState(onCreate: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "还没有角色",
+                text = stringResource(R.string.no_characters),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "点击右下角 + 创建你的第一个角色",
+                text = stringResource(R.string.no_characters_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 8.dp)
