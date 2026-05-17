@@ -1,5 +1,16 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-17 — v1.0.0-beta1 首次发布
+
+- 创建 README.md（中文，功能列表、技术栈、构建说明、项目结构）
+- 完善 .gitignore（Kotlin/IDE/OS 规则）
+- 初始化 Git 仓库，首次 commit（108 文件，11310 行）
+- 创建 GitHub 仓库：`yannicksong0106/tavern-android`
+- 推送 `main` 分支 + 创建 `v1.0.0-beta1` tag + GitHub Release（prerelease）
+- 已完成 Phase A-G，下一步 Phase H（群聊系统）
+
+---
+
 ## 2026-05-17 — Phase G 用户角色系统
 
 > 用户角色系统（Persona）：让用户在对话中拥有多重身份，可创建多个角色并设置默认，支持 per-character 覆盖。类似 SillyTavern 的 Persona 功能。
