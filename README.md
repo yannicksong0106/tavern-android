@@ -1,6 +1,10 @@
-# 酒馆 AI (Tavern Lite)
+# 酒馆 Lite (Tavern Lite)
 
-一款原生 Android 应用，重新实现 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的核心功能，以独立 APK 形式运行，无需服务端。
+> **Beta 测试版** — 本项目目前处于积极开发阶段，功能和 API 可能随时变更，欢迎反馈问题和建议。
+
+一款原生 Android 应用，基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的核心功能进行 Android 端重新实现，以独立 APK 形式运行，无需服务端。
+
+**开发者说明：** 本项目由一名大学生独立开发，作为学习和实践项目持续迭代中。如有问题或建议，欢迎提 Issue。
 
 ## 功能特性
 
