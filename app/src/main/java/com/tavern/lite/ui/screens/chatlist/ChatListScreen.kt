@@ -57,8 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.ChatEntity
@@ -118,14 +120,14 @@ fun ChatListScreen(
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(shareIntent, "分享对话"))
+            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_chat)))
         }
     }
 
     // 导出格式选择
     if (showExportSheet) {
         FormatBottomSheet(
-            title = if (exportTargetChatId != null) "导出对话" else "导出全部对话",
+            title = if (exportTargetChatId != null) stringResource(R.string.export_chat) else stringResource(R.string.export_all_chats),
             onFormatSelected = { format ->
                 if (exportTargetChatId != null) {
                     viewModel.exportChat(exportTargetChatId!!, format)
@@ -146,16 +148,16 @@ fun ChatListScreen(
     if (deletingChat != null) {
         AlertDialog(
             onDismissRequest = { deletingChat = null },
-            title = { Text("删除对话") },
-            text = { Text("确定要删除这个对话吗？所有消息都会被删除。") },
+            title = { Text(stringResource(R.string.delete_chat_title)) },
+            text = { Text(stringResource(R.string.delete_chat_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteChat(deletingChat!!.id)
                     deletingChat = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingChat = null }) { Text("取消") }
+                TextButton(onClick = { deletingChat = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -184,11 +186,11 @@ fun ChatListScreen(
                         )
                         Column(modifier = Modifier.padding(start = 12.dp)) {
                             Text(
-                                text = character?.name ?: "对话列表",
+                                text = character?.name ?: stringResource(R.string.chat_list),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "${chats.size} 个对话",
+                                text = stringResource(R.string.chat_count, chats.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -197,14 +199,14 @@ fun ChatListScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         importLauncher.launch(arrayOf("application/json", "text/plain"))
                     }) {
-                        Icon(Icons.Default.FileOpen, contentDescription = "导入对话")
+                        Icon(Icons.Default.FileOpen, contentDescription = stringResource(R.string.import_chat))
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
@@ -215,7 +217,7 @@ fun ChatListScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("导出全部对话") },
+                                text = { Text(stringResource(R.string.export_all_chats)) },
                                 leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -233,7 +235,7 @@ fun ChatListScreen(
                 onClick = { viewModel.createChat { chatId -> onChatClick(chatId) } },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "新建对话")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat))
             }
         }
     ) { padding ->
@@ -304,7 +306,7 @@ private fun ChatItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = chat.name ?: "对话 ${chat.id}",
+                    text = chat.name ?: stringResource(R.string.chat_name_default, chat.id),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -320,7 +322,7 @@ private fun ChatItem(
             IconButton(onClick = onExport) {
                 Icon(
                     Icons.Default.Share,
-                    contentDescription = "导出",
+                    contentDescription = stringResource(R.string.export_chat),
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
@@ -328,7 +330,7 @@ private fun ChatItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "删除",
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
@@ -352,12 +354,12 @@ private fun EmptyChatList(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "还没有对话",
+                text = stringResource(R.string.no_chats),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "点击右下角 + 开始新对话",
+                text = stringResource(R.string.no_chats_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 8.dp)
@@ -376,21 +378,21 @@ private fun RenameChatDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("重命名对话") },
+        title = { Text(stringResource(R.string.rename_chat)) },
         text = {
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = { Text("输入对话名称") },
+                placeholder = { Text(stringResource(R.string.input_chat_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) { Text("保存") }
+            TextButton(onClick = { onConfirm(name) }) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -415,10 +417,10 @@ private fun FormatBottomSheet(
             )
 
             val formats = listOf(
-                Triple(ExportFormat.MARKDOWN, "Markdown", ".md — 通用格式，支持富文本"),
-                Triple(ExportFormat.HTML, "HTML", ".html — 带样式的网页，暗色主题"),
-                Triple(ExportFormat.PLAINTEXT, "纯文本", ".txt — 简单文本格式"),
-                Triple(ExportFormat.JSON, "JSON", ".json — 结构化数据，可重新导入")
+                Triple(ExportFormat.MARKDOWN, "Markdown", stringResource(R.string.format_markdown_desc)),
+                Triple(ExportFormat.HTML, "HTML", stringResource(R.string.format_html_desc)),
+                Triple(ExportFormat.PLAINTEXT, stringResource(R.string.format_plaintext), stringResource(R.string.format_plaintext_desc)),
+                Triple(ExportFormat.JSON, "JSON", stringResource(R.string.format_json_desc))
             )
 
             for ((format, name, desc) in formats) {
