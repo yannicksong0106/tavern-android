@@ -1,0 +1,41 @@
+# Built outputs
+*.iml
+.gradle
+/build
+/app/build
+/local.properties
+/.idea
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.apk
+*.aab
+
+# Kotlin
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE
+*.swp
+*~
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Debug
+*.hprof
+
+# Screenshots (keep for README)
+
+# Emulator scripts
+start-emulator.bat
+start-emulator.ps1
+deploy.ps1

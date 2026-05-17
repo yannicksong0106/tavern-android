@@ -1,0 +1,196 @@
+package com.tavern.lite.ui.screens.character
+
+import android.content.Context
+import android.net.Uri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tavern.lite.data.db.dao.AuthorNoteDao
+import com.tavern.lite.data.db.entity.AuthorNoteEntity
+import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.repository.CharacterRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.io.File
+import javax.inject.Inject
+
+data class CharacterEditState(
+    val name: String = "",
+    val description: String = "",
+    val personality: String = "",
+    val firstMes: String = "",
+    val mesExample: String = "",
+    val systemPrompt: String = "",
+    val postHistoryInstructions: String = "",
+    val creator: String = "",
+    val tags: String = "",
+    val isEditing: Boolean = false,
+    val characterId: Long? = null,
+    val avatarPath: String? = null,
+    val backgroundPath: String? = null,
+    // Author's Note
+    val authorNoteContent: String = "",
+    val authorNotePosition: String = "after_an",
+    val authorNoteDepth: Int = 4
+)
+
+@HiltViewModel
+class CharacterEditViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val characterRepository: CharacterRepository,
+    private val authorNoteDao: AuthorNoteDao
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(CharacterEditState())
+    val state: StateFlow<CharacterEditState> = _state.asStateFlow()
+
+    fun loadCharacter(id: Long) {
+        viewModelScope.launch {
+            val entity = characterRepository.getCharacterById(id) ?: return@launch
+            val authorNote = authorNoteDao.getAuthorNoteSync(id)
+            _state.value = CharacterEditState(
+                name = entity.name,
+                description = entity.description,
+                personality = entity.personality,
+                firstMes = entity.firstMes,
+                mesExample = entity.mesExample,
+                systemPrompt = entity.systemPrompt ?: "",
+                postHistoryInstructions = entity.postHistoryInstructions ?: "",
+                creator = entity.creator,
+                tags = entity.tags,
+                isEditing = true,
+                characterId = entity.id,
+                avatarPath = entity.avatarPath,
+                backgroundPath = entity.backgroundPath,
+                authorNoteContent = authorNote?.content ?: "",
+                authorNotePosition = authorNote?.position ?: "after_an",
+                authorNoteDepth = authorNote?.depth ?: 4
+            )
+        }
+    }
+
+    fun updateField(field: String, value: String) {
+        _state.value = when (field) {
+            "name" -> _state.value.copy(name = value)
+            "description" -> _state.value.copy(description = value)
+            "personality" -> _state.value.copy(personality = value)
+            "firstMes" -> _state.value.copy(firstMes = value)
+            "mesExample" -> _state.value.copy(mesExample = value)
+            "systemPrompt" -> _state.value.copy(systemPrompt = value)
+            "postHistoryInstructions" -> _state.value.copy(postHistoryInstructions = value)
+            "creator" -> _state.value.copy(creator = value)
+            "tags" -> _state.value.copy(tags = value)
+            "authorNoteContent" -> _state.value.copy(authorNoteContent = value)
+            "authorNoteDepth" -> _state.value.copy(authorNoteDepth = value.toIntOrNull() ?: 4)
+            else -> _state.value
+        }
+    }
+
+    fun updateAuthorNotePosition(position: String) {
+        _state.value = _state.value.copy(authorNotePosition = position)
+    }
+
+    fun updateAvatar(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val avatarDir = File(context.filesDir, "avatars")
+                avatarDir.mkdirs()
+                val avatarFile = File(avatarDir, "avatar_${System.currentTimeMillis()}.png")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    avatarFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                _state.value = _state.value.copy(avatarPath = avatarFile.absolutePath)
+            } catch (_: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    fun updateBackground(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val bgDir = File(context.filesDir, "backgrounds")
+                bgDir.mkdirs()
+                val bgFile = File(bgDir, "bg_${System.currentTimeMillis()}.png")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    bgFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                _state.value = _state.value.copy(backgroundPath = bgFile.absolutePath)
+            } catch (_: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    fun clearBackground() {
+        _state.value = _state.value.copy(backgroundPath = null)
+    }
+
+    fun setPresetBackground(presetId: String) {
+        _state.value = _state.value.copy(backgroundPath = "preset:$presetId")
+    }
+
+    fun save(onDone: () -> Unit) {
+        val s = _state.value
+        if (s.name.isBlank()) return
+
+        viewModelScope.launch {
+            val savedCharId = if (s.isEditing && s.characterId != null) {
+                val entity = characterRepository.getCharacterById(s.characterId) ?: return@launch
+                characterRepository.updateCharacter(
+                    entity.copy(
+                        name = s.name,
+                        description = s.description,
+                        personality = s.personality,
+                        firstMes = s.firstMes,
+                        mesExample = s.mesExample,
+                        systemPrompt = s.systemPrompt.ifBlank { null },
+                        postHistoryInstructions = s.postHistoryInstructions.ifBlank { null },
+                        creator = s.creator,
+                        avatarPath = s.avatarPath,
+                        backgroundPath = s.backgroundPath
+                    )
+                )
+                s.characterId
+            } else {
+                characterRepository.createCharacter(
+                    com.tavern.lite.data.model.CharacterData(
+                        name = s.name,
+                        description = s.description,
+                        personality = s.personality,
+                        firstMes = s.firstMes,
+                        mesExample = s.mesExample,
+                        systemPrompt = s.systemPrompt.ifBlank { null },
+                        postHistoryInstructions = s.postHistoryInstructions.ifBlank { null },
+                        creator = s.creator
+                    )
+                )
+            }
+
+            // Save author's note
+            if (savedCharId != null) {
+                if (s.authorNoteContent.isNotBlank()) {
+                    authorNoteDao.insertOrUpdate(
+                        AuthorNoteEntity(
+                            characterId = savedCharId,
+                            content = s.authorNoteContent,
+                            position = s.authorNotePosition,
+                            depth = s.authorNoteDepth
+                        )
+                    )
+                } else {
+                    authorNoteDao.delete(savedCharId)
+                }
+            }
+
+            onDone()
+        }
+    }
+}

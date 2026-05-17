@@ -1,0 +1,167 @@
+package com.tavern.lite.network
+
+import com.tavern.lite.data.db.entity.AuthorNoteEntity
+import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MemoryEntity
+import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.PersonaEntity
+import com.tavern.lite.data.db.entity.WorldBookEntryEntity
+
+object PromptBuilder {
+
+    fun build(
+        character: CharacterEntity,
+        userMessage: String,
+        chatHistory: List<MessageEntity>,
+        worldBookEntries: List<WorldBookEntryEntity> = emptyList(),
+        userName: String = "User",
+        memories: List<MemoryEntity> = emptyList(),
+        authorNote: AuthorNoteEntity? = null,
+        persona: PersonaEntity? = null
+    ): List<ChatMessage> {
+        val messages = mutableListOf<ChatMessage>()
+
+        // Resolve effective user name: persona name > userName param
+        val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
+
+        // 1. 系统 prompt
+        val systemPrompt = buildSystemPrompt(character, worldBookEntries, effectiveUserName, memories, persona)
+        if (systemPrompt.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = systemPrompt))
+        }
+
+        // 2. 示例对话
+        val exampleMessages = parseExampleDialog(character.mesExample, effectiveUserName, character.name)
+        messages.addAll(exampleMessages)
+
+        // 3. 开场白
+        if (character.firstMes.isNotBlank()) {
+            val firstMes = replacePlaceholders(character.firstMes, effectiveUserName, character.name)
+            messages.add(ChatMessage(role = "assistant", content = firstMes))
+        }
+
+        // 4. 聊天历史
+        chatHistory.forEach { msg ->
+            val role = when (msg.role) {
+                "user" -> "user"
+                "assistant" -> "assistant"
+                else -> "system"
+            }
+            messages.add(ChatMessage(role = role, content = msg.content))
+        }
+
+        // 4.5 Author's Note injection (at specified depth from end of history)
+        if (authorNote != null && authorNote.content.isNotBlank()) {
+            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, character.name)
+            val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+        }
+
+        // 4.6 历史后指令（post_history_instructions）
+        val postHistory = character.postHistoryInstructions
+        if (!postHistory.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = postHistory
+                    .replace("{{user}}", effectiveUserName)
+                    .replace("{{char}}", character.name)
+            ))
+        }
+
+        // 5. 当前用户消息
+        messages.add(ChatMessage(role = "user", content = userMessage))
+
+        return messages
+    }
+
+    private fun buildSystemPrompt(
+        character: CharacterEntity,
+        worldBookEntries: List<WorldBookEntryEntity>,
+        userName: String,
+        memories: List<MemoryEntity> = emptyList(),
+        persona: PersonaEntity? = null
+    ): String {
+        val parts = mutableListOf<String>()
+
+        // 角色描述
+        val desc = character.description
+            .replace("{{user}}", userName)
+            .replace("{{char}}", character.name)
+        if (desc.isNotBlank()) parts.add(desc)
+
+        // 性格
+        val personality = character.personality
+            .replace("{{user}}", userName)
+            .replace("{{char}}", character.name)
+        if (personality.isNotBlank()) parts.add("Personality: $personality")
+
+        // 世界书条目
+        if (worldBookEntries.isNotEmpty()) {
+            val worldInfo = worldBookEntries.joinToString("\n") { entry ->
+                val comment = entry.comment.ifBlank { "World Info" }
+                "[$comment]\n${entry.content}"
+            }
+            parts.add(worldInfo)
+        }
+
+        // 记忆注入
+        if (memories.isNotEmpty()) {
+            val memoryText = memories.joinToString("\n") { "- ${it.content}" }
+            parts.add("[Memory]\n$memoryText")
+        }
+
+        // 用户角色注入
+        if (persona != null && persona.biography.isNotBlank()) {
+            val bio = persona.biography
+                .replace("{{user}}", userName)
+                .replace("{{char}}", character.name)
+            parts.add("[User Persona: ${persona.name}]\n$bio")
+        }
+
+        // 系统 prompt
+        val sysPrompt = character.systemPrompt
+        if (!sysPrompt.isNullOrBlank()) {
+            parts.add(sysPrompt.replace("{{user}}", userName).replace("{{char}}", character.name))
+        }
+
+        return parts.joinToString("\n\n")
+    }
+
+    private fun parseExampleDialog(
+        mesExample: String,
+        userName: String,
+        charName: String
+    ): List<ChatMessage> {
+        if (mesExample.isBlank()) return emptyList()
+
+        val messages = mutableListOf<ChatMessage>()
+        val blocks = mesExample.split("<START>")
+
+        for (block in blocks) {
+            val trimmed = block.trim()
+            if (trimmed.isEmpty()) continue
+
+            val lines = trimmed.lines()
+            for (line in lines) {
+                val l = line.trim()
+                if (l.isEmpty()) continue
+
+                val replaced = replacePlaceholders(l, userName, charName)
+                when {
+                    replaced.startsWith("${userName}:") ->
+                        messages.add(ChatMessage(role = "user", content = replaced.removePrefix("${userName}:").trim()))
+                    replaced.startsWith("${charName}:") ->
+                        messages.add(ChatMessage(role = "assistant", content = replaced.removePrefix("${charName}:").trim()))
+                }
+            }
+        }
+
+        return messages
+    }
+
+    private fun replacePlaceholders(text: String, userName: String, charName: String): String {
+        return text
+            .replace("{{user}}", userName)
+            .replace("{{char}}", charName)
+    }
+}

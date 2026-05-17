@@ -1,0 +1,40 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build & Deploy to Emulator",
+            "type": "shell",
+            "command": "./gradlew.bat assembleDebug --quiet && ${env:LOCALAPPDATA}/Android/Sdk/platform-tools/adb.exe install -r app/build/outputs/apk/debug/app-debug.apk && ${env:LOCALAPPDATA}/Android/Sdk/platform-tools/adb.exe shell am start -n com.tavern.lite/.MainActivity",
+            "windows": {
+                "command": ".\\gradlew.bat assembleDebug --quiet && \"$env:LOCALAPPDATA\\Android\\Sdk\\platform-tools\\adb.exe\" install -r app\\build\\outputs\\apk\\debug\\app-debug.apk && \"$env:LOCALAPPDATA\\Android\\Sdk\\platform-tools\\adb.exe\" shell am start -n com.tavern.lite/.MainActivity"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$kotlin"],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build Only",
+            "type": "shell",
+            "command": "./gradlew.bat assembleDebug",
+            "group": "build",
+            "problemMatcher": ["$kotlin"]
+        },
+        {
+            "label": "Start Emulator",
+            "type": "shell",
+            "command": "Start-Process -FilePath \"$env:LOCALAPPDATA\\Android\\Sdk\\emulator\\emulator.exe\" -ArgumentList \"-avd\", \"Tavern_Phone\", \"-no-snapshot\", \"-gpu\", \"auto\"",
+            "windows": {
+                "command": "Start-Process -FilePath \"$env:LOCALAPPDATA\\Android\\Sdk\\emulator\\emulator.exe\" -ArgumentList '-avd', 'Tavern_Phone', '-no-snapshot', '-gpu', 'auto'"
+            },
+            "presentation": {
+                "reveal": "silent"
+            }
+        }
+    ]
+}

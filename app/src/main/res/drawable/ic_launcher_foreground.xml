@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Mug body -->
+    <path
+        android:fillColor="#D77757"
+        android:pathData="M34,40 L34,74 C34,78 38,82 44,82 L60,82 C66,82 70,78 70,74 L70,40 Z"/>
+    <!-- Mug handle -->
+    <path
+        android:fillColor="#D77757"
+        android:pathData="M70,46 C76,46 82,50 82,58 C82,66 76,70 70,70"
+        android:strokeColor="#D77757"
+        android:strokeWidth="3"/>
+    <!-- Foam / liquid top -->
+    <path
+        android:fillColor="#F5E6D3"
+        android:pathData="M32,38 C32,34 36,32 40,32 L64,32 C68,32 72,34 72,38 L72,42 L32,42 Z"/>
+    <!-- Foam drip left -->
+    <path
+        android:fillColor="#F5E6D3"
+        android:pathData="M34,42 C32,42 31,44 32,46 C33,48 35,48 36,46 L36,42 Z"/>
+    <!-- Foam drip right -->
+    <path
+        android:fillColor="#F5E6D3"
+        android:pathData="M70,42 C72,42 73,44 72,46 C71,48 69,48 68,46 L68,42 Z"/>
+    <!-- Speech bubble -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,22 L72,22 C74,22 76,24 76,26 L76,32 C76,34 74,36 72,36 L66,36 L62,40 L62,36 L58,36 C56,36 54,34 54,32 L54,26 C54,24 56,22 58,22 Z"/>
+    <!-- Dots in speech bubble -->
+    <path
+        android:fillColor="#D77757"
+        android:pathData="M59,29 A1.5,1.5 0,1,1 62,29 A1.5,1.5 0,1,1 59,29 Z"/>
+    <path
+        android:fillColor="#D77757"
+        android:pathData="M65,29 A1.5,1.5 0,1,1 68,29 A1.5,1.5 0,1,1 65,29 Z"/>
+    <path
+        android:fillColor="#D77757"
+        android:pathData="M71,29 A1.5,1.5 0,1,1 74,29 A1.5,1.5 0,1,1 71,29 Z"/>
+</vector>

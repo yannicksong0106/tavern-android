@@ -1,0 +1,132 @@
+package com.tavern.lite.util
+
+import java.io.File
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.zip.CRC32
+
+/**
+ * 读取/写入 PNG 文件中的 tEXt chunk（用于 SillyTavern 角色卡）。
+ * SillyTavern 将角色卡 JSON Base64 编码后存储在 PNG 的 tEXt chunk 的 "chara" 字段中。
+ */
+object PngMetadata {
+
+    private val PNG_SIGNATURE = byteArrayOf(
+        0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    )
+
+    fun readTextChunks(file: File): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        RandomAccessFile(file, "r").use { raf ->
+            // 验证 PNG 签名
+            val sig = ByteArray(8)
+            raf.readFully(sig)
+            if (!sig.contentEquals(PNG_SIGNATURE)) {
+                throw IllegalArgumentException("Not a valid PNG file")
+            }
+
+            while (raf.filePointer < raf.length()) {
+                val length = raf.readBigEndianInt()
+                val type = ByteArray(4)
+                raf.readFully(type)
+                val typeName = String(type, Charsets.US_ASCII)
+
+                val data = ByteArray(length)
+                raf.readFully(data)
+
+                val crc = ByteArray(4)
+                raf.readFully(crc)
+
+                if (typeName == "tEXt") {
+                    val nullIdx = data.indexOf(0)
+                    if (nullIdx > 0) {
+                        val key = String(data, 0, nullIdx, Charsets.ISO_8859_1)
+                        val value = String(data, nullIdx + 1, data.size - nullIdx - 1, Charsets.ISO_8859_1)
+                        result[key] = value
+                    }
+                }
+
+                // IEND 结束
+                if (typeName == "IEND") break
+            }
+        }
+        return result
+    }
+
+    fun readCharaCard(file: File): String? {
+        val chunks = readTextChunks(file)
+        val charaBase64 = chunks["chara"] ?: return null
+        return String(android.util.Base64.decode(charaBase64, android.util.Base64.DEFAULT), Charsets.UTF_8)
+    }
+
+    fun writeCharaCard(sourcePng: File, jsonStr: String, outputFile: File) {
+        // 复制原图到输出位置
+        if (sourcePng != outputFile) {
+            sourcePng.copyTo(outputFile, overwrite = true)
+        }
+        val base64 = android.util.Base64.encodeToString(jsonStr.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+        writeTextChunk(outputFile, "chara", base64)
+    }
+
+    fun writeTextChunk(file: File, key: String, value: String) {
+        val keyBytes = key.toByteArray(Charsets.ISO_8859_1)
+        val valueBytes = value.toByteArray(Charsets.ISO_8859_1)
+        val data = ByteArray(keyBytes.size + 1 + valueBytes.size)
+        keyBytes.copyInto(data)
+        data[keyBytes.size] = 0
+        valueBytes.copyInto(data, keyBytes.size + 1)
+
+        val chunkType = "tEXt".toByteArray(Charsets.US_ASCII)
+
+        // 计算 CRC
+        val crcData = ByteArray(4 + data.size)
+        chunkType.copyInto(crcData)
+        data.copyInto(crcData, 4)
+        val crc = CRC32()
+        crc.update(crcData)
+
+        // 读取原始文件，插入 tEXt chunk 到 IEND 之前
+        val allBytes = file.readBytes()
+        val iendPos = findIendPosition(allBytes)
+        if (iendPos < 0) {
+            throw IllegalArgumentException("Cannot find IEND chunk in PNG")
+        }
+
+        val lengthBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(data.size).array()
+        val crcBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(crc.value.toInt()).array()
+
+        val newBytes = ByteArray(allBytes.size + 4 + 4 + data.size + 4)
+        // 复制到 IEND 之前
+        allBytes.copyInto(newBytes, 0, 0, iendPos)
+        // 插入 tEXt chunk
+        var pos = iendPos
+        lengthBytes.copyInto(newBytes, pos); pos += 4
+        chunkType.copyInto(newBytes, pos); pos += 4
+        data.copyInto(newBytes, pos); pos += data.size
+        crcBytes.copyInto(newBytes, pos); pos += 4
+        // 复制 IEND
+        allBytes.copyInto(newBytes, pos, iendPos)
+
+        file.writeBytes(newBytes)
+    }
+
+    private fun RandomAccessFile.readBigEndianInt(): Int {
+        val buf = ByteArray(4)
+        readFully(buf)
+        return ByteBuffer.wrap(buf).order(ByteOrder.BIG_ENDIAN).int
+    }
+
+    private fun findIendPosition(data: ByteArray): Int {
+        for (i in 8 until data.size - 7) {
+            if (data[i + 4] == 'I'.code.toByte() &&
+                data[i + 5] == 'E'.code.toByte() &&
+                data[i + 6] == 'N'.code.toByte() &&
+                data[i + 7] == 'D'.code.toByte()
+            ) {
+                return i
+            }
+        }
+        return -1
+    }
+}
