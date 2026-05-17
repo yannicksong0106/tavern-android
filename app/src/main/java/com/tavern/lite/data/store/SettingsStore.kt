@@ -24,6 +24,17 @@ class SettingsStore @Inject constructor(
 ) {
     companion object {
         private val BUBBLE_STYLE_KEY = stringPreferencesKey("bubble_style_json")
+        private val LANGUAGE_KEY = stringPreferencesKey("language")
+    }
+
+    val languageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
+        prefs[LANGUAGE_KEY] ?: "system"
+    }
+
+    suspend fun saveLanguage(language: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[LANGUAGE_KEY] = language
+        }
     }
 
     val bubbleStyleFlow: Flow<BubbleStyleConfig> = context.settingsDataStore.data.map { prefs ->

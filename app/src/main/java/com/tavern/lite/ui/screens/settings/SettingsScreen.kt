@@ -52,7 +52,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.ui.theme.AssistantBubbleDark
 import com.tavern.lite.ui.theme.AssistantBubbleLight
@@ -72,14 +74,15 @@ fun SettingsScreen(
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
     val bubbleStyle by viewModel.bubbleStyle.collectAsStateWithLifecycle()
+    val language by viewModel.language.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("设置") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -93,7 +96,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // API 配置区
-            SectionHeader("API 配置")
+            SectionHeader(stringResource(R.string.api_config))
             ApiProviderSection(config, viewModel)
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -104,37 +107,43 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 生成参数区
-            SectionHeader("生成参数")
+            SectionHeader(stringResource(R.string.generation_params))
             GenerationParamsSection(config, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // 用户设置
-            SectionHeader("用户设置")
+            SectionHeader(stringResource(R.string.user_settings))
             UserSettingsSection(config, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // 用户角色
-            SectionHeader("用户角色")
+            SectionHeader(stringResource(R.string.user_persona))
             PersonaEntrySection(onPersonaClick)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // 聊天气泡样式
-            SectionHeader("聊天气泡")
+            SectionHeader(stringResource(R.string.chat_bubble))
             BubbleStyleSection(bubbleStyle, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // 主题设置
-            SectionHeader("主题")
+            SectionHeader(stringResource(R.string.theme))
             ThemeSection(bubbleStyle, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 语言设置
+            SectionHeader(stringResource(R.string.language_setting))
+            LanguageSection(language, viewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 关于
-            SectionHeader("关于")
+            SectionHeader(stringResource(R.string.about))
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -142,9 +151,9 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("酒馆 AI", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "版本 1.0.0 · 基于 SillyTavern 数据格式",
+                        stringResource(R.string.about_version),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -182,9 +191,9 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("连接测试", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.connection_test), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "发送一条测试消息验证 API 配置",
+                        stringResource(R.string.connection_test_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -193,7 +202,7 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
                     onClick = { viewModel.testConnection() },
                     enabled = testState !is ConnectionTestState.Testing
                 ) {
-                    Text(if (testState is ConnectionTestState.Testing) "测试中..." else "测试")
+                    Text(if (testState is ConnectionTestState.Testing) stringResource(R.string.testing) else stringResource(R.string.test))
                 }
             }
 
@@ -201,7 +210,7 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
             when (val state = testState) {
                 is ConnectionTestState.Success -> {
                     Text(
-                        text = "回复: ${state.reply}",
+                        text = stringResource(R.string.test_reply, state.reply),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 8.dp)
@@ -209,7 +218,7 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
                 }
                 is ConnectionTestState.Error -> {
                     Text(
-                        text = "错误: ${state.message}",
+                        text = stringResource(R.string.test_error, state.message),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 8.dp)
@@ -225,7 +234,7 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
 @Composable
 private fun ApiProviderSection(config: ApiConfig, viewModel: SettingsViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    val providers = listOf("OpenAI", "Claude", "Ollama", "自定义")
+    val providers = listOf("OpenAI", "Claude", "Ollama", "Custom")
     val currentProviderName = config.provider.displayName
 
     Card(
@@ -349,7 +358,7 @@ private fun ProviderFields(
     OutlinedTextField(
         value = model,
         onValueChange = onModelChange,
-        label = { Text("模型") },
+        label = { Text(stringResource(R.string.model)) },
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
@@ -444,7 +453,7 @@ private fun GenerationParamsSection(config: ApiConfig, viewModel: SettingsViewMo
                 onValueChange = { value ->
                     value.toIntOrNull()?.let { viewModel.updateContextLength(it) }
                 },
-                label = { Text("上下文条数") },
+                label = { Text(stringResource(R.string.context_length)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -464,7 +473,7 @@ private fun UserSettingsSection(config: ApiConfig, viewModel: SettingsViewModel)
             OutlinedTextField(
                 value = config.userName,
                 onValueChange = { viewModel.updateUserName(it) },
-                label = { Text("你的名字（用于 {{user}} 占位符）") },
+                label = { Text(stringResource(R.string.user_name_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -493,15 +502,15 @@ private fun PersonaEntrySection(onPersonaClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("管理用户角色", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.manage_persona), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = "创建和管理你在对话中的身份",
+                    text = stringResource(R.string.manage_persona_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
-                text = "进入",
+                text = stringResource(R.string.enter),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -532,7 +541,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // 用户气泡颜色
-            Text("用户气泡颜色", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.bubble_color_user), style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -563,7 +572,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
                     ) {
                         if (colorValue == 0L) {
                             Text(
-                                text = "默认",
+                                text = stringResource(R.string.default_label),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -575,7 +584,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
             Spacer(modifier = Modifier.height(16.dp))
 
             // 助手气泡颜色
-            Text("助手气泡颜色", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.bubble_color_assistant), style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -606,7 +615,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
                     ) {
                         if (colorValue == 0L) {
                             Text(
-                                text = "默认",
+                                text = stringResource(R.string.default_label),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -619,7 +628,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
 
             // 圆角大小
             Text(
-                text = "气泡圆角: ${style.cornerRadius}dp",
+                text = stringResource(R.string.bubble_corner_radius, style.cornerRadius),
                 style = MaterialTheme.typography.bodyMedium
             )
             Slider(
@@ -636,7 +645,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
 
             // 字体大小
             Text(
-                text = "字体大小: ${style.fontSize}sp",
+                text = stringResource(R.string.font_size, style.fontSize),
                 style = MaterialTheme.typography.bodyMedium
             )
             Slider(
@@ -667,9 +676,9 @@ private fun ThemeSection(style: BubbleStyleConfig, viewModel: SettingsViewModel)
                 .padding(16.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Material You 动态取色", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.material_you), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = "跟随系统壁纸配色（Android 12+）",
+                    text = stringResource(R.string.material_you_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -680,6 +689,41 @@ private fun ThemeSection(style: BubbleStyleConfig, viewModel: SettingsViewModel)
                     viewModel.updateBubbleStyle(style.copy(dynamicColor = it))
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewModel) {
+    val languages = listOf(
+        "system" to stringResource(R.string.language_system),
+        "zh" to stringResource(R.string.language_chinese),
+        "en" to stringResource(R.string.language_english)
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            languages.forEach { (code, label) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.updateLanguage(code) }
+                        .padding(vertical = 8.dp)
+                ) {
+                    androidx.compose.material3.RadioButton(
+                        selected = currentLanguage == code,
+                        onClick = { viewModel.updateLanguage(code) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(label, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
         }
     }
 }

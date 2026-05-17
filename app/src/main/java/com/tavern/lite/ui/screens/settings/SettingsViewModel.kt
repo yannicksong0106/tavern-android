@@ -38,6 +38,9 @@ class SettingsViewModel @Inject constructor(
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BubbleStyleConfig())
 
+    val language: StateFlow<String> = settingsStore.languageFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
 
@@ -113,6 +116,12 @@ class SettingsViewModel @Inject constructor(
     fun updateBubbleStyle(config: BubbleStyleConfig) {
         viewModelScope.launch {
             settingsStore.saveBubbleStyle(config)
+        }
+    }
+
+    fun updateLanguage(lang: String) {
+        viewModelScope.launch {
+            settingsStore.saveLanguage(lang)
         }
     }
 }
