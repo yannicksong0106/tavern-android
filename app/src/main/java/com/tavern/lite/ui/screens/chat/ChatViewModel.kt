@@ -24,6 +24,7 @@ import com.tavern.lite.network.PromptBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -76,6 +77,9 @@ class ChatViewModel @Inject constructor(
 
     private val _streamingText = MutableStateFlow("")
     val streamingText: StateFlow<String> = _streamingText.asStateFlow()
+
+    private val _deliveringMessages = MutableStateFlow(false)
+    val deliveringMessages: StateFlow<Boolean> = _deliveringMessages.asStateFlow()
 
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
@@ -164,6 +168,9 @@ class ChatViewModel @Inject constructor(
                     }
                 }
 
+                // 活人感：按段落拆分成多条消息
+                splitIntoMultipleMessages(assistantMsgId)
+
                 // === 记忆提取 ===
                 // 1. 正则快速提取（每轮都跑，开销极小）
                 val userMsgId = chatHistory.lastOrNull { it.role == "user" }?.id
@@ -207,6 +214,38 @@ class ChatViewModel @Inject constructor(
         streamingJob = null
         _isGenerating.value = false
         _streamingText.value = ""
+    }
+
+    /**
+     * 活人感：将 AI 回复按段落拆分成多条消息，逐条显示。
+     * 拆分逻辑：按双换行分隔，每段作为独立消息，中间有打字延迟。
+     */
+    private suspend fun splitIntoMultipleMessages(assistantMsgId: Long?) {
+        if (assistantMsgId == null) return
+        val msg = chatRepository.getMessageById(assistantMsgId) ?: return
+        val content = msg.content.trim()
+        if (content.isBlank()) return
+
+        // 按双换行拆分段落，过滤空段
+        val paragraphs = content.split(Regex("\n{2,}"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (paragraphs.size <= 1) return // 只有一段，不需要拆分
+
+        // 更新原消息为第一段
+        chatRepository.updateMessageContent(assistantMsgId, paragraphs[0])
+
+        // 后续段落逐条发送，中间有延迟
+        _deliveringMessages.value = true
+        try {
+            for (i in 1 until paragraphs.size) {
+                delay(800L) // 模拟打字间隔
+                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
+            }
+        } finally {
+            _deliveringMessages.value = false
+        }
     }
 
     fun continueGeneration() {
