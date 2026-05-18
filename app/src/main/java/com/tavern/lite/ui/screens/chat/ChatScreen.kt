@@ -495,7 +495,7 @@ private fun MessageBubble(
                 // Timestamp
                 if (!isStreaming) {
                     Text(
-                        text = formatTimestamp(message.createdAt),
+                        text = formatTimestamp(context, message.createdAt),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         fontSize = 9.sp,
@@ -722,14 +722,14 @@ private fun InputBar(
     }
 }
 
-private fun formatTimestamp(timestamp: Long): String {
+private fun formatTimestamp(context: android.content.Context, timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     return when {
-        diff < 60_000 -> "刚刚"
-        diff < 3600_000 -> "${diff / 60_000} 分钟前"
-        diff < 86400_000 -> "${diff / 3600_000} 小时前"
-        diff < 604800_000 -> "${diff / 86400_000} 天前"
+        diff < 60_000 -> context.getString(R.string.time_just_now)
+        diff < 3600_000 -> context.getString(R.string.time_minutes, (diff / 60_000).toInt())
+        diff < 86400_000 -> context.getString(R.string.time_hours, (diff / 3600_000).toInt())
+        diff < 604800_000 -> context.getString(R.string.time_days, (diff / 86400_000).toInt())
         else -> {
             val sdf = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
             sdf.format(java.util.Date(timestamp))

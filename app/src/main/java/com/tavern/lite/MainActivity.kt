@@ -8,11 +8,14 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.getValue
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.ui.navigation.TavernNavGraph
 import com.tavern.lite.ui.theme.TavernTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -24,19 +27,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            val bubbleStyle by settingsStore.bubbleStyleFlow
-                .collectAsStateWithLifecycle(initialValue = BubbleStyleConfig())
-            val language by settingsStore.languageFlow
-                .collectAsStateWithLifecycle(initialValue = "system")
 
-            // Apply language setting
-            val localeList = when (language) {
+        // Apply language BEFORE setContent so the activity starts with correct locale
+        lifecycleScope.launch {
+            val lang = settingsStore.languageFlow.first()
+            val localeList = when (lang) {
                 "zh" -> LocaleListCompat.forLanguageTags("zh")
                 "en" -> LocaleListCompat.forLanguageTags("en")
                 else -> LocaleListCompat.getEmptyLocaleList()
             }
             AppCompatDelegate.setApplicationLocales(localeList)
+        }
+
+        setContent {
+            val bubbleStyle by settingsStore.bubbleStyleFlow
+                .collectAsStateWithLifecycle(initialValue = BubbleStyleConfig())
 
             TavernTheme(dynamicColor = bubbleStyle.dynamicColor) {
                 TavernNavGraph()

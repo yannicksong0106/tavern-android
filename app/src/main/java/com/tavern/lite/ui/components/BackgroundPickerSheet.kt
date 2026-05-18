@@ -38,6 +38,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import com.tavern.lite.R
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -50,19 +52,19 @@ import java.io.File
  */
 data class PresetBackground(
     val id: String,
-    val label: String,
+    val labelResId: Int,
     val colors: List<Color>
 )
 
 val presetBackgrounds = listOf(
-    PresetBackground("dark_night", "深夜", listOf(Color(0xFF0D1117), Color(0xFF161B22))),
-    PresetBackground("warm_sunset", "暖阳", listOf(Color(0xFF2D1B2E), Color(0xFF4A2040), Color(0xFF6B3A5A))),
-    PresetBackground("forest", "森林", listOf(Color(0xFF0A1A0F), Color(0xFF1A3A25))),
-    PresetBackground("ocean", "深海", listOf(Color(0xFF0A1628), Color(0xFF152238))),
-    PresetBackground("lavender", "薰衣草", listOf(Color(0xFF1A1025), Color(0xFF2D1B40))),
-    PresetBackground("rose_gold", "玫瑰金", listOf(Color(0xFF1A1215), Color(0xFF2D1B20))),
-    PresetBackground("arctic", "极光", listOf(Color(0xFF0D1B2A), Color(0xFF1B2D4A), Color(0xFF2A4A3D))),
-    PresetBackground("cherry", "樱花", listOf(Color(0xFF1A0F12), Color(0xFF2D1520), Color(0xFF3D1A2A))),
+    PresetBackground("dark_night", R.string.bg_dark_night, listOf(Color(0xFF0D1117), Color(0xFF161B22))),
+    PresetBackground("warm_sunset", R.string.bg_warm_sunset, listOf(Color(0xFF2D1B2E), Color(0xFF4A2040), Color(0xFF6B3A5A))),
+    PresetBackground("forest", R.string.bg_forest, listOf(Color(0xFF0A1A0F), Color(0xFF1A3A25))),
+    PresetBackground("ocean", R.string.bg_ocean, listOf(Color(0xFF0A1628), Color(0xFF152238))),
+    PresetBackground("lavender", R.string.bg_lavender, listOf(Color(0xFF1A1025), Color(0xFF2D1B40))),
+    PresetBackground("rose_gold", R.string.bg_rose_gold, listOf(Color(0xFF1A1215), Color(0xFF2D1B20))),
+    PresetBackground("arctic", R.string.bg_arctic, listOf(Color(0xFF0D1B2A), Color(0xFF1B2D4A), Color(0xFF2A4A3D))),
+    PresetBackground("cherry", R.string.bg_cherry, listOf(Color(0xFF1A0F12), Color(0xFF2D1520), Color(0xFF3D1A2A))),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +100,7 @@ fun BackgroundPickerSheet(
             // 标题行
             Box(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "选择背景",
+                    text = stringResource(R.string.select_background),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.align(Alignment.CenterStart)
                 )
@@ -106,7 +108,7 @@ fun BackgroundPickerSheet(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.CenterEnd)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                 }
             }
 
@@ -115,7 +117,7 @@ fun BackgroundPickerSheet(
             // 自定义图片 + 清除按钮
             Box(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "自定义",
+                    text = stringResource(R.string.custom_background),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -147,12 +149,12 @@ fun BackgroundPickerSheet(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "选择图片",
+                                contentDescription = stringResource(R.string.from_gallery),
                                 modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "从相册",
+                                text = stringResource(R.string.from_gallery),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -172,7 +174,7 @@ fun BackgroundPickerSheet(
                         ) {
                             AsyncImage(
                                 model = File(currentBackgroundPath),
-                                contentDescription = "当前背景",
+                                contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .matchParentSize()
@@ -188,7 +190,7 @@ fun BackgroundPickerSheet(
                                     .padding(4.dp)
                             ) {
                                 Text(
-                                    text = "移除",
+                                    text = stringResource(R.string.remove_background),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White
                                 )
@@ -202,7 +204,7 @@ fun BackgroundPickerSheet(
 
             // 预设渐变背景
             Text(
-                text = "预设",
+                text = stringResource(R.string.preset_backgrounds),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -250,7 +252,7 @@ private fun PresetBackgroundItem(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = preset.label,
+            text = stringResource(preset.labelResId),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

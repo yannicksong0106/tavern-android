@@ -1,12 +1,14 @@
 # Tavern Lite (酒馆 Lite)
 
-> **Beta** — This project is under active development. Features and APIs may change. Issues and feedback are welcome!
+> **Debug v1.0.1** — This is a debug release for testing. Features and APIs may change. Issues and feedback are welcome!
+>
+> Contact: yannicksong0106@163.com
 
 A native Android application that reimplements the core features of [SillyTavern](https://github.com/SillyTavern/SillyTavern) as a standalone APK — no server required.
 
-> **Note:** This project is independently developed by a college student as a learning project and is actively maintained. If you have any questions or suggestions, feel free to open an issue.
+> **Note:** This project is independently developed by a college student as a learning project and is actively maintained. If you have any questions or suggestions, feel free to open an issue or email yannicksong0106@163.com.
 
-基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的 Android 端重新实现，以独立 APK 形式运行，无需服务端。由一名大学生独立开发，持续迭代中。
+基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的 Android 端重新实现，以独立 APK 形式运行，无需服务端。由一名大学生独立开发，持续迭代中。如有问题或建议，欢迎提 issue 或邮件联系 yannicksong0106@163.com。
 
 ---
 
@@ -36,7 +38,7 @@ See [ROADMAP.md](ROADMAP.md) for upcoming features.
 - **UI**: Jetpack Compose + Material 3
 - **Architecture / 架构**: MVVM (ViewModel + StateFlow)
 - **DI**: Hilt
-- **Database / 数据库**: Room (v8)
+- **Database / 数据库**: Room (v9)
 - **Network / 网络**: OkHttp + SSE streaming
 - **Image / 图片**: Coil
 - **Markdown**: Markwon

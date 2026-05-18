@@ -47,8 +47,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.ScriptEntity
@@ -66,7 +68,7 @@ fun ScriptScreen(
 
     if (showAddDialog) {
         ScriptEditDialog(
-            title = "添加脚本",
+            title = stringResource(R.string.add_script),
             script = null,
             onConfirm = { name, comment, scriptType, find, replace, isRegex, caseSensitive ->
                 viewModel.addScript(name, comment, scriptType, find, replace, isRegex, caseSensitive)
@@ -78,7 +80,7 @@ fun ScriptScreen(
 
     if (editingScript != null) {
         ScriptEditDialog(
-            title = "编辑脚本",
+            title = stringResource(R.string.edit_script),
             script = editingScript,
             onConfirm = { name, comment, scriptType, find, replace, isRegex, caseSensitive ->
                 viewModel.updateScript(
@@ -101,16 +103,16 @@ fun ScriptScreen(
     if (deletingScript != null) {
         AlertDialog(
             onDismissRequest = { deletingScript = null },
-            title = { Text("删除脚本") },
-            text = { Text("确定要删除「${deletingScript!!.name.ifBlank { "无标题" }}」吗？") },
+            title = { Text(stringResource(R.string.delete_script_title)) },
+            text = { Text(stringResource(R.string.delete_script_text, deletingScript!!.name.ifBlank { stringResource(R.string.untitled) })) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteScript(deletingScript!!)
                     deletingScript = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingScript = null }) { Text("取消") }
+                TextButton(onClick = { deletingScript = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -118,10 +120,10 @@ fun ScriptScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("正则脚本", style = MaterialTheme.typography.headlineMedium) },
+                title = { Text(stringResource(R.string.script_title), style = MaterialTheme.typography.headlineMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -131,7 +133,7 @@ fun ScriptScreen(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加脚本")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_script))
             }
         }
     ) { padding ->
@@ -141,7 +143,7 @@ fun ScriptScreen(
                 .padding(padding)
         ) {
             Text(
-                text = "${scripts.size} 个脚本",
+                text = stringResource(R.string.script_count, scripts.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -160,12 +162,12 @@ fun ScriptScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Text(
-                            text = "还没有脚本",
+                            text = stringResource(R.string.no_scripts),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                         Text(
-                            text = "点击右下角 + 添加正则替换脚本",
+                            text = stringResource(R.string.no_scripts_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.padding(top = 4.dp)
@@ -199,9 +201,9 @@ private fun ScriptCard(
     onDelete: () -> Unit
 ) {
     val typeName = when (script.scriptType) {
-        0 -> "用户消息"
-        1 -> "AI 回复"
-        2 -> "两者"
+        0 -> stringResource(R.string.type_user_message)
+        1 -> stringResource(R.string.type_ai_reply)
+        2 -> stringResource(R.string.type_both)
         else -> "?"
     }
 
@@ -221,7 +223,7 @@ private fun ScriptCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = script.name.ifBlank { "无标题" },
+                    text = script.name.ifBlank { stringResource(R.string.untitled) },
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -235,7 +237,7 @@ private fun ScriptCard(
                 )
                 if (script.isRegex) {
                     Text(
-                        text = "正则",
+                        text = stringResource(R.string.regex_tag),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp)
@@ -245,17 +247,17 @@ private fun ScriptCard(
                 IconButton(onClick = onToggleEnabled, modifier = Modifier.padding(start = 4.dp)) {
                     Icon(
                         if (script.enabled) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (script.enabled) "禁用" else "启用",
+                        contentDescription = if (script.enabled) stringResource(R.string.disable) else stringResource(R.string.enable),
                         modifier = Modifier.padding(4.dp)
                     )
                 }
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.padding(4.dp))
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit), modifier = Modifier.padding(4.dp))
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(4.dp)
                     )
@@ -301,7 +303,11 @@ private fun ScriptEditDialog(
     var isRegex by remember { mutableStateOf(script?.isRegex ?: true) }
     var caseSensitive by remember { mutableStateOf(script?.caseSensitive ?: false) }
     var typeExpanded by remember { mutableStateOf(false) }
-    val typeOptions = listOf("用户消息", "AI 回复", "两者")
+    val typeOptions = listOf(
+        stringResource(R.string.type_user_message),
+        stringResource(R.string.type_ai_reply),
+        stringResource(R.string.type_both)
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -311,7 +317,7 @@ private fun ScriptEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("脚本名称") },
+                    label = { Text(stringResource(R.string.script_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -319,7 +325,7 @@ private fun ScriptEditDialog(
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
-                    label = { Text("备注（可选）") },
+                    label = { Text(stringResource(R.string.script_comment)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -332,7 +338,7 @@ private fun ScriptEditDialog(
                         value = typeOptions[scriptType],
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("执行时机") },
+                        label = { Text(stringResource(R.string.execution_timing)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -357,7 +363,7 @@ private fun ScriptEditDialog(
                 OutlinedTextField(
                     value = findPattern,
                     onValueChange = { findPattern = it },
-                    label = { Text("查找模式") },
+                    label = { Text(stringResource(R.string.find_pattern)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -365,7 +371,7 @@ private fun ScriptEditDialog(
                 OutlinedTextField(
                     value = replacePattern,
                     onValueChange = { replacePattern = it },
-                    label = { Text("替换为") },
+                    label = { Text(stringResource(R.string.replace_with)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -373,11 +379,11 @@ private fun ScriptEditDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isRegex, onCheckedChange = { isRegex = it })
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("正则表达式", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.is_regex), style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.width(16.dp))
                     Checkbox(checked = caseSensitive, onCheckedChange = { caseSensitive = it })
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("区分大小写", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.case_sensitive), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         },
@@ -387,10 +393,10 @@ private fun ScriptEditDialog(
                     onConfirm(name, comment, scriptType, findPattern, replacePattern, isRegex, caseSensitive)
                 },
                 enabled = findPattern.isNotBlank()
-            ) { Text("保存") }
+            ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

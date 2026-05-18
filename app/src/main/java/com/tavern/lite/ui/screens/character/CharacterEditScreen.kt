@@ -36,8 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tavern.lite.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.ui.components.BackgroundPickerSheet
 import com.tavern.lite.ui.components.CharacterAvatar
@@ -86,15 +88,15 @@ fun CharacterEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.isEditing) "编辑角色" else "新建角色") },
+                title = { Text(if (state.isEditing) stringResource(R.string.edit_character) else stringResource(R.string.new_character_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.save(onSaved) }) {
-                        Icon(Icons.Default.Check, contentDescription = "保存")
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 }
             )
@@ -122,7 +124,7 @@ fun CharacterEditScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "点击更换头像",
+                    text = stringResource(R.string.change_avatar),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -138,18 +140,18 @@ fun CharacterEditScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "聊天背景",
+                        text = stringResource(R.string.chat_background),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (state.backgroundPath != null) "已设置" else "默认",
+                        text = if (state.backgroundPath != null) stringResource(R.string.background_set) else stringResource(R.string.default_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
-                    text = "更换",
+                    text = stringResource(R.string.change),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -172,18 +174,18 @@ fun CharacterEditScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "记忆管理",
+                            text = stringResource(R.string.memory_management),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "查看、添加和编辑角色记忆",
+                            text = stringResource(R.string.memory_management_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "进入",
+                        text = stringResource(R.string.enter),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -205,18 +207,18 @@ fun CharacterEditScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "正则脚本",
+                            text = stringResource(R.string.regex_script),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "消息替换和正则表达式处理",
+                            text = stringResource(R.string.regex_script_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "进入",
+                        text = stringResource(R.string.enter),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -224,81 +226,87 @@ fun CharacterEditScreen(
             }
 
             EditField(
-                label = "角色名称 *",
+                label = stringResource(R.string.character_name_required),
                 value = state.name,
                 onValueChange = { viewModel.updateField("name", it) },
                 singleLine = true
             )
 
             EditField(
-                label = "角色描述",
+                label = stringResource(R.string.character_desc),
                 value = state.description,
                 onValueChange = { viewModel.updateField("description", it) },
-                placeholder = "你是一个来自异世界的精灵，温柔而好奇..."
+                placeholder = stringResource(R.string.character_desc_placeholder)
             )
 
             EditField(
-                label = "性格特征",
+                label = stringResource(R.string.personality),
                 value = state.personality,
                 onValueChange = { viewModel.updateField("personality", it) },
-                placeholder = "温柔、好奇、有点迷糊"
+                placeholder = stringResource(R.string.personality_placeholder)
             )
 
             EditField(
-                label = "开场白",
+                label = stringResource(R.string.first_message),
                 value = state.firstMes,
                 onValueChange = { viewModel.updateField("firstMes", it) },
-                placeholder = "*你推开古老的木门，看到一位精灵少女正在...*"
+                placeholder = stringResource(R.string.first_message_placeholder)
             )
 
             EditField(
-                label = "示例对话",
+                label = stringResource(R.string.example_dialogue),
                 value = state.mesExample,
                 onValueChange = { viewModel.updateField("mesExample", it) },
-                placeholder = "<START>\n{{user}}: 你好\n{{char}}: *微微一笑* 你好呀，旅行者。"
+                placeholder = "<START>\n{{user}}: ...\n{{char}}: ..."
             )
 
             EditField(
-                label = "系统提示词（可选）",
+                label = stringResource(R.string.system_prompt_optional),
                 value = state.systemPrompt,
                 onValueChange = { viewModel.updateField("systemPrompt", it) },
                 placeholder = "Write {{char}}'s next reply..."
             )
 
             EditField(
-                label = "历史后指令（可选）",
+                label = stringResource(R.string.post_history_instructions),
                 value = state.postHistoryInstructions,
                 onValueChange = { viewModel.updateField("postHistoryInstructions", it) },
-                placeholder = "对话结束后要遵守的规则..."
+                placeholder = stringResource(R.string.post_history_placeholder)
             )
 
             // Author's Note section
             Text(
-                text = "作者注释",
+                text = stringResource(R.string.author_note),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
             )
             Text(
-                text = "注入到对话历史中的额外提示词，用于微调角色行为",
+                text = stringResource(R.string.author_note_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             EditField(
-                label = "注释内容",
+                label = stringResource(R.string.author_note_content),
                 value = state.authorNoteContent,
                 onValueChange = { viewModel.updateField("authorNoteContent", it) },
-                placeholder = "在此输入作者注释..."
+                placeholder = stringResource(R.string.author_note_content_placeholder)
             )
             EditField(
-                label = "注入深度（从末尾算起的消息数）",
+                label = stringResource(R.string.author_note_depth),
                 value = state.authorNoteDepth.toString(),
                 onValueChange = { viewModel.updateField("authorNoteDepth", it) },
                 singleLine = true
             )
             Text(
-                text = "当前位置: ${if (state.authorNotePosition == "after_an") "作者注释之后" else "作者注释之前"}",
+                text = stringResource(
+                    R.string.author_note_position,
+                    if (state.authorNotePosition == "after_an")
+                        stringResource(R.string.position_after_an)
+                    else
+                        stringResource(R.string.position_before_an)
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -311,7 +319,7 @@ fun CharacterEditScreen(
             )
 
             EditField(
-                label = "创作者",
+                label = stringResource(R.string.creator),
                 value = state.creator,
                 onValueChange = { viewModel.updateField("creator", it) },
                 singleLine = true

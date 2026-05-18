@@ -60,6 +60,8 @@ import com.tavern.lite.ui.theme.AssistantBubbleDark
 import com.tavern.lite.ui.theme.AssistantBubbleLight
 import com.tavern.lite.ui.theme.UserBubbleDark
 import com.tavern.lite.ui.theme.UserBubbleLight
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.model.ApiConfig
@@ -519,15 +521,15 @@ private fun PersonaEntrySection(onPersonaClick: () -> Unit) {
 }
 
 private val bubbleColorOptions = listOf(
-    0L to "默认",
-    Color(0xFF3D3427).toArgb().toLong() and 0xFFFFFFFF to "深棕",
-    Color(0xFF2D3A4A).toArgb().toLong() and 0xFFFFFFFF to "深蓝",
-    Color(0xFF3A2D4A).toArgb().toLong() and 0xFFFFFFFF to "深紫",
-    Color(0xFF2D4A3A).toArgb().toLong() and 0xFFFFFFFF to "深绿",
-    Color(0xFF4A3A2D).toArgb().toLong() and 0xFFFFFFFF to "暖棕",
-    Color(0xFFE8DCC8).toArgb().toLong() and 0xFFFFFFFF to "米色",
-    Color(0xFFD4E8DC).toArgb().toLong() and 0xFFFFFFFF to "薄荷",
-    Color(0xFFDCE0E8).toArgb().toLong() and 0xFFFFFFFF to "银灰",
+    0L to R.string.default_label,
+    Color(0xFF3D3427).toArgb().toLong() and 0xFFFFFFFF to R.string.color_deep_brown,
+    Color(0xFF2D3A4A).toArgb().toLong() and 0xFFFFFFFF to R.string.color_deep_blue,
+    Color(0xFF3A2D4A).toArgb().toLong() and 0xFFFFFFFF to R.string.color_deep_purple,
+    Color(0xFF2D4A3A).toArgb().toLong() and 0xFFFFFFFF to R.string.color_deep_green,
+    Color(0xFF4A3A2D).toArgb().toLong() and 0xFFFFFFFF to R.string.color_warm_brown,
+    Color(0xFFE8DCC8).toArgb().toLong() and 0xFFFFFFFF to R.string.color_beige,
+    Color(0xFFD4E8DC).toArgb().toLong() and 0xFFFFFFFF to R.string.color_mint,
+    Color(0xFFDCE0E8).toArgb().toLong() and 0xFFFFFFFF to R.string.color_silver,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -547,7 +549,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                bubbleColorOptions.forEach { (colorValue, label) ->
+                bubbleColorOptions.forEach { (colorValue, _) ->
                     val isSelected = style.userBubbleColor == colorValue
                     val bgColor = if (colorValue == 0L) {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -590,7 +592,7 @@ private fun BubbleStyleSection(style: BubbleStyleConfig, viewModel: SettingsView
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                bubbleColorOptions.forEach { (colorValue, label) ->
+                bubbleColorOptions.forEach { (colorValue, _) ->
                     val isSelected = style.assistantBubbleColor == colorValue
                     val bgColor = if (colorValue == 0L) {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -701,6 +703,16 @@ private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewMode
         "en" to stringResource(R.string.language_english)
     )
 
+    fun applyLanguage(code: String) {
+        viewModel.updateLanguage(code)
+        val localeList = when (code) {
+            "zh" -> LocaleListCompat.forLanguageTags("zh")
+            "en" -> LocaleListCompat.forLanguageTags("en")
+            else -> LocaleListCompat.getEmptyLocaleList()
+        }
+        AppCompatDelegate.setApplicationLocales(localeList)
+    }
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -713,12 +725,12 @@ private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewMode
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { viewModel.updateLanguage(code) }
+                        .clickable { applyLanguage(code) }
                         .padding(vertical = 8.dp)
                 ) {
                     androidx.compose.material3.RadioButton(
                         selected = currentLanguage == code,
-                        onClick = { viewModel.updateLanguage(code) }
+                        onClick = { applyLanguage(code) }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(label, style = MaterialTheme.typography.bodyLarge)

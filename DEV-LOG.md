@@ -1,5 +1,29 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-18 — v1.0.1-debug: 语言切换修复 + 全局 i18n
+
+> 版本号: 1.0.1-debug (versionCode=2)
+
+### 语言切换修复
+
+**问题**: 点击中文/英文选项后语言没有切换。
+
+**原因**: `AppCompatDelegate.setApplicationLocales()` 在 `setContent{}` 组合作用域内调用，触发 Activity 重建时机不对。
+
+**修复**:
+- `MainActivity.kt`: 将语言设置移到 `onCreate()` 中 `setContent` 之前，通过 `lifecycleScope.launch` 读取 DataStore 偏好
+- `SettingsScreen.kt`: 用户点击语言选项时直接调用 `AppCompatDelegate.setApplicationLocales()`，立即生效
+
+**已知问题**: 中英文切换仍存在 bug，待进一步排查。
+
+### 全局 i18n
+
+多个页面的硬编码中文替换为 `stringResource`:
+- ChatScreen: 时间戳格式化（刚刚/分钟前/小时前/天前）
+- CharacterEditScreen, PersonaScreen, ScriptScreen, WorldBookEditScreen, WorldBookListScreen, BackgroundPickerSheet: 各种 UI 文本
+
+---
+
 ## 2026-05-18 — AI 主动记忆系统 (Memory Atoms)
 
 > 从"只记住最近20条对话"升级为"AI 主动判断哪些信息值得记住"的结构化记忆系统。

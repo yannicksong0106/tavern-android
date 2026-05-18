@@ -46,8 +46,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
@@ -70,7 +72,7 @@ fun WorldBookEditScreen(
     // 添加条目对话框
     if (showAddEntryDialog) {
         EntryEditDialog(
-            title = "添加条目",
+            title = stringResource(R.string.add_entry),
             entry = null,
             onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic ->
                 viewModel.addEntry(comment, content, keys, keysSecondary, constant, selective, selectiveLogic)
@@ -83,7 +85,7 @@ fun WorldBookEditScreen(
     // 编辑条目对话框
     if (editingEntry != null) {
         EntryEditDialog(
-            title = "编辑条目",
+            title = stringResource(R.string.edit_entry),
             entry = editingEntry,
             onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic ->
                 viewModel.updateEntry(
@@ -107,16 +109,16 @@ fun WorldBookEditScreen(
     if (deletingEntry != null) {
         AlertDialog(
             onDismissRequest = { deletingEntry = null },
-            title = { Text("删除条目") },
-            text = { Text("确定要删除「${deletingEntry!!.comment.ifBlank { "无标题" }}」吗？") },
+            title = { Text(stringResource(R.string.delete_entry_title)) },
+            text = { Text(stringResource(R.string.delete_entry_text, deletingEntry!!.comment.ifBlank { stringResource(R.string.untitled) })) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteEntry(deletingEntry!!)
                     deletingEntry = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingEntry = null }) { Text("取消") }
+                TextButton(onClick = { deletingEntry = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -125,11 +127,11 @@ fun WorldBookEditScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(worldBook?.name ?: "世界书", style = MaterialTheme.typography.headlineMedium)
+                    Text(worldBook?.name ?: stringResource(R.string.world_book_list), style = MaterialTheme.typography.headlineMedium)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -139,7 +141,7 @@ fun WorldBookEditScreen(
                 onClick = { showAddEntryDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加条目")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_entry))
             }
         }
     ) { padding ->
@@ -160,7 +162,7 @@ fun WorldBookEditScreen(
 
             // 条目统计
             Text(
-                text = "${entries.size} 个条目",
+                text = stringResource(R.string.entry_count, entries.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -172,7 +174,7 @@ fun WorldBookEditScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Text(
-                        text = "点击右下角 + 添加条目",
+                        text = stringResource(R.string.no_entries_hint),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -226,7 +228,7 @@ private fun EntryCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = entry.comment.ifBlank { "无标题" },
+                    text = entry.comment.ifBlank { stringResource(R.string.untitled) },
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -235,7 +237,7 @@ private fun EntryCard(
 
                 if (entry.constant) {
                     Text(
-                        text = "常驻",
+                        text = stringResource(R.string.constant_tag),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp)
@@ -249,7 +251,7 @@ private fun EntryCard(
                         else -> "?"
                     }
                     Text(
-                        text = "选择性($logicName)",
+                        text = stringResource(R.string.selective_tag, logicName),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.padding(start = 8.dp)
@@ -259,17 +261,17 @@ private fun EntryCard(
                 IconButton(onClick = onToggleDisabled, modifier = Modifier.padding(start = 4.dp)) {
                     Icon(
                         if (entry.disabled) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = if (entry.disabled) "启用" else "禁用",
+                        contentDescription = if (entry.disabled) stringResource(R.string.enable) else stringResource(R.string.disable),
                         modifier = Modifier.padding(4.dp)
                     )
                 }
                 IconButton(onClick = onEdit, modifier = Modifier.padding(start = 0.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.padding(4.dp))
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit), modifier = Modifier.padding(4.dp))
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.padding(start = 0.dp)) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(4.dp)
                     )
@@ -279,7 +281,7 @@ private fun EntryCard(
             // 关键词
             if (keys.isNotEmpty()) {
                 Text(
-                    text = "关键词: ${keys.joinToString(", ")}",
+                    text = stringResource(R.string.keywords_label, keys.joinToString(", ")),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 4.dp)
@@ -331,7 +333,11 @@ private fun EntryEditDialog(
     var selective by remember { mutableStateOf(entry?.selective ?: false) }
     var selectiveLogic by remember { mutableStateOf(entry?.selectiveLogic ?: 0) }
     var logicExpanded by remember { mutableStateOf(false) }
-    val logicOptions = listOf("AND（全部匹配）", "OR（任一匹配）", "NOT（排除匹配）")
+    val logicOptions = listOf(
+        stringResource(R.string.logic_and),
+        stringResource(R.string.logic_or),
+        stringResource(R.string.logic_not)
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -341,7 +347,7 @@ private fun EntryEditDialog(
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
-                    label = { Text("备注") },
+                    label = { Text(stringResource(R.string.entry_comment)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -349,7 +355,7 @@ private fun EntryEditDialog(
                 OutlinedTextField(
                     value = keysText,
                     onValueChange = { keysText = it },
-                    label = { Text("主关键词（逗号分隔）") },
+                    label = { Text(stringResource(R.string.primary_keywords)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -357,7 +363,7 @@ private fun EntryEditDialog(
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("内容") },
+                    label = { Text(stringResource(R.string.content)) },
                     minLines = 3,
                     maxLines = 8,
                     modifier = Modifier.fillMaxWidth()
@@ -366,12 +372,12 @@ private fun EntryEditDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = constant, onCheckedChange = { constant = it })
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("常驻条目（始终注入）", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.constant_entry), style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = selective, onCheckedChange = { selective = it })
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("选择性匹配（使用副关键词）", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.selective_match), style = MaterialTheme.typography.bodyMedium)
                 }
                 AnimatedVisibility(visible = selective) {
                     Column {
@@ -379,7 +385,7 @@ private fun EntryEditDialog(
                         OutlinedTextField(
                             value = keysSecondaryText,
                             onValueChange = { keysSecondaryText = it },
-                            label = { Text("副关键词（逗号分隔）") },
+                            label = { Text(stringResource(R.string.secondary_keywords)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -392,7 +398,7 @@ private fun EntryEditDialog(
                                 value = logicOptions[selectiveLogic],
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("匹配逻辑") },
+                                label = { Text(stringResource(R.string.match_logic)) },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(logicExpanded) },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -425,10 +431,10 @@ private fun EntryEditDialog(
                     onConfirm(comment, content, keys, keys2, constant, selective, selectiveLogic)
                 },
                 enabled = content.isNotBlank()
-            ) { Text("保存") }
+            ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

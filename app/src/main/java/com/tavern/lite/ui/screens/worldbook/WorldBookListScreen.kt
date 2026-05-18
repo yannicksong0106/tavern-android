@@ -42,8 +42,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.WorldBookEntity
@@ -76,16 +78,16 @@ fun WorldBookListScreen(
     if (deletingBook != null) {
         AlertDialog(
             onDismissRequest = { deletingBook = null },
-            title = { Text("删除世界书") },
-            text = { Text("确定要删除「${deletingBook!!.name}」吗？所有条目也会被删除。") },
+            title = { Text(stringResource(R.string.delete_world_book_title)) },
+            text = { Text(stringResource(R.string.delete_world_book_text, deletingBook!!.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteWorldBook(deletingBook!!)
                     deletingBook = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deletingBook = null }) { Text("取消") }
+                TextButton(onClick = { deletingBook = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -93,10 +95,10 @@ fun WorldBookListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("世界书", style = MaterialTheme.typography.headlineMedium) },
+                title = { Text(stringResource(R.string.world_book_list), style = MaterialTheme.typography.headlineMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -106,7 +108,7 @@ fun WorldBookListScreen(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "新建世界书")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_world_book))
             }
         }
     ) { padding ->
@@ -124,12 +126,12 @@ fun WorldBookListScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "还没有世界书",
+                        text = stringResource(R.string.no_world_books),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "世界书用于存储角色的世界观设定",
+                        text = stringResource(R.string.no_world_books_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 8.dp)
@@ -202,7 +204,7 @@ private fun WorldBookCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "删除",
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
@@ -221,13 +223,13 @@ private fun CreateWorldBookDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("新建世界书") },
+        title = { Text(stringResource(R.string.new_world_book)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("名称 *") },
+                    label = { Text(stringResource(R.string.name_required)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -235,7 +237,7 @@ private fun CreateWorldBookDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("描述") },
+                    label = { Text(stringResource(R.string.description)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -244,10 +246,10 @@ private fun CreateWorldBookDialog(
             TextButton(
                 onClick = { onConfirm(name, description) },
                 enabled = name.isNotBlank()
-            ) { Text("创建") }
+            ) { Text(stringResource(R.string.create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
