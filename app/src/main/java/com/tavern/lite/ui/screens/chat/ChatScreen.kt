@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -24,10 +25,12 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -710,42 +713,65 @@ private fun InputBar(
         )
 
         if (isGenerating) {
-            IconButton(
-                onClick = onStop,
-                modifier = Modifier.padding(start = 4.dp)
+            Box(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .clickable { onStop() },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Stop,
                     contentDescription = stringResource(R.string.stop),
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         } else {
-            // Continue button (append to last AI message)
+            // Continue button
             if (showContinue) {
-                IconButton(
-                    onClick = onContinue,
-                    modifier = Modifier.padding(start = 4.dp)
+                Box(
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .clickable { onContinue() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Replay,
-                        contentDescription = stringResource(R.string.continue_generation),
-                        tint = MaterialTheme.colorScheme.secondary
+                    Text(
+                        text = stringResource(R.string.continue_generation),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
-            IconButton(
-                onClick = onSend,
-                enabled = value.isNotBlank(),
-                modifier = Modifier.padding(start = 4.dp)
+            // Send button with filled background when text is entered
+            Box(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (value.isNotBlank()) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    .then(
+                        if (value.isNotBlank()) Modifier.clickable { onSend() }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
                     contentDescription = stringResource(R.string.send),
                     tint = if (value.isNotBlank())
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme.colorScheme.onPrimary
                     else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
