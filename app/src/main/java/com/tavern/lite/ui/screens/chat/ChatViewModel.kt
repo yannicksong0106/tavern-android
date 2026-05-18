@@ -235,12 +235,20 @@ class ChatViewModel @Inject constructor(
 
         // 后续段落逐条发送，streamingText 持续更新以覆盖底层消息变化
         for (i in 1 until paragraphs.size) {
-            _streamingText.value = paragraphs[i]
-            val len = paragraphs[i].length
-            val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-            val jitter = (Math.random() * 400 - 200).toLong()
-            delay(baseDelay + jitter)
-            chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
+            val isLast = i == paragraphs.size - 1
+            if (isLast) {
+                // 最后一段：先插入消息，再清 streamingText，避免闪烁
+                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
+                delay(100)
+                _streamingText.value = ""
+            } else {
+                _streamingText.value = paragraphs[i]
+                val len = paragraphs[i].length
+                val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
+                val jitter = (Math.random() * 400 - 200).toLong()
+                delay(baseDelay + jitter)
+                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
+            }
         }
     }
 
