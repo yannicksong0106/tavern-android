@@ -60,8 +60,6 @@ import com.tavern.lite.ui.theme.AssistantBubbleDark
 import com.tavern.lite.ui.theme.AssistantBubbleLight
 import com.tavern.lite.ui.theme.UserBubbleDark
 import com.tavern.lite.ui.theme.UserBubbleLight
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.model.ApiConfig
@@ -705,12 +703,6 @@ private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewMode
 
     fun applyLanguage(code: String) {
         viewModel.updateLanguage(code)
-        val localeList = when (code) {
-            "zh" -> LocaleListCompat.forLanguageTags("zh")
-            "en" -> LocaleListCompat.forLanguageTags("en")
-            else -> LocaleListCompat.getEmptyLocaleList()
-        }
-        AppCompatDelegate.setApplicationLocales(localeList)
     }
 
     Card(

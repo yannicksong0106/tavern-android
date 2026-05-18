@@ -1,5 +1,7 @@
 package com.tavern.lite.ui.screens.settings
 
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.model.ApiConfig
@@ -122,6 +124,13 @@ class SettingsViewModel @Inject constructor(
     fun updateLanguage(lang: String) {
         viewModelScope.launch {
             settingsStore.saveLanguage(lang)
+            // DataStore 写入完成后再触发 Activity 重建，避免竞态条件
+            val localeList = when (lang) {
+                "zh" -> LocaleListCompat.forLanguageTags("zh")
+                "en" -> LocaleListCompat.forLanguageTags("en")
+                else -> LocaleListCompat.getEmptyLocaleList()
+            }
+            AppCompatDelegate.setApplicationLocales(localeList)
         }
     }
 }
