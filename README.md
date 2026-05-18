@@ -1,6 +1,6 @@
 # Tavern Lite (酒馆 Lite)
 
-> **Debug v1.0.1** — This is a debug release for testing. Features and APIs may change. Issues and feedback are welcome!
+> **Debug v1.0.2** — This is a debug release for testing. Features and APIs may change. Issues and feedback are welcome!
 >
 > Contact: yannicksong0106@163.com
 
