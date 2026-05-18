@@ -51,6 +51,7 @@ import com.tavern.lite.ui.components.presetBackgrounds
 import java.io.File
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Stop
@@ -73,6 +74,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -165,9 +167,19 @@ fun ChatScreen(
         }
     }
 
-    // 自动滚动到底部（流式输出时也跟随）
+    // 智能自动滚动：只在用户已经在底部时自动跟随
+    val isAtBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            if (info.totalItemsCount == 0) true
+            else {
+                val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+                lastVisible >= info.totalItemsCount - 2
+            }
+        }
+    }
     LaunchedEffect(messages.size, streamingText, streamingText.length) {
-        if (messages.isNotEmpty()) {
+        if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
@@ -303,13 +315,12 @@ fun ChatScreen(
                 )
             }
 
-            // 消息列表
+            // 消息列表（带滚动到底部按钮）
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
                 // 流式输出时，过滤掉最后一条 assistant 消息（用 streamingText 气泡代替）
                 val displayMessages = if (isGenerating && messages.lastOrNull()?.role == "assistant") {
@@ -380,6 +391,33 @@ fun ChatScreen(
                     }
                 }
             }
+
+            // 回到底部按钮
+            if (!isAtBottom) {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            if (messages.isNotEmpty()) {
+                                listState.animateScrollToItem(messages.size - 1)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 8.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f))
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "回到底部",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            } // end Box
 
             // 输入栏
             InputBar(
