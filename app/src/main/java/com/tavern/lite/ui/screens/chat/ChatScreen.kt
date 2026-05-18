@@ -278,7 +278,7 @@ fun ChatScreen(
             }
 
             // 内容层
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().imePadding()) {
                 // 分支导航栏
             if (branches.size > 1) {
                 BranchNavigationBar(
@@ -361,7 +361,6 @@ fun ChatScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .imePadding()
             )
             }
         }
