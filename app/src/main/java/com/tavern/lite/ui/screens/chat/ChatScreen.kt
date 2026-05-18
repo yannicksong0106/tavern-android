@@ -85,9 +85,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -420,11 +422,13 @@ fun ChatScreen(
             } // end Box
 
             // 输入栏
+            val haptic = LocalHapticFeedback.current
             InputBar(
                 value = inputText,
                 onValueChange = { inputText = it },
                 onSend = {
                     if (inputText.isNotBlank()) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         viewModel.sendMessage(inputText)
                         inputText = ""
                     }
