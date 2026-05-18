@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -325,7 +326,11 @@ fun ChatScreen(
                     val isSameRoleAsNext = nextMessage?.role == message.role
                     // 同角色连续消息间距更紧凑（但不能粘连）
                     val topSpacing = if (isSameRoleAsPrev) 3.dp else 8.dp
-                    Column(modifier = Modifier.padding(top = topSpacing)) {
+                    Column(
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(top = topSpacing)
+                    ) {
                         MessageBubble(
                             message = message,
                             characterName = character?.name ?: "",
@@ -713,14 +718,13 @@ private fun InputBar(
         )
 
         if (isGenerating) {
-            Box(
+            IconButton(
+                onClick = onStop,
                 modifier = Modifier
                     .padding(start = 4.dp)
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.errorContainer)
-                    .clickable { onStop() },
-                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Stop,
@@ -732,24 +736,22 @@ private fun InputBar(
         } else {
             // Continue button
             if (showContinue) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                        .clickable { onContinue() }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                FilledTonalButton(
+                    onClick = onContinue,
+                    modifier = Modifier.padding(start = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.continue_generation),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
             // Send button with filled background when text is entered
-            Box(
+            IconButton(
+                onClick = onSend,
+                enabled = value.isNotBlank(),
                 modifier = Modifier
                     .padding(start = 4.dp)
                     .size(40.dp)
@@ -758,11 +760,6 @@ private fun InputBar(
                         if (value.isNotBlank()) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
-                    .then(
-                        if (value.isNotBlank()) Modifier.clickable { onSend() }
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
