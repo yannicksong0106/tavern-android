@@ -298,7 +298,14 @@ fun ChatScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                items(messages, key = { it.id }) { message ->
+                // 流式输出时，过滤掉最后一条 assistant 消息（用 streamingText 气泡代替）
+                val displayMessages = if (isGenerating && messages.lastOrNull()?.role == "assistant") {
+                    messages.dropLast(1)
+                } else {
+                    messages
+                }
+
+                items(displayMessages, key = { it.id }) { message ->
                     MessageBubble(
                         message = message,
                         characterName = character?.name ?: "",
