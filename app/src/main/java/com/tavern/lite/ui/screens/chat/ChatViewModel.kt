@@ -236,11 +236,14 @@ class ChatViewModel @Inject constructor(
         // 更新原消息为第一段
         chatRepository.updateMessageContent(assistantMsgId, paragraphs[0])
 
-        // 后续段落逐条发送，中间有延迟
+        // 后续段落逐条发送，间隔随消息长度变化（更自然）
         _deliveringMessages.value = true
         try {
             for (i in 1 until paragraphs.size) {
-                delay(800L) // 模拟打字间隔
+                val len = paragraphs[i].length
+                val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
+                val jitter = (Math.random() * 400 - 200).toLong()
+                delay(baseDelay + jitter)
                 chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
             }
         } finally {

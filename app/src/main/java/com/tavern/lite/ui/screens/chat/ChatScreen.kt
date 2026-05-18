@@ -162,8 +162,8 @@ fun ChatScreen(
         }
     }
 
-    // 自动滚动到底部
-    LaunchedEffect(messages.size, streamingText) {
+    // 自动滚动到底部（流式输出时也跟随）
+    LaunchedEffect(messages.size, streamingText, streamingText.length) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
@@ -307,11 +307,14 @@ fun ChatScreen(
                 }
 
                 items(displayMessages, key = { it.id }) { message ->
+                    val index = displayMessages.indexOf(message)
+                    val prevMessage = if (index > 0) displayMessages[index - 1] else null
                     MessageBubble(
                         message = message,
                         characterName = character?.name ?: "",
                         markwon = markwon,
                         bubbleStyle = bubbleStyle,
+                        showName = message.role != prevMessage?.role,
                         onRegenerate = { viewModel.regenerate(message.id) },
                         onEdit = { editingMessage = message },
                         onDelete = { deletingMessageId = message.id },
@@ -392,6 +395,7 @@ private fun MessageBubble(
     markwon: Markwon,
     bubbleStyle: BubbleStyleConfig = BubbleStyleConfig(),
     isStreaming: Boolean = false,
+    showName: Boolean = true,
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -461,7 +465,7 @@ private fun MessageBubble(
                     .animateContentSize()
                     .padding(12.dp)
             ) {
-                if (!isUser && !isStreaming) {
+                if (!isUser && !isStreaming && showName) {
                     Text(
                         text = characterName,
                         style = MaterialTheme.typography.labelSmall,
@@ -689,9 +693,8 @@ private fun InputBar(
             ),
             shape = RoundedCornerShape(24.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { if (!isGenerating) onSend() }),
+            keyboardActions = KeyboardActions(onSend = { onSend() }),
             maxLines = 5,
-            enabled = !isGenerating,
             modifier = Modifier.weight(1f)
         )
 
