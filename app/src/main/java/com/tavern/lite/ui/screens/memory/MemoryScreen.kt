@@ -43,7 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.MemoryEntity
@@ -65,7 +67,7 @@ fun MemoryScreen(
 
     if (showAddDialog) {
         MemoryDialog(
-            title = "添加记忆",
+            title = stringResource(R.string.add_memory),
             initialContent = "",
             initialImportance = 5,
             onConfirm = { content, importance ->
@@ -78,7 +80,7 @@ fun MemoryScreen(
 
     if (editingMemory != null) {
         MemoryDialog(
-            title = "编辑记忆",
+            title = stringResource(R.string.edit_memory),
             initialContent = editingMemory!!.content,
             initialImportance = editingMemory!!.importance,
             onConfirm = { content, importance ->
@@ -92,16 +94,16 @@ fun MemoryScreen(
     if (showDeleteAllConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirm = false },
-            title = { Text("清除所有记忆") },
-            text = { Text("确定要清除该角色的所有记忆吗？此操作不可撤销。") },
+            title = { Text(stringResource(R.string.clear_all_memories)) },
+            text = { Text(stringResource(R.string.clear_all_memories_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteAll()
                     showDeleteAllConfirm = false
-                }) { Text("清除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.clear), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteAllConfirm = false }) { Text("取消") }
+                TextButton(onClick = { showDeleteAllConfirm = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -109,16 +111,16 @@ fun MemoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("记忆管理") },
+                title = { Text(stringResource(R.string.memory_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     if (memories.isNotEmpty()) {
                         IconButton(onClick = { showDeleteAllConfirm = true }) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "清除全部")
+                            Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.clear_all_memories))
                         }
                     }
                 }
@@ -126,7 +128,7 @@ fun MemoryScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "添加记忆")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_memory))
             }
         }
     ) { padding ->
@@ -139,12 +141,12 @@ fun MemoryScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "暂无记忆",
+                        text = stringResource(R.string.no_memories),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "点击右下角 + 手动添加，或在对话中自动积累",
+                        text = stringResource(R.string.no_memories_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 8.dp)
@@ -207,7 +209,7 @@ private fun MemoryCard(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "编辑",
+                            contentDescription = stringResource(R.string.edit),
                             modifier = Modifier.padding(0.dp)
                         )
                     }
@@ -216,7 +218,7 @@ private fun MemoryCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("编辑") },
+                            text = { Text(stringResource(R.string.edit)) },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
                                 onEdit()
@@ -224,7 +226,7 @@ private fun MemoryCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Delete,
@@ -249,7 +251,7 @@ private fun MemoryCard(
 
             if (memory.accessCount > 0) {
                 Text(
-                    text = "访问 ${memory.accessCount} 次",
+                    text = stringResource(R.string.access_count, memory.accessCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 4.dp)
@@ -278,13 +280,13 @@ private fun MemoryDialog(
                 TextField(
                     value = content,
                     onValueChange = { content = it },
-                    placeholder = { Text("记忆内容...") },
+                    placeholder = { Text(stringResource(R.string.memory_content_placeholder)) },
                     minLines = 3,
                     maxLines = 6,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("重要度: ${importance.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.importance, importance.toInt()), style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = importance,
                     onValueChange = { importance = it },
@@ -298,10 +300,10 @@ private fun MemoryDialog(
             TextButton(
                 onClick = { onConfirm(content, importance.toInt()) },
                 enabled = content.isNotBlank()
-            ) { Text("保存") }
+            ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

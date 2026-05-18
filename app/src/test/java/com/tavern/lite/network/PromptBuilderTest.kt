@@ -1,10 +1,12 @@
 package com.tavern.lite.network
 
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -231,5 +233,158 @@ class PromptBuilderTest {
         // Should have at least the user message
         assertEquals(1, messages.size)
         assertEquals("user", messages[0].role)
+    }
+
+    @Test
+    fun `build includes memory atoms grouped by category`() {
+        val character = makeCharacter(name = "Alice")
+        val atoms = listOf(
+            MemoryAtomEntity(
+                id = 1, characterId = 1,
+                content = "Alice has blue eyes",
+                category = "character_consistency",
+                importance = 9, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            ),
+            MemoryAtomEntity(
+                id = 2, characterId = 1,
+                content = "User is a student",
+                category = "user_info",
+                importance = 7, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memoryAtoms = atoms
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Alice has blue eyes"))
+        assertTrue(systemMsg.content.contains("User is a student"))
+        assertTrue(systemMsg.content.contains("核心人设"))
+    }
+
+    @Test
+    fun `build prioritizes character consistency atoms`() {
+        val character = makeCharacter(name = "Bob")
+        val atoms = listOf(
+            MemoryAtomEntity(
+                id = 1, characterId = 1,
+                content = "Bob is a knight",
+                category = "character_consistency",
+                importance = 10, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            ),
+            MemoryAtomEntity(
+                id = 2, characterId = 1,
+                content = "User likes pizza",
+                category = "user_info",
+                importance = 5, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memoryAtoms = atoms
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        // Character consistency should appear before user info
+        val charIdx = systemMsg.content.indexOf("Bob is a knight")
+        val userIdx = systemMsg.content.indexOf("User likes pizza")
+        assertTrue(charIdx < userIdx)
+    }
+
+    @Test
+    fun `build uses memory atoms over legacy memories when both provided`() {
+        val character = makeCharacter()
+        val atoms = listOf(
+            MemoryAtomEntity(
+                id = 1, characterId = 1,
+                content = "New memory from atoms",
+                category = "user_info",
+                importance = 5, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val legacyMemories = listOf(
+            MemoryEntity(
+                id = 1, characterId = 1,
+                content = "Old legacy memory",
+                importance = 5, source = "manual",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memories = legacyMemories,
+            memoryAtoms = atoms
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("New memory from atoms"))
+        assertFalse(systemMsg.content.contains("Old legacy memory"))
+    }
+
+    @Test
+    fun `build falls back to legacy memories when no atoms`() {
+        val character = makeCharacter()
+        val legacyMemories = listOf(
+            MemoryEntity(
+                id = 1, characterId = 1,
+                content = "Legacy memory content",
+                importance = 5, source = "manual",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memories = legacyMemories,
+            memoryAtoms = emptyList()
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Legacy memory content"))
+    }
+
+    @Test
+    fun `build includes commitment atoms`() {
+        val character = makeCharacter(name = "Charlie")
+        val atoms = listOf(
+            MemoryAtomEntity(
+                id = 1, characterId = 1,
+                content = "Charlie promised to protect the village",
+                category = "commitment",
+                importance = 9, source = "regex",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memoryAtoms = atoms
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("承诺"))
+        assertTrue(systemMsg.content.contains("Charlie promised to protect the village"))
     }
 }

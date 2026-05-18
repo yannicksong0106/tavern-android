@@ -2,6 +2,7 @@ package com.tavern.lite.network
 
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
@@ -16,6 +17,7 @@ object PromptBuilder {
         worldBookEntries: List<WorldBookEntryEntity> = emptyList(),
         userName: String = "User",
         memories: List<MemoryEntity> = emptyList(),
+        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         authorNote: AuthorNoteEntity? = null,
         persona: PersonaEntity? = null
     ): List<ChatMessage> {
@@ -25,7 +27,7 @@ object PromptBuilder {
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
         // 1. 系统 prompt
-        val systemPrompt = buildSystemPrompt(character, worldBookEntries, effectiveUserName, memories, persona)
+        val systemPrompt = buildSystemPrompt(character, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
         if (systemPrompt.isNotBlank()) {
             messages.add(ChatMessage(role = "system", content = systemPrompt))
         }
@@ -79,6 +81,7 @@ object PromptBuilder {
         worldBookEntries: List<WorldBookEntryEntity>,
         userName: String,
         memories: List<MemoryEntity> = emptyList(),
+        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         persona: PersonaEntity? = null
     ): String {
         val parts = mutableListOf<String>()
@@ -104,8 +107,12 @@ object PromptBuilder {
             parts.add(worldInfo)
         }
 
-        // 记忆注入
-        if (memories.isNotEmpty()) {
+        // 记忆注入（新版结构化记忆优先）
+        if (memoryAtoms.isNotEmpty()) {
+            val atomText = formatMemoryAtoms(memoryAtoms, character.name)
+            if (atomText.isNotBlank()) parts.add(atomText)
+        } else if (memories.isNotEmpty()) {
+            // Fallback to legacy memories
             val memoryText = memories.joinToString("\n") { "- ${it.content}" }
             parts.add("[Memory]\n$memoryText")
         }
@@ -122,6 +129,47 @@ object PromptBuilder {
         val sysPrompt = character.systemPrompt
         if (!sysPrompt.isNullOrBlank()) {
             parts.add(sysPrompt.replace("{{user}}", userName).replace("{{char}}", character.name))
+        }
+
+        return parts.joinToString("\n\n")
+    }
+
+    private fun formatMemoryAtoms(atoms: List<MemoryAtomEntity>, charName: String): String {
+        val parts = mutableListOf<String>()
+
+        // Character consistency is ALWAYS injected (人设不能崩)
+        val characterAtoms = atoms.filter { it.category == "character_consistency" }
+        if (characterAtoms.isNotEmpty()) {
+            val lines = characterAtoms.joinToString("\n") { "- ${it.content}" }
+            parts.add("[${charName} 的核心人设 — 必须严格遵守]\n$lines")
+        }
+
+        // Commitments
+        val commitmentAtoms = atoms.filter { it.category == "commitment" }
+        if (commitmentAtoms.isNotEmpty()) {
+            val lines = commitmentAtoms.joinToString("\n") { "- ${it.content}" }
+            parts.add("[承诺与约定]\n$lines")
+        }
+
+        // User info
+        val userAtoms = atoms.filter { it.category == "user_info" }
+        if (userAtoms.isNotEmpty()) {
+            val lines = userAtoms.joinToString("\n") { "- ${it.content}" }
+            parts.add("[已知的用户信息]\n$lines")
+        }
+
+        // Relationships
+        val relationAtoms = atoms.filter { it.category == "relationship" }
+        if (relationAtoms.isNotEmpty()) {
+            val lines = relationAtoms.joinToString("\n") { "- ${it.content}" }
+            parts.add("[人物关系]\n$lines")
+        }
+
+        // Events
+        val eventAtoms = atoms.filter { it.category == "event" }
+        if (eventAtoms.isNotEmpty()) {
+            val lines = eventAtoms.joinToString("\n") { "- ${it.content}" }
+            parts.add("[重要事件]\n$lines")
         }
 
         return parts.joinToString("\n\n")

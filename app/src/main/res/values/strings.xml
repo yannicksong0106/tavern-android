@@ -193,6 +193,19 @@
     <string name="no_memories_hint">点击右下角 + 手动添加，或在对话中自动积累</string>
     <string name="memory_content_placeholder">记忆内容…</string>
     <string name="importance">重要度: %d</string>
+    <string name="memory_tab_manual">手动记忆</string>
+    <string name="memory_tab_auto">AI 记忆</string>
+    <string name="category_user_info">用户信息</string>
+    <string name="category_character_consistency">角色人设</string>
+    <string name="category_event">重要事件</string>
+    <string name="category_relationship">人物关系</string>
+    <string name="category_commitment">承诺约定</string>
+    <string name="add_atom">添加 AI 记忆</string>
+    <string name="edit_atom">编辑 AI 记忆</string>
+    <string name="superseded">已过时</string>
+    <string name="source_llm">AI 提取</string>
+    <string name="source_regex">自动识别</string>
+    <string name="source_manual">手动添加</string>
     <string name="access_count">访问 %d 次</string>
 
     <!-- 用户角色 / Persona -->

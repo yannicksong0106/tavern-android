@@ -9,14 +9,17 @@ import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
+import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PersonaRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
+import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.network.MemoryExtractorService
 import com.tavern.lite.network.PromptBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
@@ -43,6 +46,9 @@ class ChatViewModel @Inject constructor(
     private val apiConfigStore: ApiConfigStore,
     private val settingsStore: SettingsStore,
     private val memoryRepository: MemoryRepository,
+    private val memoryAtomDao: MemoryAtomDao,
+    private val memoryExtractorService: MemoryExtractorService,
+    private val memoryConsolidator: MemoryConsolidator,
     private val personaRepository: PersonaRepository,
     private val scriptRepository: ScriptRepository,
     private val authorNoteDao: AuthorNoteDao,
@@ -112,9 +118,13 @@ class ChatViewModel @Inject constructor(
                     emptyList()
                 }
 
-                // 记忆检索
-                val memories = memoryRepository.getRelevantMemories(characterId, processedContent)
-                memoryRepository.touchMemories(memories.map { it.id })
+                // 记忆检索（新版结构化记忆）
+                val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
+                memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+                // Legacy fallback
+                val memories = if (memoryAtoms.isEmpty()) {
+                    memoryRepository.getRelevantMemories(characterId, processedContent)
+                } else emptyList()
 
                 // 加载作者注释
                 val authorNote = authorNoteDao.getAuthorNoteSync(characterId)
@@ -129,6 +139,7 @@ class ChatViewModel @Inject constructor(
                     worldBookEntries = worldBookEntries,
                     userName = config.userName,
                     memories = memories,
+                    memoryAtoms = memoryAtoms,
                     authorNote = authorNote,
                     persona = persona
                 )
@@ -150,6 +161,29 @@ class ChatViewModel @Inject constructor(
                         if (processedReply != assistantMsg.content) {
                             chatRepository.updateMessageContent(assistantMsgId!!, processedReply)
                         }
+                    }
+                }
+
+                // === 记忆提取 ===
+                // 1. 正则快速提取（每轮都跑，开销极小）
+                val userMsgId = chatHistory.lastOrNull { it.role == "user" }?.id
+                val quickFacts = memoryExtractorService.extractQuickFacts(
+                    characterId, processedContent, chatId, userMsgId
+                )
+                if (quickFacts.isNotEmpty()) {
+                    memoryConsolidator.insertWithDedup(quickFacts)
+                }
+
+                // 2. LLM 批量提取（每 10 轮一次）
+                val totalMessages = chatHistory.size
+                if (memoryExtractorService.shouldExtract(totalMessages)) {
+                    val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                    val llmFacts = memoryExtractorService.extractWithLLM(
+                        characterId, allMessages.reversed(), character.name, config, chatId
+                    )
+                    if (llmFacts.isNotEmpty()) {
+                        memoryConsolidator.insertWithDedup(llmFacts)
+                        memoryConsolidator.maybeConsolidate(characterId)
                     }
                 }
             } catch (e: Exception) {
@@ -195,7 +229,10 @@ class ChatViewModel @Inject constructor(
                     emptyList()
                 }
 
-                val memories = memoryRepository.getRelevantMemories(characterId, "")
+                val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
+                val memories = if (memoryAtoms.isEmpty()) {
+                    memoryRepository.getRelevantMemories(characterId, "")
+                } else emptyList()
                 val authorNote = authorNoteDao.getAuthorNoteSync(characterId)
                 val persona = personaRepository.getEffectivePersona(characterId)
 
@@ -206,6 +243,7 @@ class ChatViewModel @Inject constructor(
                     worldBookEntries = worldBookEntries,
                     userName = config.userName,
                     memories = memories,
+                    memoryAtoms = memoryAtoms,
                     authorNote = authorNote,
                     persona = persona
                 )
@@ -257,8 +295,11 @@ class ChatViewModel @Inject constructor(
                     emptyList()
                 }
 
-                val memories = memoryRepository.getRelevantMemories(characterId, userMsg.content)
-                memoryRepository.touchMemories(memories.map { it.id })
+                val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
+                memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+                val memories = if (memoryAtoms.isEmpty()) {
+                    memoryRepository.getRelevantMemories(characterId, userMsg.content)
+                } else emptyList()
 
                 val authorNote = authorNoteDao.getAuthorNoteSync(characterId)
                 val persona = personaRepository.getEffectivePersona(characterId)
@@ -270,6 +311,7 @@ class ChatViewModel @Inject constructor(
                     worldBookEntries = worldBookEntries,
                     userName = config.userName,
                     memories = memories,
+                    memoryAtoms = memoryAtoms,
                     authorNote = authorNote,
                     persona = persona
                 )

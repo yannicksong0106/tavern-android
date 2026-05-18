@@ -193,6 +193,19 @@
     <string name="no_memories_hint">Tap + to add manually, or accumulate through conversations</string>
     <string name="memory_content_placeholder">Memory content…</string>
     <string name="importance">Importance: %d</string>
+    <string name="memory_tab_manual">Manual</string>
+    <string name="memory_tab_auto">AI Memory</string>
+    <string name="category_user_info">User Info</string>
+    <string name="category_character_consistency">Character</string>
+    <string name="category_event">Events</string>
+    <string name="category_relationship">Relationships</string>
+    <string name="category_commitment">Commitments</string>
+    <string name="add_atom">Add AI Memory</string>
+    <string name="edit_atom">Edit AI Memory</string>
+    <string name="superseded">Superseded</string>
+    <string name="source_llm">AI Extracted</string>
+    <string name="source_regex">Auto-detected</string>
+    <string name="source_manual">Manual</string>
     <string name="access_count">Accessed %d times</string>
 
     <!-- Persona -->

@@ -1,5 +1,116 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-18 — AI 主动记忆系统 (Memory Atoms)
+
+> 从"只记住最近20条对话"升级为"AI 主动判断哪些信息值得记住"的结构化记忆系统。
+
+### 背景
+
+原有记忆系统只有手动添加的扁平记忆 + 关键词匹配检索（`LIKE '%keyword%'`），无法自动从对话中提取重要信息。参考腾讯四层语义金字塔（`D:/tencent-agent-memory`），实现 Android 简化版。
+
+### 架构
+
+```
+L0 对话历史（已有）
+    ↓ 正则快速提取（每轮） + LLM 批量提取（每10轮）
+L1 记忆原子 (memory_atoms) — 结构化事实，按类别分类
+    ↓ MemoryConsolidator 去重合并
+L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红线）
+```
+
+### 记忆分类
+
+| 类别 | 优先级 | 说明 |
+|------|--------|------|
+| `character_consistency` | 最高（始终注入） | 角色性格/外貌/背景/承诺 — 人设不能崩 |
+| `commitment` | 高 | 任何一方的承诺约定 |
+| `user_info` | 中 | 用户个人信息（名字/年龄/偏好） |
+| `relationship` | 中 | 人物关系变化 |
+| `event` | 普通 | 重要事件（约定/决定/转折点） |
+
+### 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `MemoryAtomEntity.kt` | 结构化记忆原子表（category/importance/source/superseded/expires_at） |
+| `MemoryAtomDao.kt` | DAO — 按类别/重要度/关键词/相似度检索，冲突管理 |
+| `MemoryExtractorService.kt` | 双层提取：正则快速（每轮，开销≈0）+ LLM 批量（每10轮，调 API） |
+| `MemoryConsolidator.kt` | 关键词去重 + 相似度合并 + 冲突检测，防止记忆膨胀 |
+| `MemoryExtractorServiceTest.kt` | 8 个测试覆盖正则提取逻辑 |
+
+### 修改文件
+
+| 文件 | 变更 |
+|------|------|
+| `TavernDatabase.kt` | version 8→9，新增 `memory_atoms` 表 + `MIGRATION_8_9` |
+| `AppModule.kt` | 注册 `MemoryAtomDao` + 迁移注入 |
+| `PromptBuilder.kt` | 新增 `memoryAtoms` 参数，按类别分组注入，`character_consistency` 最优先 |
+| `ChatViewModel.kt` | 每轮正则提取 + 每10轮 LLM 提取 + 自动合并，3 处 `PromptBuilder.build()` 调用更新 |
+| `MemoryViewModel.kt` | 支持查看/管理 AI 记忆原子（`memoryAtoms` StateFlow + `addAtom`/`supersedeAtom`/`deleteAtom`） |
+| `strings.xml` (中/英) | 15 个新字符串（类别标签、来源标签、Tab 标签） |
+| `PromptBuilderTest.kt` | 新增 6 个测试覆盖 memoryAtoms 注入逻辑 |
+| `build.gradle.kts` + `libs.versions.toml` | 添加 `appcompat` 依赖（修复 i18n 遗留问题） |
+
+### 提取策略
+
+- **正则快速提取**（每轮，开销≈0）：匹配"我叫X"、"我X岁"、"我喜欢X"、"我讨厌X"、"我答应X"等模式
+- **LLM 批量提取**（每10轮，调 API）：发送最近30条对话给 LLM，返回结构化 JSON，包含所有5个类别
+- **去重合并**：新记忆插入前检查关键词相似度（阈值0.6），相似则更新访问时间不重复插入
+- **冲突检测**：同一类别内按关键词分组，保留最新最重要的，supersede 旧的
+
+### 人设保护机制
+
+`character_consistency` 类型的记忆**始终注入到 system prompt**，不受数量限制。PromptBuilder 中格式化为 `[角色名 的核心人设 — 必须严格遵守]`，确保 AI 在任何情况下都遵守角色设定。
+
+### 验证
+
+| 项目 | 结果 |
+|------|------|
+| `assembleDebug` | ✅ 成功 |
+| `testDebugUnitTest` | ✅ 45 tests pass / 0 fail |
+
+---
+
+## 2026-05-18 — 国际化 (i18n) 支持
+
+> 为应用添加中英文切换功能，所有 UI 界面字符串外部化到 Android string resources。
+
+### 1. 语言切换基础设施
+
+- **SettingsStore** — 新增 `languageFlow` + `saveLanguage()`，DataStore 持久化语言设置（"system"/"zh"/"en"）
+- **MainActivity** — 读取语言设置，`AppCompatDelegate.setApplicationLocales()` 实现运行时语言切换
+- **SettingsViewModel** — 新增 `language` StateFlow + `updateLanguage()` 方法
+- **SettingsScreen** — 新增"语言"设置区域（中文 / English / 跟随系统，RadioButton 选择）
+
+### 2. 字符串资源外部化
+
+- **values/strings.xml**（中文）— 221 条字符串，覆盖全部 UI 界面
+- **values-en/strings.xml**（英文）— 221 条对应翻译
+
+### 3. UI 文件更新
+
+| 文件 | 更新内容 |
+|------|----------|
+| `CharacterEditScreen.kt` | 示例对话、系统提示词、历史后指令、作者注释区域、创作者标签 |
+| `MemoryScreen.kt` | 全部对话框、标签、空状态、菜单项 |
+| `PersonaScreen.kt` | 全部对话框、标签、空状态、菜单项 |
+| `ScriptScreen.kt` | 全部对话框、标签、空状态、类型名称、复选框标签 |
+| `WorldBookListScreen.kt` | 全部对话框、标签、空状态 |
+| `WorldBookEditScreen.kt` | 全部对话框、标签、空状态、条目标签 |
+| `BackgroundPickerSheet.kt` | 预设背景改用 string resource ID，全部标签外部化 |
+| `ChatScreen.kt` | `formatTimestamp()` 改用 `Context.getString()` 处理相对时间 |
+| `SettingsScreen.kt` | `bubbleColorOptions` 改用 string resource ID |
+| `ChatListScreen.kt` | 修复 "更多" content description |
+
+### 4. 已知限制
+
+- ViewModel 中的 Toast 提示信息（"导出成功"、"API 错误"等）仍为硬编码中文，因非 composable 上下文需要传入 `Context` 才能使用 `getString()`
+
+### 构建状态
+- i18n 验证 — 4 项检查全部通过（imports、无残留中文、中英对照、语法正确）
+
+---
+
 ## 2026-05-17 — v1.0.0-beta1 首次发布
 
 - 创建 README.md（中文，功能列表、技术栈、构建说明、项目结构）

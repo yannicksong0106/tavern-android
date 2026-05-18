@@ -11,6 +11,7 @@ import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.PersonaDao
+import com.tavern.lite.data.db.dao.MemoryAtomDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,7 +36,8 @@ object AppModule {
             context,
             TavernDatabase::class.java,
             "tavern_db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(TavernDatabase.MIGRATION_8_9)
+            .fallbackToDestructiveMigration().build()
     }
 
     @Provides
@@ -52,6 +54,9 @@ object AppModule {
 
     @Provides
     fun provideMemoryDao(db: TavernDatabase): MemoryDao = db.memoryDao()
+
+    @Provides
+    fun provideMemoryAtomDao(db: TavernDatabase): MemoryAtomDao = db.memoryAtomDao()
 
     @Provides
     fun provideScriptDao(db: TavernDatabase): ScriptDao = db.scriptDao()
