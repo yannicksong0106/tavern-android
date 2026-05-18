@@ -217,10 +217,20 @@ fun ChatScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             if (isGenerating) {
+                                val infiniteTransition = rememberInfiniteTransition(label = "topBar")
+                                val alpha by infiniteTransition.animateFloat(
+                                    initialValue = 1f,
+                                    targetValue = 0.4f,
+                                    animationSpec = InfiniteRepeatableSpec(
+                                        animation = androidx.compose.animation.core.tween(800),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "typingAlpha"
+                                )
                                 Text(
-                                    text = stringResource(R.string.replying),
+                                    text = stringResource(R.string.typing),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
                                     fontSize = 11.sp
                                 )
                             }
@@ -293,7 +303,6 @@ fun ChatScreen(
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -308,19 +317,29 @@ fun ChatScreen(
                 items(displayMessages, key = { it.id }) { message ->
                     val index = displayMessages.indexOf(message)
                     val prevMessage = if (index > 0) displayMessages[index - 1] else null
-                    MessageBubble(
-                        message = message,
-                        characterName = character?.name ?: "",
-                        markwon = markwon,
-                        bubbleStyle = bubbleStyle,
-                        showName = message.role != prevMessage?.role,
-                        onRegenerate = { viewModel.regenerate(message.id) },
-                        onEdit = { editingMessage = message },
-                        onDelete = { deletingMessageId = message.id },
-                        onBranch = { viewModel.createBranchFromMessage(message.id) },
-                        onSwipeLeft = { viewModel.swipeLeft(message.id) },
-                        onSwipeRight = { viewModel.swipeRight(message.id) }
-                    )
+                    val nextMessage = if (index < displayMessages.size - 1) displayMessages[index + 1] else null
+                    val isSameRoleAsPrev = prevMessage?.role == message.role
+                    val isSameRoleAsNext = nextMessage?.role == message.role
+                    // 同角色连续消息间距更紧凑
+                    val topSpacing = if (isSameRoleAsPrev) 2.dp else 6.dp
+                    Column(modifier = Modifier.padding(top = topSpacing)) {
+                        MessageBubble(
+                            message = message,
+                            characterName = character?.name ?: "",
+                            markwon = markwon,
+                            bubbleStyle = bubbleStyle,
+                            showName = !isSameRoleAsPrev,
+                            showTimestamp = !isSameRoleAsNext,
+                            isGroupedTop = isSameRoleAsPrev,
+                            isGroupedBottom = isSameRoleAsNext,
+                            onRegenerate = { viewModel.regenerate(message.id) },
+                            onEdit = { editingMessage = message },
+                            onDelete = { deletingMessageId = message.id },
+                            onBranch = { viewModel.createBranchFromMessage(message.id) },
+                            onSwipeLeft = { viewModel.swipeLeft(message.id) },
+                            onSwipeRight = { viewModel.swipeRight(message.id) }
+                        )
+                    }
                 }
 
                 // 流式输出中
@@ -386,6 +405,9 @@ private fun MessageBubble(
     bubbleStyle: BubbleStyleConfig = BubbleStyleConfig(),
     isStreaming: Boolean = false,
     showName: Boolean = true,
+    showTimestamp: Boolean = true,
+    isGroupedTop: Boolean = false,
+    isGroupedBottom: Boolean = false,
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -441,10 +463,10 @@ private fun MessageBubble(
                     .widthIn(max = maxBubbleWidth)
                     .clip(
                         RoundedCornerShape(
-                            topStart = cornerRadius,
-                            topEnd = cornerRadius,
-                            bottomStart = if (isUser) cornerRadius else 4.dp,
-                            bottomEnd = if (isUser) 4.dp else cornerRadius
+                            topStart = if (isGroupedTop) 4.dp else cornerRadius,
+                            topEnd = if (isGroupedTop) 4.dp else cornerRadius,
+                            bottomStart = if (isUser) (if (isGroupedBottom) 4.dp else cornerRadius) else 4.dp,
+                            bottomEnd = if (isUser) 4.dp else (if (isGroupedBottom) 4.dp else cornerRadius)
                         )
                     )
                     .background(color = bubbleColor)
@@ -502,8 +524,8 @@ private fun MessageBubble(
                     )
                 }
 
-                // Timestamp
-                if (!isStreaming) {
+                // Timestamp (只在分组最后一条显示)
+                if (!isStreaming && showTimestamp) {
                     Text(
                         text = formatTimestamp(context, message.createdAt),
                         style = MaterialTheme.typography.labelSmall,
