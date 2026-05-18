@@ -320,8 +320,8 @@ fun ChatScreen(
                     val nextMessage = if (index < displayMessages.size - 1) displayMessages[index + 1] else null
                     val isSameRoleAsPrev = prevMessage?.role == message.role
                     val isSameRoleAsNext = nextMessage?.role == message.role
-                    // 同角色连续消息间距更紧凑
-                    val topSpacing = if (isSameRoleAsPrev) 2.dp else 6.dp
+                    // 同角色连续消息间距更紧凑（但不能粘连）
+                    val topSpacing = if (isSameRoleAsPrev) 3.dp else 8.dp
                     Column(modifier = Modifier.padding(top = topSpacing)) {
                         MessageBubble(
                             message = message,
@@ -389,7 +389,6 @@ fun ChatScreen(
                 showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
             )
             }
         }
