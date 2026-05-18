@@ -230,9 +230,11 @@ class PromptBuilderTest {
             chatHistory = emptyList()
         )
 
-        // Should have at least the user message
-        assertEquals(1, messages.size)
-        assertEquals("user", messages[0].role)
+        // System prompt with style guideline + user message
+        assertEquals(2, messages.size)
+        assertEquals("system", messages[0].role)
+        assertTrue(messages[0].content.contains("回复风格"))
+        assertEquals("user", messages[1].role)
     }
 
     @Test

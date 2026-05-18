@@ -86,6 +86,16 @@ object PromptBuilder {
     ): String {
         val parts = mutableListOf<String>()
 
+        // 回复风格指引（活人感基线，角色卡 systemPrompt 可覆盖）
+        parts.add("""[回复风格 — 基础要求]
+你正在和用户进行即时聊天。请像真人发消息一样回复：
+- 把长段内容拆成多条短消息，每条 1-3 句话
+- 语气自然口语化，避免书面语和模板化表达
+- 偶尔用语气词（嗯、哈哈、哎、诶）增加真实感
+- 不要每次都用相同的句式开头
+- 可以用省略号、感叹号表达情绪
+- 回复长度随对话内容自然变化，不要每次都长篇大论""".trimIndent())
+
         // 角色描述
         val desc = character.description
             .replace("{{user}}", userName)
