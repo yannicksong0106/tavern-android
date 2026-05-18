@@ -114,7 +114,6 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
     val streamingText by viewModel.streamingText.collectAsStateWithLifecycle()
-    val deliveringMessages by viewModel.deliveringMessages.collectAsStateWithLifecycle()
     val branches by viewModel.branches.collectAsStateWithLifecycle()
     val currentBranchIndex by viewModel.currentBranchIndex.collectAsStateWithLifecycle()
     val backgroundPath by viewModel.backgroundPath.collectAsStateWithLifecycle()
@@ -347,15 +346,6 @@ fun ChatScreen(
 
                 // 正在生成但还没有内容
                 if (isGenerating && streamingText.isEmpty()) {
-                    item {
-                        Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp)) {
-                            LoadingDots()
-                        }
-                    }
-                }
-
-                // 消息逐条投递中（活人感：拆分后的后续消息）
-                if (deliveringMessages) {
                     item {
                         Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp)) {
                             LoadingDots()

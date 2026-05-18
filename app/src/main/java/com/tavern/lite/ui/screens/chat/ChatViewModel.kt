@@ -78,9 +78,6 @@ class ChatViewModel @Inject constructor(
     private val _streamingText = MutableStateFlow("")
     val streamingText: StateFlow<String> = _streamingText.asStateFlow()
 
-    private val _deliveringMessages = MutableStateFlow(false)
-    val deliveringMessages: StateFlow<Boolean> = _deliveringMessages.asStateFlow()
-
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
@@ -168,9 +165,6 @@ class ChatViewModel @Inject constructor(
                     }
                 }
 
-                // 活人感：按段落拆分成多条消息
-                splitIntoMultipleMessages(assistantMsgId)
-
                 // === 记忆提取 ===
                 // 1. 正则快速提取（每轮都跑，开销极小）
                 val userMsgId = chatHistory.lastOrNull { it.role == "user" }?.id
@@ -203,8 +197,11 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } finally {
-                _isGenerating.value = false
+                // 活人感：拆分成多条消息（在 finally 中，isGenerating 仍为 true，
+                // 流式气泡持续覆盖，避免拆分过程中出现内容重复）
+                splitIntoMultipleMessages(assistantMsgId)
                 _streamingText.value = ""
+                _isGenerating.value = false
             }
         }
     }
@@ -218,7 +215,7 @@ class ChatViewModel @Inject constructor(
 
     /**
      * 活人感：将 AI 回复按段落拆分成多条消息，逐条显示。
-     * 拆分逻辑：按双换行分隔，每段作为独立消息，中间有打字延迟。
+     * 在 finally 块中调用，isGenerating 仍为 true，streamingText 持续覆盖。
      */
     private suspend fun splitIntoMultipleMessages(assistantMsgId: Long?) {
         if (assistantMsgId == null) return
@@ -236,18 +233,14 @@ class ChatViewModel @Inject constructor(
         // 更新原消息为第一段
         chatRepository.updateMessageContent(assistantMsgId, paragraphs[0])
 
-        // 后续段落逐条发送，间隔随消息长度变化（更自然）
-        _deliveringMessages.value = true
-        try {
-            for (i in 1 until paragraphs.size) {
-                val len = paragraphs[i].length
-                val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-                val jitter = (Math.random() * 400 - 200).toLong()
-                delay(baseDelay + jitter)
-                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
-            }
-        } finally {
-            _deliveringMessages.value = false
+        // 后续段落逐条发送，streamingText 持续更新以覆盖底层消息变化
+        for (i in 1 until paragraphs.size) {
+            _streamingText.value = paragraphs[i]
+            val len = paragraphs[i].length
+            val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
+            val jitter = (Math.random() * 400 - 200).toLong()
+            delay(baseDelay + jitter)
+            chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
         }
     }
 
