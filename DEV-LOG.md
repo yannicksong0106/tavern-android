@@ -1,5 +1,79 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-19 — v1.0.6: 健谈度调整 UI + 思维链模型修复
+
+> 版本号: 1.0.6 (versionCode=9)
+> Release: https://github.com/yannicksong0106/tavern-android/releases/tag/v1.0.6
+
+### 健谈度调整 UI
+
+**问题**: CharacterEditScreen 有角色级健谈度 Slider，但群聊中没有调整入口。用户需要在聊天界面直接调整健谈度。
+
+**方案**: 聊天顶栏新增设置按钮（齿轮图标），点击打开 ModalBottomSheet 弹窗。
+
+**单聊模式**:
+- 角色健谈度 Slider（0-100）
+- 5 档文字描述：沉默寡言(≤20) / 较为安静(≤40) / 正常交流(≤60) / 比较健谈(≤80) / 非常健谈(>80)
+- 调整后自动持久化到 CharacterEntity.chattiness
+
+**群聊模式**:
+- 群聊整体健谈度 Slider（ChatEntity.groupChattiness）— 控制群聊整体主动发言频率
+- 每个角色独立健谈度 Slider（ChatCharacterEntity.chattiness）— 群内每个角色独立控制
+- 两层分离，互不影响
+
+**修改文件**:
+- `ChatDao.kt` — 新增 `updateGroupChattiness(chatId, chattiness)`
+- `ChatCharacterDao.kt` — 新增 `updateChattiness(chatId, characterId, chattiness)`
+- `ChatRepository.kt` — 暴露 `updateGroupChattiness`
+- `GroupChatRepository.kt` — 暴露 `updateCharacterChattiness` + `getChatCharacters`
+- `ChatViewModel.kt` — 3 个 StateFlow（characterChattiness / groupChattiness / groupCharacterChattiness）+ 更新方法
+- `ChatScreen.kt` — Settings 图标 + ChattinessSheet（ModalBottomSheet + Slider）
+- `strings.xml` — 4 条新字符串（chat_settings / group_chattiness / group_chattiness_desc / character_chattiness）
+- `values-en/strings.xml` — 英文对应
+
+### 思维链模型修复（v1.0.5 合入）
+
+**问题**: DeepSeek V4 Pro / Qwen 3.6 Plus 等思维链模型返回大量重复 "null" 字符串。
+
+**根因**: `delta?.optString("content")` 在 JSON null 时返回字面量 `"null"` 字符串，通过了 `isNullOrEmpty()` 检查。思维链模型的 thinking 阶段 `delta.content` 为 JSON null，每个 thinking chunk 都被 emit 为 "null"。
+
+**修复**:
+- `optString("content")` → `opt("content")` + `JSONObject.NULL` 双重检查
+- 收集 `reasoning_content` 思维链内容到 `lastReasoningContent`
+- `ChatMessage` 新增 `reasoningContent` 字段
+- `buildMessagesArray` 序列化 `reasoning_content` 传回 API
+- ChatViewModel 所有 7 个 streamChat 调用点适配 `attachReasoningContent()`
+
+**修改文件**:
+- `ChatApiService.kt` — null 解析修复 + reasoning_content 收集 + ChatMessage 扩展
+- `ChatViewModel.kt` — `lastAssistantReasoningContent` + `attachReasoningContent()` 辅助方法
+
+---
+
+## 2026-05-19 — v1.0.4: 代码优化
+
+> 版本号: 1.0.4 (versionCode=7)
+> Release: https://github.com/yannicksong0106/tavern-android/releases/tag/v1.0.4
+
+### 记忆提取逻辑重构
+
+**问题**: 记忆提取代码在 sendSingleChatMessage / sendGroupChatMessage / sendProactiveSingleMessage / sendProactiveGroupMessage / sendDirectMessage / continueGeneration / regenerateMessage 7 处重复。
+
+**修复**: 抽取为 `extractMemoryIfNeeded(charId, charName, userContent, config)` 统一方法，所有调用点复用。
+
+### 其他优化
+
+- `@` 提及正则预编译到 `companion object`，避免每次调用重新编译
+- HomeScreen 标签解析用 `remember` 缓存，避免 recomposition 重复计算
+- 移除 HomeScreen 未使用的 `onMemoryClick` 参数和 `clip` import
+
+**修改文件**:
+- `ChatViewModel.kt` — 记忆提取重构 + 正则预编译
+- `HomeScreen.kt` — 标签缓存 + 清理未使用代码
+- `build.gradle.kts` — versionCode=7, versionName=1.0.4
+
+---
+
 ## 2026-05-18 ~ 2026-05-19 — v1.0.3: 现有功能打磨（代码审查 + 优化）
 
 > 基于全量代码审查的系统性优化，修复关键 bug、提升性能、补齐 i18n。
