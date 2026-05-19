@@ -75,6 +75,7 @@ fun SettingsScreen(
     val config by viewModel.config.collectAsStateWithLifecycle()
     val bubbleStyle by viewModel.bubbleStyle.collectAsStateWithLifecycle()
     val language by viewModel.language.collectAsStateWithLifecycle()
+    val backgroundProactive by viewModel.backgroundProactive.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -139,6 +140,12 @@ fun SettingsScreen(
             // 语言设置
             SectionHeader(stringResource(R.string.language_setting))
             LanguageSection(language, viewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 后台主动对话
+            SectionHeader(stringResource(R.string.background_proactive))
+            BackgroundProactiveSection(backgroundProactive, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -688,6 +695,36 @@ private fun ThemeSection(style: BubbleStyleConfig, viewModel: SettingsViewModel)
                 onCheckedChange = {
                     viewModel.updateBubbleStyle(style.copy(dynamicColor = it))
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackgroundProactiveSection(enabled: Boolean, viewModel: SettingsViewModel) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.background_proactive), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = stringResource(R.string.background_proactive_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = { viewModel.updateBackgroundProactive(it) }
             )
         }
     }

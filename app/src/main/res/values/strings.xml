@@ -123,6 +123,10 @@
     <string name="language_english">English</string>
     <string name="language_system">跟随系统</string>
 
+    <!-- 后台主动对话 / Background Proactive -->
+    <string name="background_proactive">后台主动对话</string>
+    <string name="background_proactive_desc">应用在后台时，角色也会主动发言</string>
+
     <!-- 角色编辑 / Character Edit -->
     <string name="edit_character">编辑角色</string>
     <string name="new_character_title">新建角色</string>

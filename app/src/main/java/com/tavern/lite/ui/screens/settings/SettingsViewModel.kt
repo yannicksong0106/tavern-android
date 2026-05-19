@@ -11,6 +11,7 @@ import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ sealed class ConnectionTestState {
 class SettingsViewModel @Inject constructor(
     private val apiConfigStore: ApiConfigStore,
     private val chatApiService: ChatApiService,
-    private val settingsStore: SettingsStore
+    private val settingsStore: SettingsStore,
+    private val proactiveWorkScheduler: ProactiveWorkScheduler
 ) : ViewModel() {
 
     val config: StateFlow<ApiConfig> = apiConfigStore.configFlow
@@ -44,6 +46,9 @@ class SettingsViewModel @Inject constructor(
 
     val language: StateFlow<String> = settingsStore.languageFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+
+    val backgroundProactive: StateFlow<Boolean> = settingsStore.backgroundProactiveFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
@@ -141,6 +146,17 @@ class SettingsViewModel @Inject constructor(
                 else -> LocaleListCompat.getEmptyLocaleList()
             }
             AppCompatDelegate.setApplicationLocales(localeList)
+        }
+    }
+
+    fun updateBackgroundProactive(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsStore.saveBackgroundProactive(enabled)
+            if (enabled) {
+                proactiveWorkScheduler.schedule()
+            } else {
+                proactiveWorkScheduler.cancel()
+            }
         }
     }
 }

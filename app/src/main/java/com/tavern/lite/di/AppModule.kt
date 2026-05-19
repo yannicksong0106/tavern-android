@@ -2,6 +2,7 @@ package com.tavern.lite.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.tavern.lite.data.db.TavernDatabase
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatCharacterDao
@@ -98,5 +99,11 @@ object AppModule {
             .usePlugin(StrikethroughPlugin.create())
             .usePlugin(HtmlPlugin.create())
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
     }
 }

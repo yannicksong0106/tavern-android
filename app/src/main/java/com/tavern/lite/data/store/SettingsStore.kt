@@ -3,6 +3,7 @@ package com.tavern.lite.data.store
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -25,6 +26,7 @@ class SettingsStore @Inject constructor(
     companion object {
         private val BUBBLE_STYLE_KEY = stringPreferencesKey("bubble_style_json")
         private val LANGUAGE_KEY = stringPreferencesKey("language")
+        private val BACKGROUND_PROACTIVE_KEY = booleanPreferencesKey("background_proactive_enabled")
     }
 
     val languageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
@@ -34,6 +36,16 @@ class SettingsStore @Inject constructor(
     suspend fun saveLanguage(language: String) {
         context.settingsDataStore.edit { prefs ->
             prefs[LANGUAGE_KEY] = language
+        }
+    }
+
+    val backgroundProactiveFlow: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[BACKGROUND_PROACTIVE_KEY] ?: false
+    }
+
+    suspend fun saveBackgroundProactive(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[BACKGROUND_PROACTIVE_KEY] = enabled
         }
     }
 

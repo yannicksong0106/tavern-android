@@ -15,8 +15,8 @@ android {
         applicationId = "com.tavern.lite"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.0.6"
+        versionCode = 10
+        versionName = "1.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -107,6 +107,11 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.work.compiler)
 
     // Unit Test
     testImplementation(libs.junit)

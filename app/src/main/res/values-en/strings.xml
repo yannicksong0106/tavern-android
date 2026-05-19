@@ -123,6 +123,10 @@
     <string name="language_english">English</string>
     <string name="language_system">Follow System</string>
 
+    <!-- Background Proactive -->
+    <string name="background_proactive">Background Proactive Chat</string>
+    <string name="background_proactive_desc">Characters initiate conversations when app is in background</string>
+
     <!-- Character Edit -->
     <string name="edit_character">Edit Character</string>
     <string name="new_character_title">New Character</string>
