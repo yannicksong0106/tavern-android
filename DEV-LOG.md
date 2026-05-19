@@ -1,5 +1,20 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-19 — 今日总结
+
+**今日完成 (3 项)**:
+1. **v1.0.7 发布** — 全局后台主动对话 (WorkManager PeriodicWorkRequest)，设置页独立总开关
+2. **项目多维度审查 & 完整规划书** — 技术路线/社区建设/生态扩展/商业化/里程碑，已写入 DEV-LOG
+3. **API Key 加密** — Phase I 第一项完成，Android Keystore AES-256-GCM，明文自动迁移
+
+**代码变更**: 新增 4 个文件 (BackgroundProactiveWorker / ProactiveWorkScheduler / CryptoHelper / ApiConfigStore 修改)，13 个文件修改
+
+**当前进度**: Phase I 五项任务完成 1/5，下一项 ChatViewModel 拆分 (1032→3 UseCase)
+
+**版本**: v1.0.7 (versionCode=10)，下一版本 v1.1.0 计划包含代码拆分 + 核心测试
+
+---
+
 ## 2026-05-19 — 项目多维度审查 & 后续开发规划
 
 ### 一、项目现状总览
