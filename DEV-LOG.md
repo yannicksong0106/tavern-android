@@ -1,5 +1,128 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-19 — 项目多维度审查 & 后续开发规划
+
+### 一、项目现状总览
+
+| 维度 | 评分 | 说明 |
+|------|------|------|
+| 架构设计 | 7/10 | MVVM + Repository + Hilt DI，单 Activity + Compose Navigation，清晰分层 |
+| 代码质量 | 7/10 | 无 TODO/FIXME，但 ChatViewModel(1032 行) 和 ChatScreen(1099 行) 过大 |
+| 功能完整度 | 8/10 | 核心功能齐全（角色卡/聊天/群聊/记忆/世界书/脚本/主动对话/后台调度） |
+| 测试覆盖 | 3/10 | 仅 4 个测试文件（ScriptRepo/WorldBookMatch/MemoryExtractor/PromptBuilder），ViewModel/Repo 无测试 |
+| 安全性 | 5/10 | API Key 明文存储在 DataStore，无加密 |
+| 用户体验 | 7/10 | 基础体验流畅，缺少搜索/滑动手势/TTS 等进阶功能 |
+
+**代码规模**: 76 个 Kotlin 源文件，~12,255 行代码，12 个 Entity，10 个 DAO，12 个路由。
+
+### 二、已完成的核心功能
+
+- 角色卡系统: 创建/编辑/导入导出（PNG/JSON，SillyTavern 兼容）
+- 聊天系统: 流式回复、Markdown 渲染、消息编辑/删除/分叉
+- 群聊系统: 多角色轮替发言、@ 提及、群聊持久化
+- 记忆系统: 正则快速提取 + LLM 批量提取、5 类记忆（用户信息/角色一致性/事件/关系/承诺）
+- 世界书: 关键词匹配、常驻/选择性条目、AND/OR/NOT 逻辑
+- 正则脚本: 消息替换和正则处理
+- 用户角色: 多 persona 管理
+- 主动对话: 健谈度概率触发、群聊加权选择、冷却机制
+- 后台调度: WorkManager 15 分钟周期、设置开关
+- API 支持: OpenAI / Claude / Ollama / Custom（OpenAI 兼容协议）
+- 思维链: reasoning_content 收集和传回
+- 导出: Markdown/HTML/纯文本/JSON 四种格式
+
+### 三、问题和技术债务
+
+#### 3.1 架构问题
+- **ChatViewModel 过大 (1032 行)**: 承载了聊天逻辑、主动对话、群聊发言、记忆提取、@ 处理等所有职责，应拆分为多个 UseCase 或子 ViewModel
+- **ChatScreen 过大 (1099 补)**: UI 和逻辑混合，应拆分为独立组件
+- **fallbackToDestructiveMigration()**: DB 迁移失败时会销毁数据，生产环境危险
+
+#### 3.2 安全问题
+- **API Key 明文存储**: `ApiConfigStore` 将整个 `ApiConfig`（含 apiKey）序列化为 JSON 存入 DataStore，无加密
+- **无 ProGuard 规则审查**: release 构建启用了 minify，但未确认敏感类是否被正确混淆
+
+#### 3.3 测试缺口
+- ViewModel 层零测试（ChatViewModel / SettingsViewModel / HomeViewModel 等）
+- Repository 层零测试（ChatRepository / CharacterRepository / GroupChatRepository 等）
+- DAO 层零测试（仅依赖 Room 编译时验证）
+- 无 UI 测试（Compose 测试）
+
+#### 3.4 功能缺失（对比 SillyTavern）
+- **消息滑动手势**: SillyTavern 的核心交互（左右滑动切换回复变体），当前 SwipeUtils 存在但未在 UI 中集成
+- **聊天搜索**: 无法搜索历史消息
+- **TTS 语音**: 无语音朗读功能
+- **预设管理**: 无系统提示词预设（NSFW/jailbreak/场景预设）
+- **高级世界书**: 缺少递归条目、扫描深度、触发计数等 SillyTavern 高级功能
+- **Lorebook 导入导出**: 无法导入 SillyTavern 的 lorebook 文件
+- **向量记忆搜索**: 当前仅关键词匹配，无语义搜索
+- **群聊头像气泡**: 群聊消息不显示角色头像
+
+### 四、后续开发规划
+
+#### Phase I: 代码质量加固 (v1.1.x)
+优先级: **高** — 技术债务会随功能增加而指数增长
+
+| 任务 | 说明 | 工作量 |
+|------|------|--------|
+| ChatViewModel 拆分 | 提取 ChatUseCase / ProactiveUseCase / GroupChatUseCase | 2-3 天 |
+| ChatScreen 拆分 | 提取消息列表/输入栏/顶栏/底部弹窗为独立组件 | 1-2 天 |
+| API Key 加密 | 使用 Android Keystore 加密存储 API Key | 1 天 |
+| 移除 fallbackToDestructiveMigration | 补全所有 migration，移除破坏性降级 | 0.5 天 |
+| 核心单元测试 | ViewModel + Repository 测试覆盖 | 2-3 天 |
+
+#### Phase II: 核心体验补齐 (v1.2.x)
+优先级: **高** — 用户最期待的功能
+
+| 任务 | 说明 | 工作量 |
+|------|------|--------|
+| 消息滑动手势 | 左右滑动切换回复变体，集成 SwipeUtils | 2 天 |
+| 聊天搜索 | 消息全文搜索 + 跳转 | 1 天 |
+| 群聊头像气泡 | 群聊消息左侧显示角色小头像 | 1 天 |
+| 预设管理 | 系统提示词预设库（NSFW/场景/角色扮演） | 2 天 |
+| 连接测试增强 | 测试结果更详细、支持延迟显示 | 0.5 天 |
+
+#### Phase III: 扩展 API & 高级功能 (v1.3.x)
+优先级: **中** — 扩大用户群
+
+| 任务 | 说明 | 工作量 |
+|------|------|--------|
+| KoboldAI 支持 | 添加 KoboldAI API provider | 1 天 |
+| Gemini 支持 | 添加 Google Gemini API provider | 1 天 |
+| 预设连接测试 | 针对不同 provider 的专用测试逻辑 | 1 天 |
+| 高级世界书 | 递归条目、扫描深度、触发计数 | 2-3 天 |
+| Lorebook 导入导出 | SillyTavern lorebook JSON 兼容 | 1 天 |
+| TTS 语音朗读 | 系统 TTS 或第三方 API | 2-3 天 |
+
+#### Phase IV: 智能化 & 打磨 (v1.4.x+)
+优先级: **中低** — 差异化功能
+
+| 任务 | 说明 | 工作量 |
+|------|------|--------|
+| 向量记忆搜索 | 本地 embedding + 语义检索 | 3-5 天 |
+| UI 手势优化 | 长按菜单、双击收藏、滑动删除 | 1-2 天 |
+| 数据管理 | 数据备份/恢复、存储清理 | 1-2 天 |
+| 性能优化 | 消息列表虚拟化、图片懒加载 | 1-2 天 |
+| 国际化完善 | 日语/韩语支持 | 1 天 |
+
+### 五、建议优先级
+
+**立即做 (v1.1.x)**:
+1. API Key 加密 — 安全问题，用户数据泄露风险
+2. ChatViewModel 拆分 — 代码可维护性的基础
+3. 移除 fallbackToDestructiveMigration — 数据安全
+
+**接下来 (v1.2.x)**:
+4. 消息滑动手势 — SillyTavern 用户最期待的核心交互
+5. 聊天搜索 — 基础可用性
+6. 群聊头像气泡 — 群聊体验提升
+
+**之后 (v1.3.x+)**:
+7. 扩展 API 支持
+8. 高级世界书
+9. TTS / 向量记忆
+
+---
+
 ## 2026-05-19 — v1.0.7: 全局后台主动对话
 
 > 版本号: 1.0.7 (versionCode=10)
