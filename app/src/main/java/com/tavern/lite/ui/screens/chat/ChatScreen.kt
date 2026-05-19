@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
@@ -56,7 +59,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -65,6 +70,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -122,9 +128,13 @@ fun ChatScreen(
     val isGroupChat by viewModel.isGroupChat.collectAsStateWithLifecycle()
     val groupCharacters by viewModel.groupCharacters.collectAsStateWithLifecycle()
     val respondingCharacter by viewModel.respondingCharacter.collectAsStateWithLifecycle()
+    val characterChattiness by viewModel.characterChattiness.collectAsStateWithLifecycle()
+    val groupChattiness by viewModel.groupChattiness.collectAsStateWithLifecycle()
+    val groupCharacterChattiness by viewModel.groupCharacterChattiness.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
+    var showChattinessSheet by remember { mutableStateOf(false) }
 
     // 背景选择器
     if (showBackgroundPicker) {
@@ -145,6 +155,22 @@ fun ChatScreen(
             },
             onClear = { viewModel.clearChatBackground() },
             onDismiss = { showBackgroundPicker = false }
+        )
+    }
+
+    // 健谈度设置
+    if (showChattinessSheet) {
+        ChattinessSheet(
+            isGroupChat = isGroupChat,
+            characterName = character?.name ?: "",
+            characterChattiness = characterChattiness,
+            groupChattiness = groupChattiness,
+            groupCharacters = groupCharacters,
+            groupCharacterChattiness = groupCharacterChattiness,
+            onCharacterChattinessChange = { viewModel.updateCharacterChattiness(it) },
+            onGroupChattinessChange = { viewModel.updateGroupChattiness(it) },
+            onGroupCharacterChattinessChange = { id, value -> viewModel.updateGroupCharacterChattiness(id, value) },
+            onDismiss = { showChattinessSheet = false }
         )
     }
 
@@ -290,6 +316,9 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showChattinessSheet = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.chat_settings))
+                    }
                     IconButton(onClick = { showBackgroundPicker = true }) {
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.change_background))
                     }
@@ -949,6 +978,122 @@ private fun BranchNavigationBar(
             enabled = currentIndex < totalBranches - 1
         ) {
             Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.branch_next))
+        }
+    }
+}
+
+@Composable
+private fun ChattinessLabel(value: Int) {
+    Text(
+        text = when {
+            value <= 20 -> stringResource(R.string.chattiness_silent)
+            value <= 40 -> stringResource(R.string.chattiness_quiet)
+            value <= 60 -> stringResource(R.string.chattiness_normal)
+            value <= 80 -> stringResource(R.string.chattiness_talkative)
+            else -> stringResource(R.string.chattiness_very_talkative)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChattinessSheet(
+    isGroupChat: Boolean,
+    characterName: String,
+    characterChattiness: Int,
+    groupChattiness: Int,
+    groupCharacters: List<CharacterEntity>,
+    groupCharacterChattiness: Map<Long, Int>,
+    onCharacterChattinessChange: (Int) -> Unit,
+    onGroupChattinessChange: (Int) -> Unit,
+    onGroupCharacterChattinessChange: (Long, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.chat_settings),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (isGroupChat) {
+                // 群聊整体健谈度
+                Text(
+                    text = stringResource(R.string.group_chattiness),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Text(
+                    text = stringResource(R.string.group_chattiness_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Slider(
+                    value = groupChattiness.toFloat(),
+                    onValueChange = { onGroupChattinessChange(it.toInt()) },
+                    valueRange = 0f..100f,
+                    steps = 10,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ChattinessLabel(value = groupChattiness)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 每个角色独立健谈度
+                Text(
+                    text = stringResource(R.string.character_chattiness),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                groupCharacters.forEach { char ->
+                    val charValue = groupCharacterChattiness[char.id] ?: 50
+                    Text(
+                        text = char.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Slider(
+                        value = charValue.toFloat(),
+                        onValueChange = { onGroupCharacterChattinessChange(char.id, it.toInt()) },
+                        valueRange = 0f..100f,
+                        steps = 10,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    ChattinessLabel(value = charValue)
+                }
+            } else {
+                // 单聊：角色健谈度
+                Text(
+                    text = stringResource(R.string.chattiness),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Text(
+                    text = stringResource(R.string.chattiness_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Slider(
+                    value = characterChattiness.toFloat(),
+                    onValueChange = { onCharacterChattinessChange(it.toInt()) },
+                    valueRange = 0f..100f,
+                    steps = 10,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ChattinessLabel(value = characterChattiness)
+            }
         }
     }
 }

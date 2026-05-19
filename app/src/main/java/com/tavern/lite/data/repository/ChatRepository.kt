@@ -37,6 +37,8 @@ class ChatRepository @Inject constructor(
 
     suspend fun updateChatBackground(chatId: Long, path: String?) = chatDao.updateBackground(chatId, path)
 
+    suspend fun updateGroupChattiness(chatId: Long, chattiness: Int) = chatDao.updateGroupChattiness(chatId, chattiness)
+
     // Messages
     fun getMessagesForChat(chatId: Long): Flow<List<MessageEntity>> =
         messageDao.getMessagesForChat(chatId)

@@ -93,4 +93,16 @@ class GroupChatRepository @Inject constructor(
      */
     suspend fun getCharacterCount(chatId: Long): Int =
         chatCharacterDao.getCharacterCount(chatId)
+
+    /**
+     * Update a character's chattiness in a group chat.
+     */
+    suspend fun updateCharacterChattiness(chatId: Long, characterId: Long, chattiness: Int) =
+        chatCharacterDao.updateChattiness(chatId, characterId, chattiness)
+
+    /**
+     * Get ChatCharacterEntity list (with chattiness info) for a group chat.
+     */
+    suspend fun getChatCharacters(chatId: Long): List<ChatCharacterEntity> =
+        chatCharacterDao.getCharactersForChat(chatId)
 }

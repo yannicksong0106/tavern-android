@@ -278,6 +278,10 @@
     <string name="chattiness_normal">正常交流</string>
     <string name="chattiness_talkative">比较健谈</string>
     <string name="chattiness_very_talkative">非常健谈</string>
+    <string name="chat_settings">聊天设置</string>
+    <string name="group_chattiness">群聊健谈度</string>
+    <string name="group_chattiness_desc">控制群聊整体主动发言频率</string>
+    <string name="character_chattiness">角色健谈度</string>
 
     <!-- @ 功能 / At Mention -->
     <string name="at_mention_hint">@ 角色名 指定回复</string>

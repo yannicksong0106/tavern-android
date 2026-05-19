@@ -45,6 +45,9 @@ interface ChatCharacterDao {
     @Query("UPDATE chat_characters SET display_order = :order WHERE chat_id = :chatId AND character_id = :characterId")
     suspend fun updateOrder(chatId: Long, characterId: Long, order: Int)
 
+    @Query("UPDATE chat_characters SET chattiness = :chattiness WHERE chat_id = :chatId AND character_id = :characterId")
+    suspend fun updateChattiness(chatId: Long, characterId: Long, chattiness: Int)
+
     @Query("SELECT COUNT(*) FROM chat_characters WHERE chat_id = :chatId AND is_active = 1")
     suspend fun getCharacterCount(chatId: Long): Int
 }

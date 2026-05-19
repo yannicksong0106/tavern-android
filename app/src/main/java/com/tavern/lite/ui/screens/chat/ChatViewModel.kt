@@ -79,6 +79,16 @@ class ChatViewModel @Inject constructor(
     private val _respondingCharacter = MutableStateFlow<CharacterEntity?>(null)
     val respondingCharacter: StateFlow<CharacterEntity?> = _respondingCharacter.asStateFlow()
 
+    // 健谈度状态
+    private val _characterChattiness = MutableStateFlow(50)
+    val characterChattiness: StateFlow<Int> = _characterChattiness.asStateFlow()
+
+    private val _groupChattiness = MutableStateFlow(50)
+    val groupChattiness: StateFlow<Int> = _groupChattiness.asStateFlow()
+
+    private val _groupCharacterChattiness = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val groupCharacterChattiness: StateFlow<Map<Long, Int>> = _groupCharacterChattiness.asStateFlow()
+
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BubbleStyleConfig())
 
@@ -112,11 +122,18 @@ class ChatViewModel @Inject constructor(
             // 初始化消息计数（用于记忆提取频率控制）
             messageCount = chatRepository.getMessageCount(chatId)
 
+            // 加载健谈度
+            if (char != null) _characterChattiness.value = char.chattiness
+
             // Group chat detection
             if (chat?.isGroup == true) {
                 _isGroupChat.value = true
                 val chars = groupChatRepository.getCharactersForChatSync(chatId)
                 _groupCharacters.value = chars
+                _groupChattiness.value = chat.groupChattiness
+                // 加载群聊中每个角色的健谈度
+                val chatChars = groupChatRepository.getChatCharacters(chatId)
+                _groupCharacterChattiness.value = chatChars.associate { it.characterId to it.chattiness }
             }
         }
     }
@@ -959,6 +976,35 @@ class ChatViewModel @Inject constructor(
                 val nextChar = characters[lastCharIndex + 1]
                 sendDirectMessage("", nextChar)
             }
+        }
+    }
+
+    // === 健谈度更新 ===
+
+    /** 单聊：更新角色健谈度 */
+    fun updateCharacterChattiness(value: Int) {
+        _characterChattiness.value = value
+        viewModelScope.launch {
+            val char = _character.value ?: return@launch
+            characterRepository.updateCharacter(char.copy(chattiness = value))
+        }
+    }
+
+    /** 群聊：更新群聊整体健谈度 */
+    fun updateGroupChattiness(value: Int) {
+        _groupChattiness.value = value
+        viewModelScope.launch {
+            chatRepository.updateGroupChattiness(chatId, value)
+        }
+    }
+
+    /** 群聊：更新某角色的健谈度 */
+    fun updateGroupCharacterChattiness(characterId: Long, value: Int) {
+        _groupCharacterChattiness.value = _groupCharacterChattiness.value.toMutableMap().apply {
+            put(characterId, value)
+        }
+        viewModelScope.launch {
+            groupChatRepository.updateCharacterChattiness(chatId, characterId, value)
         }
     }
 

@@ -38,6 +38,9 @@ interface ChatDao {
     @Query("UPDATE chats SET background_path = :path WHERE id = :chatId")
     suspend fun updateBackground(chatId: Long, path: String?)
 
+    @Query("UPDATE chats SET group_chattiness = :chattiness WHERE id = :chatId")
+    suspend fun updateGroupChattiness(chatId: Long, chattiness: Int)
+
     @Query("SELECT * FROM chats WHERE character_id = :characterId ORDER BY updated_at DESC")
     suspend fun getAllChatsForCharacter(characterId: Long): List<ChatEntity>
 

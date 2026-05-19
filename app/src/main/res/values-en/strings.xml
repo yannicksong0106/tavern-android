@@ -261,6 +261,19 @@
     <string name="bg_arctic">Aurora</string>
     <string name="bg_cherry">Cherry Blossom</string>
 
+    <!-- Chattiness -->
+    <string name="chattiness">Chattiness</string>
+    <string name="chattiness_desc">Controls how often the character initiates conversation</string>
+    <string name="chattiness_silent">Silent</string>
+    <string name="chattiness_quiet">Quiet</string>
+    <string name="chattiness_normal">Normal</string>
+    <string name="chattiness_talkative">Talkative</string>
+    <string name="chattiness_very_talkative">Very Talkative</string>
+    <string name="chat_settings">Chat Settings</string>
+    <string name="group_chattiness">Group Chattiness</string>
+    <string name="group_chattiness_desc">Overall group proactive dialogue frequency</string>
+    <string name="character_chattiness">Character Chattiness</string>
+
     <!-- Group Chat List -->
     <string name="group_chats">Group Chats</string>
     <string name="no_group_chats">No group chats yet</string>
