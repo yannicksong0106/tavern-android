@@ -1,5 +1,36 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-19 — v1.0.7: 全局后台主动对话
+
+> 版本号: 1.0.7 (versionCode=10)
+> Release: https://github.com/yannicksong0106/tavern-android/releases/tag/v1.0.7
+
+### 全局后台主动对话
+
+**需求**: 应用挂在后台时，也能持续运行 AI 主动对话、群聊自发互动逻辑。设置里有独立总开关，关闭后完全停止后台调度。
+
+**方案**: 使用 Android WorkManager 的 `PeriodicWorkRequest`（最小间隔 15 分钟）作为后台调度器，比 ForegroundService 更轻量，系统自动管理电池优化和 Doze 模式。
+
+**核心实现**:
+- `BackgroundProactiveWorker` — @HiltWorker，每 15 分钟随机选择一个聊天触发主动对话
+  - 单聊：获取角色 → 按 chattiness/100 概率决定 → `PromptBuilder.buildProactive()` → API 调用 → 保存消息
+  - 群聊：获取群聊角色 → 按健谈度加权随机选择 → `PromptBuilder.buildGroupProactive()` → API 调用 → 保存消息
+  - 静默失败，不打扰用户
+- `ProactiveWorkScheduler` — 调度管理器，`schedule()` 注册 periodic work，`cancel()` 取消
+- `SettingsStore` — 新增 `backgroundProactiveFlow` 开关（默认关闭）
+- `SettingsScreen` — 新增"后台主动对话"Switch UI
+- `TavernApp` — 实现 `Configuration.Provider` + `HiltWorkerFactory`
+- `AppModule` — 提供 `WorkManager` 单例
+- `ChatDao` — 新增 `getRecentChats(limit)` 查询
+
+**隔离性**: Worker 使用独立的 API 调用和 DB 写入，不影响前台手动聊天、流式回复、原有业务流程。
+
+**修改文件 (13 个)**:
+- 新增: `worker/BackgroundProactiveWorker.kt`, `worker/ProactiveWorkScheduler.kt`
+- 修改: `TavernApp.kt`, `AppModule.kt`, `SettingsStore.kt`, `SettingsViewModel.kt`, `SettingsScreen.kt`, `ChatDao.kt`, `AndroidManifest.xml`, `strings.xml`(中英), `build.gradle.kts`, `libs.versions.toml`
+
+---
+
 ## 2026-05-19 — v1.0.6: 健谈度调整 UI + 思维链模型修复
 
 > 版本号: 1.0.6 (versionCode=9)
