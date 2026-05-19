@@ -19,6 +19,7 @@ import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
+import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.network.MemoryExtractorService
 import com.tavern.lite.network.PromptBuilder
 import com.tavern.lite.util.SwipeUtils
@@ -98,6 +99,8 @@ class ChatViewModel @Inject constructor(
     private val _lastProactiveTime = mutableMapOf<Long, Long>()
     // 防止主动对话链式触发
     @Volatile private var isProactiveMessage = false
+    // 思维链内容（DeepSeek/Qwen thinking mode），下次请求时传回
+    private var lastAssistantReasoningContent: String? = null
 
     init {
         viewModelScope.launch {
@@ -186,9 +189,11 @@ class ChatViewModel @Inject constructor(
 
                 // 静默累积完整回复
                 var responseBuffer = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     responseBuffer += chunk
                 }
+                // 保存思维链内容，下次请求时传回
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 if (responseBuffer.isBlank()) return@launch
 
@@ -272,9 +277,10 @@ class ChatViewModel @Inject constructor(
 
                     // 静默累积完整回复
                     var fullResponse = ""
-                    chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                    chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                         fullResponse += chunk
                     }
+                    lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                     // Strip [CharacterName]: prefix from final content
                     val cleanContent = cleanCharacterPrefix(fullResponse, char.name)
@@ -406,9 +412,10 @@ class ChatViewModel @Inject constructor(
                 )
 
                 var responseBuffer = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     responseBuffer += chunk
                 }
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 if (responseBuffer.isBlank()) return@launch
 
@@ -523,9 +530,10 @@ class ChatViewModel @Inject constructor(
                 )
 
                 var fullResponse = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     fullResponse += chunk
                 }
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 val cleanContent = cleanCharacterPrefix(fullResponse, character.name)
                 if (cleanContent.isNotBlank()) {
@@ -620,9 +628,10 @@ class ChatViewModel @Inject constructor(
                 )
 
                 var fullResponse = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     fullResponse += chunk
                 }
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 val cleanContent = cleanCharacterPrefix(fullResponse, targetCharacter.name)
                 if (cleanContent.isNotBlank()) {
@@ -700,9 +709,10 @@ class ChatViewModel @Inject constructor(
 
                 // 静默累积新内容
                 var newContent = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     newContent += chunk
                 }
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 if (newContent.isBlank()) return@launch
 
@@ -774,9 +784,10 @@ class ChatViewModel @Inject constructor(
 
                 // 静默累积新回复
                 var newContent = ""
-                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
                     newContent += chunk
                 }
+                lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
                 // 将新回复添加为 swipe
                 chatRepository.addSwipe(messageId, newContent)
@@ -949,6 +960,23 @@ class ChatViewModel @Inject constructor(
                 sendDirectMessage("", nextChar)
             }
         }
+    }
+
+    /**
+     * 为 promptMessages 中最后一条 assistant 消息附加 reasoning_content，
+     * 满足思维链模型（DeepSeek/Qwen）的 API 要求。
+     */
+    private fun attachReasoningContent(messages: List<ChatMessage>): List<ChatMessage> {
+        val reasoning = lastAssistantReasoningContent ?: return messages
+        // 从后往前找最后一条 assistant 消息
+        for (i in messages.indices.reversed()) {
+            if (messages[i].role == "assistant") {
+                return messages.toMutableList().also {
+                    it[i] = it[i].copy(reasoningContent = reasoning)
+                }
+            }
+        }
+        return messages
     }
 
     companion object {
