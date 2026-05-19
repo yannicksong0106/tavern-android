@@ -58,6 +58,165 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun chatCharacterDao(): ChatCharacterDao
 
     companion object {
+        /**
+         * 迁移 1→8：重建 version 8 的完整 schema。
+         * 适用于 v1.0.0-beta1 到 v1.0.1-debug 期间的早期用户。
+         * 使用 IF NOT EXISTS 确保安全。
+         */
+        val MIGRATION_1_8 = object : Migration(1, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS characters (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        personality TEXT NOT NULL DEFAULT '',
+                        first_mes TEXT NOT NULL DEFAULT '',
+                        mes_example TEXT NOT NULL DEFAULT '',
+                        avatar_path TEXT,
+                        system_prompt TEXT,
+                        post_history_instructions TEXT,
+                        tags TEXT NOT NULL DEFAULT '[]',
+                        world_book_id INTEGER,
+                        background_path TEXT,
+                        creator TEXT NOT NULL DEFAULT '',
+                        version TEXT NOT NULL DEFAULT '1.0',
+                        spec TEXT NOT NULL DEFAULT 'chara_card_v2',
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS chats (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT,
+                        background_path TEXT,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_character_id ON chats(character_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        parent_id INTEGER,
+                        branch_id INTEGER,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at INTEGER NOT NULL,
+                        swipe_content TEXT NOT NULL DEFAULT '[]',
+                        swipe_index INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_id ON messages(chat_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_parent_id ON messages(parent_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS world_books (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS world_book_entries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        world_book_id INTEGER NOT NULL,
+                        uid INTEGER NOT NULL DEFAULT 0,
+                        comment TEXT NOT NULL DEFAULT '',
+                        keys TEXT NOT NULL DEFAULT '[]',
+                        keys_secondary TEXT NOT NULL DEFAULT '[]',
+                        content TEXT NOT NULL DEFAULT '',
+                        constant INTEGER NOT NULL DEFAULT 0,
+                        position INTEGER NOT NULL DEFAULT 0,
+                        order_val INTEGER NOT NULL DEFAULT 100,
+                        probability INTEGER NOT NULL DEFAULT 100,
+                        depth INTEGER NOT NULL DEFAULT 4,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        selective INTEGER NOT NULL DEFAULT 0,
+                        selective_logic INTEGER NOT NULL DEFAULT 0,
+                        exclude_recursion INTEGER NOT NULL DEFAULT 0,
+                        prevent_recursion INTEGER NOT NULL DEFAULT 0,
+                        "group" TEXT NOT NULL DEFAULT '',
+                        group_override INTEGER NOT NULL DEFAULT 0,
+                        group_weight INTEGER NOT NULL DEFAULT 100,
+                        FOREIGN KEY (world_book_id) REFERENCES world_books(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_world_book_id ON world_book_entries(world_book_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS memories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        content TEXT NOT NULL,
+                        importance INTEGER NOT NULL DEFAULT 5,
+                        source TEXT NOT NULL DEFAULT 'manual',
+                        created_at INTEGER NOT NULL,
+                        last_accessed INTEGER NOT NULL,
+                        access_count INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_character_id ON memories(character_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS scripts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        comment TEXT NOT NULL DEFAULT '',
+                        script_type INTEGER NOT NULL DEFAULT 0,
+                        find_pattern TEXT NOT NULL DEFAULT '',
+                        replace_pattern TEXT NOT NULL DEFAULT '',
+                        is_regex INTEGER NOT NULL DEFAULT 1,
+                        case_sensitive INTEGER NOT NULL DEFAULT 0,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_scripts_character_id ON scripts(character_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS author_notes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        content TEXT NOT NULL DEFAULT '',
+                        position TEXT NOT NULL DEFAULT 'after_an',
+                        depth INTEGER NOT NULL DEFAULT 4,
+                        updated_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_author_notes_character_id ON author_notes(character_id)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS personas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        biography TEXT NOT NULL DEFAULT '',
+                        avatar_path TEXT,
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS character_personas (
+                        character_id INTEGER NOT NULL,
+                        persona_id INTEGER NOT NULL,
+                        PRIMARY KEY(character_id, persona_id),
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+                        FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_character_personas_character_id ON character_personas(character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_character_personas_persona_id ON character_personas(persona_id)")
+            }
+        }
+
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 添加健谈度字段

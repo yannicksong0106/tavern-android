@@ -38,8 +38,12 @@ object AppModule {
             context,
             TavernDatabase::class.java,
             "tavern_db"
-        ).addMigrations(TavernDatabase.MIGRATION_8_9, TavernDatabase.MIGRATION_9_10, TavernDatabase.MIGRATION_10_11)
-            .fallbackToDestructiveMigration().build()
+        ).addMigrations(
+            TavernDatabase.MIGRATION_1_8,
+            TavernDatabase.MIGRATION_8_9,
+            TavernDatabase.MIGRATION_9_10,
+            TavernDatabase.MIGRATION_10_11
+        ).build()
     }
 
     @Provides
