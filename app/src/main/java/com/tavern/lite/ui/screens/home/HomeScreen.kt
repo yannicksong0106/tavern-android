@@ -57,7 +57,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -83,7 +82,6 @@ fun HomeScreen(
     onWorldBookClick: () -> Unit,
     onGroupChatClick: () -> Unit = {},
     onGroupChatItemClick: (chatId: Long, primaryCharacterId: Long) -> Unit = { _, _ -> },
-    onMemoryClick: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val characters by viewModel.characters.collectAsStateWithLifecycle()
@@ -324,9 +322,14 @@ private fun CharacterCard(
                 }
                 // 显示标签
                 val tags = character.tags
-                if (tags != "[]" && tags.isNotBlank()) {
+                val displayTags = remember(tags) {
+                    if (tags != "[]" && tags.isNotBlank()) {
+                        tags.removeSurrounding("[", "]").replace("\"", "")
+                    } else null
+                }
+                if (displayTags != null) {
                     Text(
-                        text = tags.removeSurrounding("[", "]").replace("\"", ""),
+                        text = displayTags,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                         maxLines = 1,

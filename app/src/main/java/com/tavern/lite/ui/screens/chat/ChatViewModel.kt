@@ -202,27 +202,7 @@ class ChatViewModel @Inject constructor(
                 }
 
                 // === 记忆提取 ===
-                // 1. 正则快速提取（每轮都跑，开销极小）
-                val userMsgId = chatHistory.lastOrNull { it.role == "user" }?.id
-                val quickFacts = memoryExtractorService.extractQuickFacts(
-                    characterId, processedContent, chatId, userMsgId
-                )
-                if (quickFacts.isNotEmpty()) {
-                    memoryConsolidator.insertWithDedup(quickFacts)
-                }
-
-                // 2. LLM 批量提取（每 10 轮一次）
-                messageCount++
-                if (memoryExtractorService.shouldExtract(messageCount)) {
-                    val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                    val llmFacts = memoryExtractorService.extractWithLLM(
-                        characterId, allMessages.reversed(), character.name, config, chatId
-                    )
-                    if (llmFacts.isNotEmpty()) {
-                        memoryConsolidator.insertWithDedup(llmFacts)
-                        memoryConsolidator.maybeConsolidate(characterId)
-                    }
-                }
+                extractMemoryIfNeeded(characterId, character.name, processedContent, config)
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
@@ -316,17 +296,7 @@ class ChatViewModel @Inject constructor(
                     }
 
                     // Per-character memory extraction
-                    messageCount++
-                    if (memoryExtractorService.shouldExtract(messageCount)) {
-                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                        val llmFacts = memoryExtractorService.extractWithLLM(
-                            char.id, allMessages.reversed(), char.name, config, chatId
-                        )
-                        if (llmFacts.isNotEmpty()) {
-                            memoryConsolidator.insertWithDedup(llmFacts)
-                            memoryConsolidator.maybeConsolidate(char.id)
-                        }
-                    }
+                    extractMemoryIfNeeded(char.id, char.name, processedContent, config)
 
                     // Reload history so next character sees this one's response
                     chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
@@ -451,17 +421,7 @@ class ChatViewModel @Inject constructor(
                     chatRepository.sendMessage(chatId, finalContent, "assistant")
 
                     // 记忆提取
-                    messageCount++
-                    if (memoryExtractorService.shouldExtract(messageCount)) {
-                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                        val llmFacts = memoryExtractorService.extractWithLLM(
-                            characterId, allMessages.reversed(), character.name, config, chatId
-                        )
-                        if (llmFacts.isNotEmpty()) {
-                            memoryConsolidator.insertWithDedup(llmFacts)
-                            memoryConsolidator.maybeConsolidate(characterId)
-                        }
-                    }
+                    extractMemoryIfNeeded(characterId, character.name, "", config)
                 }
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
@@ -575,17 +535,7 @@ class ChatViewModel @Inject constructor(
                     chatRepository.sendMessage(chatId, finalContent, "assistant", character.id)
 
                     // 记忆提取
-                    messageCount++
-                    if (memoryExtractorService.shouldExtract(messageCount)) {
-                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                        val llmFacts = memoryExtractorService.extractWithLLM(
-                            character.id, allMessages.reversed(), character.name, config, chatId
-                        )
-                        if (llmFacts.isNotEmpty()) {
-                            memoryConsolidator.insertWithDedup(llmFacts)
-                            memoryConsolidator.maybeConsolidate(character.id)
-                        }
-                    }
+                    extractMemoryIfNeeded(character.id, character.name, "", config)
                 }
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
@@ -604,8 +554,7 @@ class ChatViewModel @Inject constructor(
         if (!_isGroupChat.value) return false
 
         // 检测 @角色名 格式（角色名后跟空格或到达末尾）
-        val atPattern = Regex("@(\\S+?)(?:\\s|$)")
-        val match = atPattern.find(content)
+        val match = AT_MENTION_PATTERN.find(content)
         if (match != null) {
             val mentionedName = match.groupValues[1]
             val mentionedChar = _groupCharacters.value.find {
@@ -614,7 +563,7 @@ class ChatViewModel @Inject constructor(
 
             if (mentionedChar != null) {
                 // 移除 @前缀，发送给指定角色
-                val cleanContent = content.replaceFirst(atPattern, "").trim()
+                val cleanContent = content.replaceFirst(AT_MENTION_PATTERN, "").trim()
                 sendDirectMessage(cleanContent, mentionedChar)
                 return true
             }
@@ -645,13 +594,28 @@ class ChatViewModel @Inject constructor(
                 val persona = personaRepository.getEffectivePersona(characterId)
                 val characterMap = characters.associateBy { it.id }
 
+                // 世界书匹配
+                val worldBookEntries = if (targetCharacter.worldBookId != null) {
+                    worldBookRepository.matchEntries(targetCharacter.worldBookId, content)
+                } else emptyList()
+
+                // 记忆检索
+                val memoryAtoms = memoryAtomDao.getRelevantAtoms(targetCharacter.id, 10)
+                memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+                val memories = if (memoryAtoms.isEmpty()) {
+                    memoryRepository.getRelevantMemories(targetCharacter.id, content)
+                } else emptyList()
+
                 val promptMessages = PromptBuilder.buildGroupChat(
                     characters = characters,
                     respondingCharacter = targetCharacter,
                     userMessage = content,
                     chatHistory = chatHistory.reversed(),
                     characterMap = characterMap,
+                    worldBookEntries = worldBookEntries,
                     userName = config.userName,
+                    memories = memories,
+                    memoryAtoms = memoryAtoms,
                     persona = persona
                 )
 
@@ -668,17 +632,7 @@ class ChatViewModel @Inject constructor(
                     chatRepository.sendMessage(chatId, finalContent, "assistant", targetCharacter.id)
 
                     // 记忆提取
-                    messageCount++
-                    if (memoryExtractorService.shouldExtract(messageCount)) {
-                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                        val llmFacts = memoryExtractorService.extractWithLLM(
-                            targetCharacter.id, allMessages.reversed(), targetCharacter.name, config, chatId
-                        )
-                        if (llmFacts.isNotEmpty()) {
-                            memoryConsolidator.insertWithDedup(llmFacts)
-                            memoryConsolidator.maybeConsolidate(targetCharacter.id)
-                        }
-                    }
+                    extractMemoryIfNeeded(targetCharacter.id, targetCharacter.name, content, config)
                 }
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
@@ -763,17 +717,7 @@ class ChatViewModel @Inject constructor(
                 }
 
                 // 记忆提取（continue 也需要触发）
-                messageCount++
-                if (memoryExtractorService.shouldExtract(messageCount)) {
-                    val allMessages = chatRepository.getRecentMessages(chatId, 30)
-                    val llmFacts = memoryExtractorService.extractWithLLM(
-                        characterId, allMessages.reversed(), character.name, config, chatId
-                    )
-                    if (llmFacts.isNotEmpty()) {
-                        memoryConsolidator.insertWithDedup(llmFacts)
-                        memoryConsolidator.maybeConsolidate(characterId)
-                    }
-                }
+                extractMemoryIfNeeded(characterId, character.name, "", config)
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
@@ -951,6 +895,36 @@ class ChatViewModel @Inject constructor(
      * 主动发言：检查是否有未回复的消息，自动触发回复。
      * 用于进入对话时自动回复用户未回复的消息，或群聊中角色之间的互动。
      */
+    /**
+     * 通用记忆提取：正则快速提取 + LLM 批量提取（每 N 轮一次）
+     */
+    private suspend fun extractMemoryIfNeeded(
+        charId: Long,
+        charName: String,
+        userContent: String,
+        config: com.tavern.lite.data.model.ApiConfig
+    ) {
+        // 正则快速提取
+        val userMsgId = messages.value.lastOrNull { it.role == "user" }?.id
+        val quickFacts = memoryExtractorService.extractQuickFacts(charId, userContent, chatId, userMsgId)
+        if (quickFacts.isNotEmpty()) {
+            memoryConsolidator.insertWithDedup(quickFacts)
+        }
+
+        // LLM 批量提取（每 10 轮一次）
+        messageCount++
+        if (memoryExtractorService.shouldExtract(messageCount)) {
+            val allMessages = chatRepository.getRecentMessages(chatId, 30)
+            val llmFacts = memoryExtractorService.extractWithLLM(
+                charId, allMessages.reversed(), charName, config, chatId
+            )
+            if (llmFacts.isNotEmpty()) {
+                memoryConsolidator.insertWithDedup(llmFacts)
+                memoryConsolidator.maybeConsolidate(charId)
+            }
+        }
+    }
+
     fun triggerProactiveIfNeeded() {
         val currentMessages = messages.value
         if (_isGenerating.value || isProactiveMessage) return
@@ -975,5 +949,10 @@ class ChatViewModel @Inject constructor(
                 sendDirectMessage("", nextChar)
             }
         }
+    }
+
+    companion object {
+        // 预编译的 @ 提及正则，避免每次调用重新编译
+        private val AT_MENTION_PATTERN = Regex("@(\\S+?)(?:\\s|$)")
     }
 }
