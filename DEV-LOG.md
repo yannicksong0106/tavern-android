@@ -10,7 +10,7 @@
 | 代码质量 | 7/10 | 无 TODO/FIXME，但 ChatViewModel(1032 行) 和 ChatScreen(1099 行) 过大 |
 | 功能完整度 | 8/10 | 核心功能齐全（角色卡/聊天/群聊/记忆/世界书/脚本/主动对话/后台调度） |
 | 测试覆盖 | 3/10 | 仅 4 个测试文件（ScriptRepo/WorldBookMatch/MemoryExtractor/PromptBuilder），ViewModel/Repo 无测试 |
-| 安全性 | 5/10 | API Key 明文存储在 DataStore，无加密 |
+| 安全性 | 7/10 | API Key 已使用 Android Keystore AES-256-GCM 加密存储 |
 | 用户体验 | 7/10 | 基础体验流畅，缺少搜索/滑动手势/TTS 等进阶功能 |
 
 **代码规模**: 76 个 Kotlin 源文件，~12,255 行代码，12 个 Entity，10 个 DAO，12 个路由。
@@ -73,7 +73,7 @@
 
 | 任务 | 说明 | 工作量 |
 |------|------|--------|
-| **API Key 加密** | Android Keystore + EncryptedSharedPreferences，明文存储是安全事故 | 1 天 |
+| ~~**API Key 加密**~~ ✅ | Android Keystore AES-256-GCM (CryptoHelper)，已完成 | 已完成 |
 | **ChatViewModel 拆分** | 1032 行→3 个 UseCase（ChatUseCase / ProactiveUseCase / GroupChatUseCase），每个 < 300 行 | 2-3 天 |
 | **ChatScreen 拆分** | 1099 行→MessageList / InputBar / ChatTopBar / ChattinessSheet 等独立组件 | 1-2 天 |
 | **移除 fallbackToDestructiveMigration** | 补全所有 DB migration，移除破坏性降级，保护用户数据 | 0.5 天 |
@@ -259,7 +259,7 @@
 
 | 里程碑 | 目标 | 预计时间 |
 |--------|------|----------|
-| **v1.1.0** | API Key 加密 + 代码拆分 + 核心测试 | 2026-05 下旬 |
+| **v1.1.0** | ~~API Key 加密~~ ✅ + 代码拆分 + 核心测试 | 2026-05 下旬 |
 | **v1.2.0** | 滑动手势 + 搜索 + 预设管理 | 2026-06 上旬 |
 | **v1.3.0** | KoboldAI/Gemini + 高级世界书 + TTS | 2026-06 中旬 |
 | **v1.4.0** | 向量记忆 + 角色卡生成器 + 插件系统原型 | 2026-07 |
@@ -273,7 +273,7 @@
 #### F. 立即行动清单
 
 **本周 (v1.0.7 之后)**:
-1. ✅ API Key 加密（下一个任务）
+1. ✅ API Key 加密 — security/CryptoHelper.kt (AES-256-GCM) + ApiConfigStore 集成，明文自动迁移
 2. README 美化（截图 + Badge + 安装说明）
 3. CONTRIBUTING.md + Issue 模板
 
@@ -286,6 +286,33 @@
 7. 消息滑动手势
 8. 预设管理
 9. 角色卡分享平台原型
+
+---
+
+## 2026-05-19 — API Key 加密存储 (Phase I 第一项)
+
+### API Key 加密
+
+**需求**: DataStore 中的 API Config（含 API Key）以明文 JSON 存储，任何有 root 权限或备份访问权的人都能直接读取。需要加密保护。
+
+**方案**: 使用 Android Keystore API 直接实现 AES-256-GCM 加密，不引入额外依赖。
+
+**核心实现**:
+- `security/CryptoHelper.kt` — @Singleton，AES-256-GCM 加解密
+  - `ensureKeyExists()`: 首次使用时在 AndroidKeyStore 生成 256-bit AES 密钥（别名 `tavern_api_key`）
+  - `encrypt(plainText)`: AES-GCM 加密 → IV(12 bytes) + cipher → Base64 编码
+  - `decrypt(cipherText)`: Base64 解码 → 拆分 IV + cipher → AES-GCM 解密
+  - `tryDecrypt(cipherText)`: 解密失败返回 null，用于判断是否为加密数据
+- `network/ApiConfigStore.kt` — 注入 CryptoHelper
+  - `configFlow`: 读取时先 `tryDecrypt`，失败则当作明文（向后兼容旧版数据）
+  - `save()`: 序列化 JSON → 加密 → 存入 DataStore
+  - 旧版明文数据首次读取后自动以加密格式重新存储
+
+**安全性**: 密钥由 Android Keystore 硬件安全模块管理，应用无法导出密钥。即使 DataStore 文件被泄露，也无法解密 API Key。
+
+**修改文件 (2 个)**:
+- 新增: `security/CryptoHelper.kt`
+- 修改: `network/ApiConfigStore.kt`
 
 ---
 
