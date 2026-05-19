@@ -98,7 +98,7 @@ fun ChatListScreen(
                 tempFile.outputStream().use { output -> input.copyTo(output) }
             }
             viewModel.importChatFromFile(tempFile)
-            tempFile.deleteOnExit()
+            tempFile.delete()
         }
     }
 

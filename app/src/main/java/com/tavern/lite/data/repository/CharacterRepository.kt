@@ -12,7 +12,8 @@ import javax.inject.Singleton
 
 @Singleton
 class CharacterRepository @Inject constructor(
-    private val characterDao: CharacterDao
+    private val characterDao: CharacterDao,
+    private val json: Json
 ) {
     fun getAllCharacters(): Flow<List<CharacterEntity>> = characterDao.getAllCharacters()
 
@@ -29,7 +30,7 @@ class CharacterRepository @Inject constructor(
             mesExample = data.mesExample,
             systemPrompt = data.systemPrompt,
             postHistoryInstructions = data.postHistoryInstructions,
-            tags = Json.encodeToString(data.tags),
+            tags = json.encodeToString(data.tags),
             creator = data.creator,
             version = data.characterVersion,
             spec = "chara_card_v2",
@@ -46,7 +47,7 @@ class CharacterRepository @Inject constructor(
 
     fun toCharacterCard(entity: CharacterEntity): CharacterCard {
         val tags: List<String> = try {
-            Json.decodeFromString(entity.tags)
+            json.decodeFromString(entity.tags)
         } catch (_: Exception) {
             emptyList()
         }

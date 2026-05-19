@@ -4,6 +4,7 @@ import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -20,7 +21,7 @@ class WorldBookMatchTest {
     @Before
     fun setup() {
         fakeDao = FakeWorldBookDao()
-        repository = WorldBookRepository(fakeDao)
+        repository = WorldBookRepository(fakeDao, Json)
     }
 
     @Test

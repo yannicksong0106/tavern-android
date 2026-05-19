@@ -47,6 +47,8 @@
     <string name="branch_from_here">Branch from here</string>
     <string name="input_hint">Say something…</string>
     <string name="continue_generation">Continue</string>
+    <string name="scroll_to_bottom">Scroll to bottom</string>
+    <string name="empty_message">…</string>
     <string name="typing">Typing…</string>
     <string name="swipe_previous">Previous</string>
     <string name="swipe_next">Next</string>

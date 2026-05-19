@@ -19,13 +19,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -37,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tavern.lite.R
@@ -56,7 +60,9 @@ fun CharacterEditScreen(
     viewModel: CharacterEditViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val worldBooks by viewModel.worldBooks.collectAsStateWithLifecycle()
     var showBackgroundPicker by remember { mutableStateOf(false) }
+    var showWorldBookPicker by remember { mutableStateOf(false) }
 
     // 背景选择器
     if (showBackgroundPicker) {
@@ -68,6 +74,23 @@ fun CharacterEditScreen(
             onSelectImage = { uri -> viewModel.updateBackground(uri) },
             onClear = { viewModel.clearBackground() },
             onDismiss = { showBackgroundPicker = false }
+        )
+    }
+
+    // 世界书选择器
+    if (showWorldBookPicker) {
+        WorldBookPickerSheet(
+            worldBooks = worldBooks,
+            currentWorldBookId = state.worldBookId,
+            onSelect = { book ->
+                viewModel.setWorldBook(book.id, book.name)
+                showWorldBookPicker = false
+            },
+            onClear = {
+                viewModel.clearWorldBook()
+                showWorldBookPicker = false
+            },
+            onDismiss = { showWorldBookPicker = false }
         )
     }
 
@@ -153,6 +176,77 @@ fun CharacterEditScreen(
                 Text(
                     text = stringResource(R.string.change),
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // 世界书关联
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showWorldBookPicker = true }
+                    .padding(vertical = 12.dp)
+            ) {
+                Icon(
+                    Icons.Default.AutoStories,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.world_book),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = state.worldBookName ?: stringResource(R.string.no_world_book_assigned),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (state.worldBookName != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.change),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // 健谈度设置
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.chattiness),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.chattiness_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Slider(
+                    value = state.chattiness.toFloat(),
+                    onValueChange = { viewModel.updateField("chattiness", it.toInt().toString()) },
+                    valueRange = 0f..100f,
+                    steps = 10,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = when {
+                        state.chattiness <= 20 -> stringResource(R.string.chattiness_silent)
+                        state.chattiness <= 40 -> stringResource(R.string.chattiness_quiet)
+                        state.chattiness <= 60 -> stringResource(R.string.chattiness_normal)
+                        state.chattiness <= 80 -> stringResource(R.string.chattiness_talkative)
+                        else -> stringResource(R.string.chattiness_very_talkative)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -326,6 +420,106 @@ fun CharacterEditScreen(
             )
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WorldBookPickerSheet(
+    worldBooks: List<com.tavern.lite.data.db.entity.WorldBookEntity>,
+    currentWorldBookId: Long?,
+    onSelect: (com.tavern.lite.data.db.entity.WorldBookEntity) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.select_world_book),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // "None" option
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClear() }
+                    .padding(vertical = 12.dp)
+            ) {
+                Icon(
+                    Icons.Default.AutoStories,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+                Text(
+                    text = stringResource(R.string.no_world_book_assigned),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (currentWorldBookId == null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (worldBooks.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.no_world_books),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            } else {
+                worldBooks.forEach { book ->
+                    val isSelected = book.id == currentWorldBookId
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(book) }
+                            .padding(vertical = 12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AutoStories,
+                            contentDescription = null,
+                            tint = if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = book.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (book.description.isNotBlank()) {
+                                Text(
+                                    text = book.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.tavern.lite.data.db.TavernDatabase
 import com.tavern.lite.data.db.dao.CharacterDao
+import com.tavern.lite.data.db.dao.ChatCharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.dao.MessageDao
@@ -36,7 +37,7 @@ object AppModule {
             context,
             TavernDatabase::class.java,
             "tavern_db"
-        ).addMigrations(TavernDatabase.MIGRATION_8_9)
+        ).addMigrations(TavernDatabase.MIGRATION_8_9, TavernDatabase.MIGRATION_9_10, TavernDatabase.MIGRATION_10_11)
             .fallbackToDestructiveMigration().build()
     }
 
@@ -57,6 +58,9 @@ object AppModule {
 
     @Provides
     fun provideMemoryAtomDao(db: TavernDatabase): MemoryAtomDao = db.memoryAtomDao()
+
+    @Provides
+    fun provideChatCharacterDao(db: TavernDatabase): ChatCharacterDao = db.chatCharacterDao()
 
     @Provides
     fun provideScriptDao(db: TavernDatabase): ScriptDao = db.scriptDao()

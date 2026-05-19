@@ -22,6 +22,8 @@ data class ChatEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
     val name: String? = null,
+    @ColumnInfo(name = "is_group") val isGroup: Boolean = false,
+    @ColumnInfo(name = "group_chattiness") val groupChattiness: Int = 50,  // 群聊默认健谈度
     @ColumnInfo(name = "background_path") val backgroundPath: String? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()

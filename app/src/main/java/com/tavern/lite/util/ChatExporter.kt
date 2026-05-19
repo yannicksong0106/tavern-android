@@ -10,8 +10,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -29,7 +30,8 @@ class ChatExporter @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val json: Json
 ) {
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
 
     /**
      * 导出单个对话
@@ -116,7 +118,7 @@ class ChatExporter @Inject constructor(
         Result.failure(e)
     }
 
-    private fun formatDate(timestamp: Long): String = dateFormat.format(Date(timestamp))
+    private fun formatDate(timestamp: Long): String = dateTimeFormatter.format(Instant.ofEpochMilli(timestamp))
 
     // --- Markdown ---
 

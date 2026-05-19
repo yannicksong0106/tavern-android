@@ -4,6 +4,7 @@ import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.util.SwipeUtils
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,19 +41,16 @@ class ChatRepository @Inject constructor(
     suspend fun getRecentMessages(chatId: Long, limit: Int): List<MessageEntity> =
         messageDao.getRecentMessages(chatId, limit)
 
-    suspend fun sendMessage(chatId: Long, content: String, role: String): Long {
+    suspend fun sendMessage(chatId: Long, content: String, role: String, characterId: Long? = null): Long {
         val id = messageDao.insert(
-            MessageEntity(chatId = chatId, role = role, content = content)
+            MessageEntity(chatId = chatId, role = role, content = content, characterId = characterId)
         )
         chatDao.updateTimestamp(chatId)
         return id
     }
 
     suspend fun appendToMessage(messageId: Long, content: String) {
-        val existing = messageDao.getMessageById(messageId)
-        if (existing != null) {
-            messageDao.updateContent(messageId, existing.content + content)
-        }
+        messageDao.appendContent(messageId, content)
     }
 
     suspend fun updateMessageContent(messageId: Long, content: String) {
@@ -63,6 +61,8 @@ class ChatRepository @Inject constructor(
 
     suspend fun getMessageById(messageId: Long): MessageEntity? = messageDao.getMessageById(messageId)
 
+    suspend fun getMessageCount(chatId: Long): Int = messageDao.getMessageCount(chatId)
+
     // 分支操作
     suspend fun getBranchIds(chatId: Long): List<Long?> = messageDao.getBranchIds(chatId)
 
@@ -72,14 +72,15 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun createBranch(chatId: Long, fromMessageId: Long, newBranchId: Long) {
-        // 从 fromMessageId 之后的消息都设为非激活
+        // 从 fromMessageId 之后的消息都设为非激活，并标记为旧分支
         val allMessages = messageDao.getRecentMessages(chatId, 1000).reversed()
         val fromIndex = allMessages.indexOfFirst { it.id == fromMessageId }
         if (fromIndex < 0) return
 
-        // 将 fromMessage 之后的消息设为非激活
-        for (i in (fromIndex + 1) until allMessages.size) {
-            messageDao.deactivateMessage(chatId, allMessages[i].id)
+        val idsToDeactivate = ((fromIndex + 1) until allMessages.size)
+            .map { allMessages[it].id }
+        if (idsToDeactivate.isNotEmpty()) {
+            messageDao.deactivateAndSetBranch(chatId, idsToDeactivate, newBranchId)
         }
     }
 
@@ -106,42 +107,26 @@ class ChatRepository @Inject constructor(
     // Swipe alternatives
     suspend fun addSwipe(messageId: Long, newContent: String) {
         val msg = messageDao.getMessageById(messageId) ?: return
-        val swipes = parseSwipeContent(msg.swipeContent).toMutableList()
+        val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent).toMutableList()
         // If current content is not in swipes, add it first
         if (swipes.isEmpty() || swipes.last() != msg.content) {
             swipes.add(msg.content)
         }
         swipes.add(newContent)
         val newIndex = swipes.size - 1
-        messageDao.updateSwipe(messageId, toJsonArray(swipes), newIndex, newContent)
+        messageDao.updateSwipe(messageId, SwipeUtils.toJsonArray(swipes), newIndex, newContent)
     }
 
     suspend fun switchSwipe(messageId: Long, newIndex: Int) {
         val msg = messageDao.getMessageById(messageId) ?: return
-        val swipes = parseSwipeContent(msg.swipeContent)
+        val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
         if (newIndex < 0 || newIndex >= swipes.size) return
         messageDao.updateSwipeIndex(messageId, newIndex, swipes[newIndex])
     }
 
     suspend fun getSwipeCount(messageId: Long): Int {
         val msg = messageDao.getMessageById(messageId) ?: return 0
-        val swipes = parseSwipeContent(msg.swipeContent)
+        val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
         return if (swipes.isEmpty()) 1 else swipes.size
-    }
-
-    private fun parseSwipeContent(json: String): List<String> {
-        if (json == "[]" || json.isBlank()) return emptyList()
-        return try {
-            val arr = org.json.JSONArray(json)
-            (0 until arr.length()).map { arr.getString(it) }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun toJsonArray(items: List<String>): String {
-        val arr = org.json.JSONArray()
-        items.forEach { arr.put(it) }
-        return arr.toString()
     }
 }

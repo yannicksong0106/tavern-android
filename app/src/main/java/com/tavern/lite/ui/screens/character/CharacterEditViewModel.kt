@@ -8,11 +8,15 @@ import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.repository.CharacterRepository
+import com.tavern.lite.data.repository.WorldBookRepository
+import com.tavern.lite.data.db.entity.WorldBookEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -31,26 +35,38 @@ data class CharacterEditState(
     val characterId: Long? = null,
     val avatarPath: String? = null,
     val backgroundPath: String? = null,
+    // World Book
+    val worldBookId: Long? = null,
+    val worldBookName: String? = null,
     // Author's Note
     val authorNoteContent: String = "",
     val authorNotePosition: String = "after_an",
-    val authorNoteDepth: Int = 4
+    val authorNoteDepth: Int = 4,
+    // Chattiness
+    val chattiness: Int = 50
 )
 
 @HiltViewModel
 class CharacterEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterRepository: CharacterRepository,
+    private val worldBookRepository: WorldBookRepository,
     private val authorNoteDao: AuthorNoteDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CharacterEditState())
     val state: StateFlow<CharacterEditState> = _state.asStateFlow()
 
+    val worldBooks: StateFlow<List<WorldBookEntity>> = worldBookRepository.getAllWorldBooks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun loadCharacter(id: Long) {
         viewModelScope.launch {
             val entity = characterRepository.getCharacterById(id) ?: return@launch
             val authorNote = authorNoteDao.getAuthorNoteSync(id)
+            val worldBookName = entity.worldBookId?.let {
+                worldBookRepository.getWorldBookById(it)?.name
+            }
             _state.value = CharacterEditState(
                 name = entity.name,
                 description = entity.description,
@@ -65,9 +81,12 @@ class CharacterEditViewModel @Inject constructor(
                 characterId = entity.id,
                 avatarPath = entity.avatarPath,
                 backgroundPath = entity.backgroundPath,
+                worldBookId = entity.worldBookId,
+                worldBookName = worldBookName,
                 authorNoteContent = authorNote?.content ?: "",
                 authorNotePosition = authorNote?.position ?: "after_an",
-                authorNoteDepth = authorNote?.depth ?: 4
+                authorNoteDepth = authorNote?.depth ?: 4,
+                chattiness = entity.chattiness
             )
         }
     }
@@ -85,6 +104,7 @@ class CharacterEditViewModel @Inject constructor(
             "tags" -> _state.value.copy(tags = value)
             "authorNoteContent" -> _state.value.copy(authorNoteContent = value)
             "authorNoteDepth" -> _state.value.copy(authorNoteDepth = value.toIntOrNull() ?: 4)
+            "chattiness" -> _state.value.copy(chattiness = value.toIntOrNull()?.coerceIn(0, 100) ?: 50)
             else -> _state.value
         }
     }
@@ -96,6 +116,12 @@ class CharacterEditViewModel @Inject constructor(
     fun updateAvatar(uri: Uri) {
         viewModelScope.launch {
             try {
+                // Delete old avatar file if it exists
+                val oldPath = _state.value.avatarPath
+                if (oldPath != null) {
+                    File(oldPath).delete()
+                }
+
                 val avatarDir = File(context.filesDir, "avatars")
                 avatarDir.mkdirs()
                 val avatarFile = File(avatarDir, "avatar_${System.currentTimeMillis()}.png")
@@ -114,6 +140,12 @@ class CharacterEditViewModel @Inject constructor(
     fun updateBackground(uri: Uri) {
         viewModelScope.launch {
             try {
+                // Delete old background file if it's a custom image (not a preset)
+                val oldPath = _state.value.backgroundPath
+                if (oldPath != null && !oldPath.startsWith("preset:")) {
+                    File(oldPath).delete()
+                }
+
                 val bgDir = File(context.filesDir, "backgrounds")
                 bgDir.mkdirs()
                 val bgFile = File(bgDir, "bg_${System.currentTimeMillis()}.png")
@@ -131,6 +163,14 @@ class CharacterEditViewModel @Inject constructor(
 
     fun clearBackground() {
         _state.value = _state.value.copy(backgroundPath = null)
+    }
+
+    fun setWorldBook(worldBookId: Long, worldBookName: String) {
+        _state.value = _state.value.copy(worldBookId = worldBookId, worldBookName = worldBookName)
+    }
+
+    fun clearWorldBook() {
+        _state.value = _state.value.copy(worldBookId = null, worldBookName = null)
     }
 
     fun setPresetBackground(presetId: String) {
@@ -155,7 +195,9 @@ class CharacterEditViewModel @Inject constructor(
                         postHistoryInstructions = s.postHistoryInstructions.ifBlank { null },
                         creator = s.creator,
                         avatarPath = s.avatarPath,
-                        backgroundPath = s.backgroundPath
+                        backgroundPath = s.backgroundPath,
+                        worldBookId = s.worldBookId,
+                        chattiness = s.chattiness
                     )
                 )
                 s.characterId

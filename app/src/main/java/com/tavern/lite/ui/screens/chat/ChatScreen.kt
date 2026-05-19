@@ -3,13 +3,11 @@ package com.tavern.lite.ui.screens.chat
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.InfiniteRepeatableSpec
-import androidx.compose.animation.core.InfiniteTransition
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -17,13 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -46,14 +41,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.tavern.lite.ui.components.BackgroundPickerSheet
-import com.tavern.lite.ui.components.PresetBackground
 import com.tavern.lite.ui.components.presetBackgrounds
 import java.io.File
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
@@ -87,8 +80,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
@@ -98,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tavern.lite.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.ui.components.CharacterAvatar
@@ -121,11 +115,13 @@ fun ChatScreen(
     val character by viewModel.character.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
-    val streamingText by viewModel.streamingText.collectAsStateWithLifecycle()
     val branches by viewModel.branches.collectAsStateWithLifecycle()
     val currentBranchIndex by viewModel.currentBranchIndex.collectAsStateWithLifecycle()
     val backgroundPath by viewModel.backgroundPath.collectAsStateWithLifecycle()
     val bubbleStyle by viewModel.bubbleStyle.collectAsStateWithLifecycle()
+    val isGroupChat by viewModel.isGroupChat.collectAsStateWithLifecycle()
+    val groupCharacters by viewModel.groupCharacters.collectAsStateWithLifecycle()
+    val respondingCharacter by viewModel.respondingCharacter.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -180,10 +176,16 @@ fun ChatScreen(
             }
         }
     }
-    LaunchedEffect(messages.size, streamingText, streamingText.length) {
+    LaunchedEffect(messages.size) {
         if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
         }
+    }
+
+    // 主动发言：进入对话时自动回复未回复的消息
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(500)
+        viewModel.triggerProactiveIfNeeded()
     }
 
     // 编辑消息对话框
@@ -224,15 +226,37 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CharacterAvatar(
-                            name = character?.name ?: "?",
-                            avatarPath = character?.avatarPath,
-                            size = 36.dp
-                        )
+                        if (isGroupChat) {
+                            // Group chat: show stacked avatars or group icon
+                            Box(modifier = Modifier.size(36.dp)) {
+                                val chars = groupCharacters.take(2)
+                                chars.forEachIndexed { index, char ->
+                                    CharacterAvatar(
+                                        name = char.name,
+                                        avatarPath = char.avatarPath,
+                                        size = 24.dp,
+                                        modifier = Modifier
+                                            .align(if (index == 0) Alignment.TopStart else Alignment.BottomEnd)
+                                            .padding(if (index == 0) 0.dp else 4.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            CharacterAvatar(
+                                name = character?.name ?: "?",
+                                avatarPath = character?.avatarPath,
+                                size = 36.dp
+                            )
+                        }
                         Column(modifier = Modifier.padding(start = 12.dp)) {
                             Text(
-                                text = character?.name ?: stringResource(R.string.loading),
-                                style = MaterialTheme.typography.titleMedium
+                                text = if (isGroupChat) {
+                                    groupCharacters.joinToString(", ") { it.name }
+                                } else {
+                                    character?.name ?: stringResource(R.string.loading)
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1
                             )
                             if (isGenerating) {
                                 val infiniteTransition = rememberInfiniteTransition(label = "topBar")
@@ -245,8 +269,13 @@ fun ChatScreen(
                                     ),
                                     label = "typingAlpha"
                                 )
+                                val typingName = if (isGroupChat) {
+                                    respondingCharacter?.name ?: stringResource(R.string.typing)
+                                } else {
+                                    stringResource(R.string.typing)
+                                }
                                 Text(
-                                    text = stringResource(R.string.typing),
+                                    text = typingName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
                                     fontSize = 11.sp
@@ -290,12 +319,20 @@ fun ChatScreen(
                         )
                     }
                 } else {
-                    AsyncImage(
-                        model = File(bgPath),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val file = File(bgPath)
+                    if (file.exists()) {
+                        AsyncImage(
+                            model = file,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // Background file was deleted; clear the stale path
+                        LaunchedEffect(bgPath) {
+                            viewModel.clearChatBackground()
+                        }
+                    }
                 }
                 // 半透明遮罩
                 Box(
@@ -324,21 +361,31 @@ fun ChatScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 流式输出时，过滤掉最后一条 assistant 消息（用 streamingText 气泡代替）
-                val displayMessages = if (isGenerating && messages.lastOrNull()?.role == "assistant") {
-                    messages.dropLast(1)
-                } else {
-                    messages
-                }
-
-                items(displayMessages, key = { it.id }) { message ->
-                    val index = displayMessages.indexOf(message)
-                    val prevMessage = if (index > 0) displayMessages[index - 1] else null
-                    val nextMessage = if (index < displayMessages.size - 1) displayMessages[index + 1] else null
-                    val isSameRoleAsPrev = prevMessage?.role == message.role
-                    val isSameRoleAsNext = nextMessage?.role == message.role
+                items(messages.size, key = { messages[it].id }) { index ->
+                    val message = messages[index]
+                    val prevMessage = if (index > 0) messages[index - 1] else null
+                    val nextMessage = if (index < messages.size - 1) messages[index + 1] else null
+                    // In group chat, check both role and character_id for grouping
+                    val isSameRoleAsPrev = if (isGroupChat && message.role == "assistant") {
+                        prevMessage?.role == message.role && prevMessage?.characterId == message.characterId
+                    } else {
+                        prevMessage?.role == message.role
+                    }
+                    val isSameRoleAsNext = if (isGroupChat && message.role == "assistant") {
+                        nextMessage?.role == message.role && nextMessage?.characterId == message.characterId
+                    } else {
+                        nextMessage?.role == message.role
+                    }
                     // 同角色连续消息间距更紧凑（但不能粘连）
                     val topSpacing = if (isSameRoleAsPrev) 3.dp else 8.dp
+                    // Get character name for this message (group chat: per message, single: global)
+                    val msgCharName = if (isGroupChat && message.role == "assistant") {
+                        message.characterId?.let { charId ->
+                            groupCharacters.find { it.id == charId }?.name
+                        } ?: character?.name ?: ""
+                    } else {
+                        character?.name ?: ""
+                    }
                     Column(
                         modifier = Modifier
                             .animateItem()
@@ -346,7 +393,7 @@ fun ChatScreen(
                     ) {
                         MessageBubble(
                             message = message,
-                            characterName = character?.name ?: "",
+                            characterName = msgCharName,
                             markwon = markwon,
                             bubbleStyle = bubbleStyle,
                             showName = !isSameRoleAsPrev,
@@ -363,32 +410,28 @@ fun ChatScreen(
                     }
                 }
 
-                // 流式输出中
-                if (isGenerating && streamingText.isNotEmpty()) {
+                // 正在生成时显示加载指示器
+                if (isGenerating) {
                     item {
-                        MessageBubble(
-                            message = MessageEntity(
-                                id = -1,
-                                chatId = chatId,
-                                role = "assistant",
-                                content = streamingText
-                            ),
-                            characterName = character?.name ?: "",
-                            markwon = markwon,
-                            bubbleStyle = bubbleStyle,
-                            isStreaming = true,
-                            onRegenerate = {},
-                            onEdit = {},
-                            onDelete = {}
-                        )
-                    }
-                }
-
-                // 正在生成但还没有内容
-                if (isGenerating && streamingText.isEmpty()) {
-                    item {
-                        Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp)) {
+                        val typingName = if (isGroupChat) {
+                            respondingCharacter?.name ?: character?.name ?: ""
+                        } else {
+                            character?.name ?: ""
+                        }
+                        Row(
+                            modifier = Modifier.padding(start = 12.dp, top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             LoadingDots()
+                            if (typingName.isNotBlank()) {
+                                Text(
+                                    text = " $typingName ${stringResource(R.string.typing)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -413,7 +456,7 @@ fun ChatScreen(
                 ) {
                     Icon(
                         Icons.Default.KeyboardArrowDown,
-                        contentDescription = "回到底部",
+                        contentDescription = stringResource(R.string.scroll_to_bottom),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
@@ -428,7 +471,7 @@ fun ChatScreen(
                 onValueChange = { inputText = it },
                 onSend = {
                     if (inputText.isNotBlank()) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.sendMessage(inputText)
                         inputText = ""
                     }
@@ -437,6 +480,8 @@ fun ChatScreen(
                 onContinue = { viewModel.continueGeneration() },
                 isGenerating = isGenerating,
                 showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
+                isGroupChat = isGroupChat,
+                groupCharacters = groupCharacters,
                 modifier = Modifier
                     .fillMaxWidth()
             )
@@ -452,7 +497,6 @@ private fun MessageBubble(
     characterName: String,
     markwon: Markwon,
     bubbleStyle: BubbleStyleConfig = BubbleStyleConfig(),
-    isStreaming: Boolean = false,
     showName: Boolean = true,
     showTimestamp: Boolean = true,
     isGroupedTop: Boolean = false,
@@ -469,10 +513,7 @@ private fun MessageBubble(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
-    val screenWidth = LocalDensity.current.run {
-        androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels /
-                density
-    }
+    val screenWidth = LocalConfiguration.current.screenWidthDp
     val maxBubbleWidth = (screenWidth * 0.75f).dp
 
     // Parse swipe info
@@ -521,12 +562,12 @@ private fun MessageBubble(
                     .background(color = bubbleColor)
                     .combinedClickable(
                         onClick = {},
-                        onLongClick = { if (!isStreaming) showMenu = true }
+                        onLongClick = { showMenu = true }
                     )
                     .animateContentSize()
                     .padding(12.dp)
             ) {
-                if (!isUser && !isStreaming && showName) {
+                if (!isUser && showName) {
                     Text(
                         text = characterName,
                         style = MaterialTheme.typography.labelSmall,
@@ -535,7 +576,7 @@ private fun MessageBubble(
                     )
                 }
 
-                val content = message.content.ifEmpty { "..." }
+                val content = message.content.ifEmpty { stringResource(R.string.empty_message) }
                 if (!isUser) {
                     MarkdownText(
                         markwon = markwon,
@@ -553,28 +594,9 @@ private fun MessageBubble(
                     )
                 }
 
-                if (isStreaming) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "cursor")
-                    val cursorAlpha by infiniteTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = 0f,
-                        animationSpec = InfiniteRepeatableSpec(
-                            animation = androidx.compose.animation.core.tween(durationMillis = 600),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "cursorAlpha"
-                    )
-                    Text(
-                        text = stringResource(R.string.typing) + "\u2588",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cursorAlpha),
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
 
                 // Timestamp (只在分组最后一条显示)
-                if (!isStreaming && showTimestamp) {
+                if (showTimestamp) {
                     Text(
                         text = formatTimestamp(context, message.createdAt),
                         style = MaterialTheme.typography.labelSmall,
@@ -586,7 +608,7 @@ private fun MessageBubble(
             }
 
             // Swipe navigation for assistant messages with multiple swipes
-            if (!isUser && hasSwipes && !isStreaming) {
+            if (!isUser && hasSwipes) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -734,30 +756,58 @@ private fun InputBar(
     onContinue: () -> Unit = {},
     isGenerating: Boolean,
     showContinue: Boolean = false,
+    isGroupChat: Boolean = false,
+    groupCharacters: List<CharacterEntity> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.Bottom,
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(stringResource(R.string.input_hint)) },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            shape = RoundedCornerShape(24.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend() }),
-            maxLines = 5,
-            modifier = Modifier.weight(1f)
-        )
+    // @ 提及菜单状态
+    var showAtMenu by remember { mutableStateOf(false) }
+    var atSearchText by remember { mutableStateOf("") }
+
+    // 检测 @ 输入
+    LaunchedEffect(value) {
+        if (isGroupChat && value.endsWith("@")) {
+            showAtMenu = true
+            atSearchText = ""
+        } else if (isGroupChat && showAtMenu) {
+            // 检查是否还在 @ 模式中
+            val lastAtIndex = value.lastIndexOf("@")
+            if (lastAtIndex >= 0) {
+                val afterAt = value.substring(lastAtIndex + 1)
+                if (!afterAt.contains(" ")) {
+                    atSearchText = afterAt
+                } else {
+                    showAtMenu = false
+                }
+            } else {
+                showAtMenu = false
+            }
+        }
+    }
+
+    Box {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = modifier
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            TextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(stringResource(R.string.input_hint)) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                shape = RoundedCornerShape(24.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                maxLines = 5,
+                modifier = Modifier.weight(1f)
+            )
 
         if (isGenerating) {
             IconButton(
@@ -812,6 +862,42 @@ private fun InputBar(
                         MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
+            }
+        }
+        }
+
+        // @ 提及下拉菜单
+        if (showAtMenu && groupCharacters.isNotEmpty()) {
+            val filteredCharacters = remember(atSearchText, groupCharacters) {
+                if (atSearchText.isBlank()) {
+                    groupCharacters
+                } else {
+                    groupCharacters.filter {
+                        it.name.contains(atSearchText, ignoreCase = true)
+                    }
+                }
+            }
+
+            if (filteredCharacters.isNotEmpty()) {
+                DropdownMenu(
+                    expanded = true,
+                    onDismissRequest = { showAtMenu = false }
+                ) {
+                    filteredCharacters.forEach { char ->
+                        DropdownMenuItem(
+                            text = { Text(char.name) },
+                            onClick = {
+                                // 替换 @ 后的文本为选中的角色名
+                                val lastAtIndex = value.lastIndexOf("@")
+                                if (lastAtIndex >= 0) {
+                                    val newValue = value.substring(0, lastAtIndex) + "@${char.name} "
+                                    onValueChange(newValue)
+                                }
+                                showAtMenu = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }

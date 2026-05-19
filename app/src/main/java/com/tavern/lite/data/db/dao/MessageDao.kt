@@ -20,11 +20,17 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun getMessageById(id: Long): MessageEntity?
 
+    @Query("SELECT COUNT(*) FROM messages WHERE chat_id = :chatId AND is_active = 1")
+    suspend fun getMessageCount(chatId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity): Long
 
     @Query("UPDATE messages SET content = :content WHERE id = :id")
     suspend fun updateContent(id: Long, content: String)
+
+    @Query("UPDATE messages SET content = content || :chunk WHERE id = :id")
+    suspend fun appendContent(id: Long, chunk: String)
 
     @Query("UPDATE messages SET is_active = 0 WHERE id = :id")
     suspend fun softDelete(id: Long)
@@ -47,6 +53,9 @@ interface MessageDao {
 
     @Query("UPDATE messages SET is_active = 0 WHERE id = :messageId AND chat_id = :chatId")
     suspend fun deactivateMessage(chatId: Long, messageId: Long)
+
+    @Query("UPDATE messages SET is_active = 0, branch_id = :newBranchId WHERE chat_id = :chatId AND id IN (:messageIds)")
+    suspend fun deactivateAndSetBranch(chatId: Long, messageIds: List<Long>, newBranchId: Long)
 
     // Swipe alternatives
     @Query("UPDATE messages SET swipe_content = :swipeJson, swipe_index = :swipeIndex, content = :currentContent WHERE id = :id")

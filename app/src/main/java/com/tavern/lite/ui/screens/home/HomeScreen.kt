@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -77,6 +78,7 @@ fun HomeScreen(
     onEditCharacter: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onWorldBookClick: () -> Unit,
+    onGroupChatClick: () -> Unit = {},
     onMemoryClick: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -137,6 +139,9 @@ fun HomeScreen(
                         importLauncher.launch(arrayOf("application/json", "image/png"))
                     }) {
                         Icon(Icons.Default.FileOpen, contentDescription = stringResource(R.string.import_character))
+                    }
+                    IconButton(onClick = onGroupChatClick) {
+                        Icon(Icons.Default.Group, contentDescription = stringResource(R.string.create_group_chat))
                     }
                     IconButton(onClick = onWorldBookClick) {
                         Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = stringResource(R.string.world_book))

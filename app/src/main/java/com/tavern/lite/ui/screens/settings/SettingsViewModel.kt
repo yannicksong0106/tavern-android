@@ -12,10 +12,12 @@ import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,10 +48,18 @@ class SettingsViewModel @Inject constructor(
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
 
-    fun saveConfig(config: ApiConfig) {
+    private val _pendingConfig = MutableSharedFlow<ApiConfig>(extraBufferCapacity = 1)
+
+    init {
         viewModelScope.launch {
-            apiConfigStore.save(config)
+            _pendingConfig.debounce(300).collect { config ->
+                apiConfigStore.save(config)
+            }
         }
+    }
+
+    fun saveConfig(config: ApiConfig) {
+        _pendingConfig.tryEmit(config)
     }
 
     fun updateProvider(provider: ApiProvider) {

@@ -1,5 +1,116 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-18 ~ 2026-05-19 — v1.0.3: 现有功能打磨（代码审查 + 优化）
+
+> 基于全量代码审查的系统性优化，修复关键 bug、提升性能、补齐 i18n。
+> 三轮审查，10 个批次，累计 27 项修复。
+
+### 优化计划
+
+#### Batch 1: Critical Bug 修复
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 1 | `appendToMessage` 流式每 chunk 做 read-modify-write | `ChatRepository.kt:51-54` | 改为 `appendToMessageDirect(id, chunk)` 直接 SQL `content = content \|\| :chunk`，不做 SELECT |
+| 2 | `stopGeneration` 后 finally 仍执行拆分 | `ChatViewModel.kt:209-213` | 加 `wasCancelled` 标志，cancel 时跳过 `splitIntoMultipleMessages` |
+| 3 | `createBranch` 未实际创建分支 | `ChatRepository.kt:74-84` | 将 `newBranchId` 写入后续消息的 `branch_id` 字段 |
+
+#### Batch 2: 性能优化
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 4 | LazyColumn `indexOf` O(n²) | `ChatScreen.kt:335` | 用 `displayMessages.forEachIndexed` 替代，或在 `items` 中用 `index` 参数 |
+| 5 | `shouldExtract` 基于截断后 size | `ChatViewModel.kt:179-180` | 改用独立计数器 `_messageCount`，每发一条消息 +1，不受 contextLength 影响 |
+| 6 | `parseSwipeContent` 重复实现 | `ChatViewModel.kt` + `ChatRepository.kt` | 抽取到 `util/SwipeUtils.kt` 共享 |
+
+#### Batch 3: 功能修复
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 7 | `continueGeneration` 跳过记忆提取 | `ChatViewModel.kt:255-313` | 补上 memoryAtomDao + memoryRepository 调用 |
+| 8 | Claude 非流式缺少 system 字段 | `MemoryExtractorService.kt:277-288` | 补上 `put("system", ...)` |
+
+#### Batch 4: i18n 补齐
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 9 | 硬编码 "回到底部" | `ChatScreen.kt:415` | 改用 `stringResource(R.string.scroll_to_bottom)` |
+| 10 | 硬编码 "..." fallback | `ChatScreen.kt:538` | 改用 `stringResource(R.string.empty_message)` |
+
+#### Batch 5: 代码质量
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 11 | 流式消息 `id = -1` hack | `ChatScreen.kt:371-376` | 定义 `STREAMING_MESSAGE_ID` 常量，增加语义 |
+| 12 | 背景图片无 fallback | `ChatScreen.kt:293-298` | 添加 `error` placeholder，文件不存在时清除背景路径 |
+
+#### Batch 6: 资源泄漏 + 防抖
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 13 | 临时文件泄漏 | `ChatListScreen.kt:96-102` | `deleteOnExit()` → `delete()`，Android JVM 不会正常退出 |
+| 14 | 头像文件不清理 | `CharacterEditViewModel.kt:96-112` | 换头像前删除旧文件 |
+| 15 | 背景文件不清理 | `CharacterEditViewModel.kt:114-130` | 换背景前删除旧文件（仅自定义图片，preset 不删） |
+| 16 | 搜索无防抖 | `HomeViewModel.kt:38-43` | 添加 `debounce(300)`，清空时立即响应 |
+
+#### Batch 7: 低优先级打磨
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 17 | 触觉反馈类型不当 | `ChatScreen.kt:432` | `TextHandleMove` → `LongPress`，更符合发送按钮语义 |
+| 18 | 设置页滑块无防抖 | `SettingsViewModel.kt` | `saveConfig` 改为 `MutableSharedFlow` + `debounce(300)`，滑动时只写入最终值 |
+| 19 | 硬编码英文 prompt | `SettingsViewModel.kt:101` | 跳过 — AI 测试 prompt，保持英文更可靠 |
+| 20 | PNG 检测读全文件 | `HomeViewModel.kt:109` | 只读前 8 字节 magic bytes，避免大文件内存开销 |
+
+#### Batch 8: 第三轮深度审查
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 24 | `matchEntry` 每次调用创建新 Json 实例 | `WorldBookRepository.kt` | 注入 `Json` 实例复用，避免重复创建 |
+| 25 | `findIendPosition` O(n) 线性扫描 PNG 字节 | `PngMetadata.kt` | IEND 是最后一个 chunk，直接从文件末尾定位（O(1)） |
+| 26 | `SimpleDateFormat` 非线程安全 | `ChatExporter.kt` | 替换为 `DateTimeFormatter`（线程安全） |
+
+#### Batch 9: 数据层清理
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 27 | `CharacterRepository` 中 `Json` 实例重复创建 | `CharacterRepository.kt` | 注入 `Json` 实例，替换所有 `Json.xxx` 调用 |
+| 28 | `touchMemories` 逐个调用 `touchMemory`，N 次 DB | `MemoryRepository.kt` + `MemoryDao.kt` | `MemoryDao` 新增 `touchMemories(ids)` 批量方法 |
+
+#### Batch 10: 记忆系统性能
+
+| # | 问题 | 文件 | 修复方案 |
+|---|------|------|----------|
+| 29 | `extractKeywords` 正则每次重新编译 | `MemoryConsolidator.kt` | 提取为 companion object 常量 `PUNCTUATION_REGEX`/`WHITESPACE_REGEX` |
+| 30 | `groupBySimilarity` + `isDuplicate` O(n²) 重复提取关键词 | `MemoryConsolidator.kt` | 预提取关键词到 Map/List 缓存，避免循环内重复计算 |
+
+### 验证目标
+
+- `assembleDebug` ✅
+- `testDebugUnitTest` ✅（49 tests）
+- 手动测试：流式对话、停止生成、继续生成、swipe 切换、背景设置、导入对话、搜索角色
+
+### 优化统计
+
+- **累计修复**: 27 项（Batch 1-10）
+- **跳过**: 1 项（#19 硬编码英文 prompt — 合理保留）
+- **涉及文件**: 21 个源文件 + 2 个测试文件 + 2 个 strings.xml
+
+### 按类别汇总
+
+| 类别 | 项数 | 涉及项 |
+|------|------|--------|
+| Critical Bug | 3 | #1 appendToMessage, #2 stopGeneration, #3 createBranch |
+| 性能优化 | 9 | #4 LazyColumn, #5 messageCount, #20 PNG magic, #24-25 Json/PNG, #28-30 批量/正则/缓存 |
+| 功能修复 | 2 | #7 continueGeneration 记忆, #8 Claude system |
+| 代码质量 | 5 | #6 SwipeUtils, #11 常量, #12 背景 fallback, #26 DateTimeFormatter, #27 CharacterRepository Json |
+| 资源泄漏 | 3 | #13 临时文件, #14-15 头像/背景清理 |
+| 防抖优化 | 2 | #16 搜索防抖, #18 设置防抖 |
+| i18n | 2 | #9-10 硬编码中文 |
+| 交互体验 | 1 | #17 触觉反馈 |
+
+---
+
 ## 2026-05-18 — v1.0.2-debug: 活人感优化 + Bug 修复
 
 > 版本号: 1.0.2-debug (versionCode=3)

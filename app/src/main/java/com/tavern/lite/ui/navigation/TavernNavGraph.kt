@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.tavern.lite.ui.screens.character.CharacterEditScreen
 import com.tavern.lite.ui.screens.chat.ChatScreen
 import com.tavern.lite.ui.screens.chatlist.ChatListScreen
+import com.tavern.lite.ui.screens.groupchat.GroupChatCreateScreen
 import com.tavern.lite.ui.screens.home.HomeScreen
 import com.tavern.lite.ui.screens.memory.MemoryScreen
 import com.tavern.lite.ui.screens.persona.PersonaScreen
@@ -33,6 +34,7 @@ object Routes {
     const val MEMORY = "memory/{characterId}"
     const val SCRIPT = "script/{characterId}"
     const val PERSONA = "persona"
+    const val GROUP_CHAT_CREATE = "group_chat_create"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
     fun chat(characterId: Long, chatId: Long) = "chat/$characterId/$chatId"
@@ -80,6 +82,9 @@ fun TavernNavGraph() {
                 },
                 onWorldBookClick = {
                     navController.navigate(Routes.WORLD_BOOK_LIST)
+                },
+                onGroupChatClick = {
+                    navController.navigate(Routes.GROUP_CHAT_CREATE)
                 }
             )
         }
@@ -144,6 +149,17 @@ fun TavernNavGraph() {
 
         composable(Routes.PERSONA) {
             PersonaScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.GROUP_CHAT_CREATE) {
+            GroupChatCreateScreen(
+                onBack = { navController.popBackStack() },
+                onGroupCreated = { chatId, primaryCharacterId ->
+                    navController.navigate(Routes.chat(primaryCharacterId, chatId)) {
+                        popUpTo(Routes.HOME)
+                    }
+                }
+            )
         }
 
         composable(Routes.WORLD_BOOK_LIST) {

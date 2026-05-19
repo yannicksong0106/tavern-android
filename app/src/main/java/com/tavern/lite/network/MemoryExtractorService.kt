@@ -283,6 +283,7 @@ $conversation
             put("model", provider.model)
             put("max_tokens", 1024)
             put("stream", false)
+            put("system", "你是一个记忆提取助手。请严格按照要求的 JSON 格式输出。")
             put("messages", messages)
         }
 

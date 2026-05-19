@@ -13,6 +13,8 @@ class MemoryConsolidator @Inject constructor(
     companion object {
         private const val CONSOLIDATION_THRESHOLD = 50
         private const val SIMILARITY_THRESHOLD = 0.6
+        private val PUNCTUATION_REGEX = Regex("[\\p{P}\\p{S}\\s]+")
+        private val WHITESPACE_REGEX = Regex("\\s+")
     }
 
     /**
@@ -54,8 +56,8 @@ class MemoryConsolidator @Inject constructor(
             20
         )
 
-        for (existing in existingAtoms) {
-            val existingKeywords = extractKeywords(existing.content)
+        val existingKeywordSets = existingAtoms.map { it to extractKeywords(it.content) }
+        for ((existing, existingKeywords) in existingKeywordSets) {
             val overlap = keywords.intersect(existingKeywords).size
             val similarity = overlap.toDouble() / maxOf(keywords.size, existingKeywords.size).coerceAtLeast(1)
 
@@ -137,6 +139,7 @@ class MemoryConsolidator @Inject constructor(
     private fun groupBySimilarity(atoms: List<MemoryAtomEntity>): List<List<MemoryAtomEntity>> {
         val groups = mutableListOf<MutableList<MemoryAtomEntity>>()
         val assigned = mutableSetOf<Long>()
+        val keywordCache = atoms.associate { it.id to extractKeywords(it.content) }
 
         for (atom in atoms) {
             if (atom.id in assigned) continue
@@ -144,11 +147,11 @@ class MemoryConsolidator @Inject constructor(
             val group = mutableListOf(atom)
             assigned.add(atom.id)
 
-            val keywords = extractKeywords(atom.content)
+            val keywords = keywordCache[atom.id] ?: emptySet()
 
             for (other in atoms) {
                 if (other.id in assigned) continue
-                val otherKeywords = extractKeywords(other.content)
+                val otherKeywords = keywordCache[other.id] ?: emptySet()
                 val overlap = keywords.intersect(otherKeywords).size
                 val similarity = overlap.toDouble() / maxOf(keywords.size, otherKeywords.size).coerceAtLeast(1)
 
@@ -180,9 +183,8 @@ class MemoryConsolidator @Inject constructor(
             "i", "you", "he", "she", "it", "we", "they"
         )
 
-        val punctuation = Regex("[\\p{P}\\p{S}\\s]+")
-        return text.replace(punctuation, " ")
-            .split(Regex("\\s+"))
+        return text.replace(PUNCTUATION_REGEX, " ")
+            .split(WHITESPACE_REGEX)
             .map { it.trim().lowercase() }
             .filter { it.length >= 2 && it !in stopWords }
             .toSet()

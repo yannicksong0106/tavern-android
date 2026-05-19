@@ -40,7 +40,9 @@ class MemoryRepository @Inject constructor(
     }
 
     suspend fun touchMemories(memoryIds: List<Long>) {
-        memoryIds.forEach { memoryDao.touchMemory(it) }
+        if (memoryIds.isNotEmpty()) {
+            memoryDao.touchMemories(memoryIds)
+        }
     }
 
     suspend fun addMemory(characterId: Long, content: String, importance: Int = 5, source: String = "manual"): Long {

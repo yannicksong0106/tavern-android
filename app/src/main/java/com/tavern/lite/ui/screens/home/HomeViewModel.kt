@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ class HomeViewModel @Inject constructor(
     val importResult: SharedFlow<String> = _importResult.asSharedFlow()
 
     val characters: StateFlow<List<CharacterEntity>> = _searchQuery
+        .debounce { query -> if (query.isBlank()) 0L else 300L }
         .flatMapLatest { query ->
             if (query.isBlank()) characterRepository.getAllCharacters()
             else characterRepository.searchCharacters(query)
@@ -106,10 +108,16 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
 
-                val result = if (isPng || tempFile.readBytes().take(8) == byteArrayOf(
-                        0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-                    )
-                ) {
+                val isPngByMagic = try {
+                    tempFile.inputStream().use { stream ->
+                        val header = ByteArray(8)
+                        stream.read(header) == 8 && header.contentEquals(byteArrayOf(
+                            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+                        ))
+                    }
+                } catch (_: Exception) { false }
+
+                val result = if (isPng || isPngByMagic) {
                     importer.importFromPng(tempFile)
                 } else {
                     importer.importFromJson(tempFile)

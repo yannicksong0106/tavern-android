@@ -47,6 +47,8 @@
     <string name="branch_from_here">从此处分叉</string>
     <string name="input_hint">说点什么…</string>
     <string name="continue_generation">继续生成</string>
+    <string name="scroll_to_bottom">回到底部</string>
+    <string name="empty_message">…</string>
     <string name="typing">正在输入…</string>
     <string name="swipe_previous">上一条</string>
     <string name="swipe_next">下一条</string>
@@ -244,6 +246,15 @@
     <string name="disable">禁用</string>
     <string name="enable">启用</string>
 
+    <!-- 世界书 / World Book Assignment -->
+    <string name="select_world_book">选择世界书</string>
+    <string name="no_world_book_assigned">未关联世界书</string>
+
+    <!-- 群聊 / Group Chat -->
+    <string name="create_group_chat">创建群聊</string>
+    <string name="group_chat_select_hint">选择 2 个或更多角色加入群聊</string>
+    <string name="create_group_with_count">创建群聊 (%d 人)</string>
+
     <!-- 背景选择 / Background Picker -->
     <string name="select_background">选择背景</string>
     <string name="custom_background">自定义</string>
@@ -258,4 +269,16 @@
     <string name="bg_rose_gold">玫瑰金</string>
     <string name="bg_arctic">极光</string>
     <string name="bg_cherry">樱花</string>
+
+    <!-- 健谈度 / Chattiness -->
+    <string name="chattiness">健谈度</string>
+    <string name="chattiness_desc">控制角色主动发言的频率</string>
+    <string name="chattiness_silent">沉默寡言</string>
+    <string name="chattiness_quiet">较为安静</string>
+    <string name="chattiness_normal">正常交流</string>
+    <string name="chattiness_talkative">比较健谈</string>
+    <string name="chattiness_very_talkative">非常健谈</string>
+
+    <!-- @ 功能 / At Mention -->
+    <string name="at_mention_hint">@ 角色名 指定回复</string>
 </resources>

@@ -118,14 +118,15 @@ object PngMetadata {
     }
 
     private fun findIendPosition(data: ByteArray): Int {
-        for (i in 8 until data.size - 7) {
-            if (data[i + 4] == 'I'.code.toByte() &&
-                data[i + 5] == 'E'.code.toByte() &&
-                data[i + 6] == 'N'.code.toByte() &&
-                data[i + 7] == 'D'.code.toByte()
-            ) {
-                return i
-            }
+        // IEND is always the last chunk in a valid PNG (12 bytes: 4 len + 4 type + 4 CRC)
+        val iendStart = data.size - 12
+        if (iendStart < 8) return -1
+        if (data[iendStart + 4] == 'I'.code.toByte() &&
+            data[iendStart + 5] == 'E'.code.toByte() &&
+            data[iendStart + 6] == 'N'.code.toByte() &&
+            data[iendStart + 7] == 'D'.code.toByte()
+        ) {
+            return iendStart
         }
         return -1
     }

@@ -9,6 +9,7 @@ import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
+import com.tavern.lite.data.repository.GroupChatRepository
 import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PersonaRepository
@@ -18,9 +19,9 @@ import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.network.MemoryExtractorService
 import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.util.SwipeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.Job
@@ -42,6 +43,7 @@ class ChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val characterRepository: CharacterRepository,
     private val chatRepository: ChatRepository,
+    private val groupChatRepository: GroupChatRepository,
     private val worldBookRepository: WorldBookRepository,
     private val chatApiService: ChatApiService,
     private val apiConfigStore: ApiConfigStore,
@@ -66,6 +68,16 @@ class ChatViewModel @Inject constructor(
     private val _backgroundPath = MutableStateFlow<String?>(null)
     val backgroundPath: StateFlow<String?> = _backgroundPath.asStateFlow()
 
+    // Group chat state
+    private val _isGroupChat = MutableStateFlow(false)
+    val isGroupChat: StateFlow<Boolean> = _isGroupChat.asStateFlow()
+
+    private val _groupCharacters = MutableStateFlow<List<CharacterEntity>>(emptyList())
+    val groupCharacters: StateFlow<List<CharacterEntity>> = _groupCharacters.asStateFlow()
+
+    private val _respondingCharacter = MutableStateFlow<CharacterEntity?>(null)
+    val respondingCharacter: StateFlow<CharacterEntity?> = _respondingCharacter.asStateFlow()
+
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BubbleStyleConfig())
 
@@ -75,13 +87,17 @@ class ChatViewModel @Inject constructor(
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
-    private val _streamingText = MutableStateFlow("")
-    val streamingText: StateFlow<String> = _streamingText.asStateFlow()
-
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     private var streamingJob: Job? = null
+    @Volatile private var wasCancelled = false
+    private var messageCount = 0
+
+    // 主动对话冷却机制：characterId -> last proactive timestamp
+    private val _lastProactiveTime = mutableMapOf<Long, Long>()
+    // 防止主动对话链式触发
+    @Volatile private var isProactiveMessage = false
 
     init {
         viewModelScope.launch {
@@ -90,21 +106,44 @@ class ChatViewModel @Inject constructor(
             // 加载背景：对话级覆盖角色级
             val chat = chatRepository.getChatById(chatId)
             _backgroundPath.value = chat?.backgroundPath ?: char?.backgroundPath
+            // 初始化消息计数（用于记忆提取频率控制）
+            messageCount = chatRepository.getMessageCount(chatId)
+
+            // Group chat detection
+            if (chat?.isGroup == true) {
+                _isGroupChat.value = true
+                val chars = groupChatRepository.getCharactersForChatSync(chatId)
+                _groupCharacters.value = chars
+            }
         }
     }
 
     fun sendMessage(content: String) {
         if (content.isBlank() || _isGenerating.value) return
 
-        streamingJob = viewModelScope.launch {
-            // 对用户消息执行正则脚本（类型 0 = 用户消息）
-            val processedContent = scriptRepository.applyScripts(characterId, content, 0)
+        if (_isGroupChat.value) {
+            // 先检查是否是 @ 消息
+            if (!handleAtMention(content)) {
+                sendGroupChatMessage(content)
+            }
+        } else {
+            sendSingleChatMessage(content)
+        }
+    }
 
-            // 保存用户消息（使用处理后的文本）
-            chatRepository.sendMessage(chatId, processedContent, "user")
+    private fun sendSingleChatMessage(content: String) {
+        wasCancelled = false
+        streamingJob = viewModelScope.launch {
+            // 只有非空内容才发送用户消息（主动发言时不发送）
+            val processedContent = if (content.isNotBlank()) {
+                val processed = scriptRepository.applyScripts(characterId, content, 0)
+                chatRepository.sendMessage(chatId, processed, "user")
+                processed
+            } else {
+                ""
+            }
 
             _isGenerating.value = true
-            _streamingText.value = ""
 
             var assistantMsgId: Long? = null
             try {
@@ -145,24 +184,21 @@ class ChatViewModel @Inject constructor(
                     persona = persona
                 )
 
-                // 创建空的 assistant 消息
-                assistantMsgId = chatRepository.sendMessage(chatId, "", "assistant")
-
-                // 流式接收
+                // 静默累积完整回复
+                var responseBuffer = ""
                 chatApiService.streamChat(promptMessages, config).collect { chunk ->
-                    _streamingText.value += chunk
-                    chatRepository.appendToMessage(assistantMsgId, chunk)
+                    responseBuffer += chunk
                 }
 
+                if (responseBuffer.isBlank()) return@launch
+
+                // 写入完整消息
+                assistantMsgId = chatRepository.sendMessage(chatId, responseBuffer, "assistant")
+
                 // 对 AI 回复执行正则脚本（类型 1 = AI 回复）
-                if (assistantMsgId != null) {
-                    val assistantMsg = chatRepository.getMessageById(assistantMsgId!!)
-                    if (assistantMsg != null && assistantMsg.content.isNotBlank()) {
-                        val processedReply = scriptRepository.applyScripts(characterId, assistantMsg.content, 1)
-                        if (processedReply != assistantMsg.content) {
-                            chatRepository.updateMessageContent(assistantMsgId!!, processedReply)
-                        }
-                    }
+                val processedReply = scriptRepository.applyScripts(characterId, responseBuffer, 1)
+                if (processedReply != responseBuffer) {
+                    chatRepository.updateMessageContent(assistantMsgId, processedReply)
                 }
 
                 // === 记忆提取 ===
@@ -176,8 +212,8 @@ class ChatViewModel @Inject constructor(
                 }
 
                 // 2. LLM 批量提取（每 10 轮一次）
-                val totalMessages = chatHistory.size
-                if (memoryExtractorService.shouldExtract(totalMessages)) {
+                messageCount++
+                if (memoryExtractorService.shouldExtract(messageCount)) {
                     val allMessages = chatRepository.getRecentMessages(chatId, 30)
                     val llmFacts = memoryExtractorService.extractWithLLM(
                         characterId, allMessages.reversed(), character.name, config, chatId
@@ -189,33 +225,139 @@ class ChatViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
-                // 删除空的 assistant 消息
-                if (assistantMsgId != null) {
-                    val msg = chatRepository.getMessageById(assistantMsgId!!)
-                    if (msg != null && msg.content.isBlank()) {
-                        chatRepository.deleteMessage(msg.id)
-                    }
-                }
             } finally {
-                // 活人感：拆分成多条消息（在 finally 中，isGenerating 仍为 true，
-                // 流式气泡持续覆盖，避免拆分过程中出现内容重复）
-                splitIntoMultipleMessages(assistantMsgId)
-                _streamingText.value = ""
+                // 用户主动停止时不拆分，避免对不完整内容操作
+                if (!wasCancelled) {
+                    splitIntoMultipleMessages(assistantMsgId)
+                    // 触发主动对话
+                    scheduleProactiveDialogue()
+                }
                 _isGenerating.value = false
             }
         }
     }
 
+    private fun sendGroupChatMessage(content: String) {
+        wasCancelled = false
+        streamingJob = viewModelScope.launch {
+            // 只有非空内容才发送用户消息（主动发言时不发送）
+            val processedContent = if (content.isNotBlank()) {
+                val processed = scriptRepository.applyScripts(characterId, content, 0)
+                chatRepository.sendMessage(chatId, processed, "user")
+                processed
+            } else {
+                ""
+            }
+
+            _isGenerating.value = true
+
+            try {
+                val characters = _groupCharacters.value
+                if (characters.isEmpty()) return@launch
+
+                val config = apiConfigStore.configFlow.first()
+                val persona = personaRepository.getEffectivePersona(characterId)
+                val characterMap = characters.associateBy { it.id }
+
+                // Load history once, update after each character responds
+                var chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+
+                for (char in characters) {
+                    if (wasCancelled) break
+
+                    _respondingCharacter.value = char
+
+                    val worldBookEntries = if (char.worldBookId != null) {
+                        worldBookRepository.matchEntries(char.worldBookId, processedContent)
+                    } else emptyList()
+
+                    val memoryAtoms = memoryAtomDao.getRelevantAtoms(char.id, 10)
+                    memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+                    val memories = if (memoryAtoms.isEmpty()) {
+                        memoryRepository.getRelevantMemories(char.id, processedContent)
+                    } else emptyList()
+
+                    val promptMessages = PromptBuilder.buildGroupChat(
+                        characters = characters,
+                        respondingCharacter = char,
+                        userMessage = processedContent,
+                        chatHistory = chatHistory.reversed(),
+                        characterMap = characterMap,
+                        worldBookEntries = worldBookEntries,
+                        userName = config.userName,
+                        memories = memories,
+                        memoryAtoms = memoryAtoms,
+                        persona = persona
+                    )
+
+                    // 静默累积完整回复
+                    var fullResponse = ""
+                    chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                        fullResponse += chunk
+                    }
+
+                    // Strip [CharacterName]: prefix from final content
+                    val cleanContent = cleanCharacterPrefix(fullResponse, char.name)
+
+                    if (cleanContent.isNotBlank()) {
+                        // 写入完整消息
+                        val msgId = chatRepository.sendMessage(chatId, cleanContent, "assistant", char.id)
+
+                        // Apply regex scripts
+                        val processedReply = scriptRepository.applyScripts(char.id, cleanContent, 1)
+                        if (processedReply != cleanContent) {
+                            chatRepository.updateMessageContent(msgId, processedReply)
+                        }
+
+                        // Split into multiple messages
+                        if (!wasCancelled) {
+                            splitIntoMultipleMessages(msgId)
+                        }
+                    }
+
+                    // Per-character memory extraction
+                    messageCount++
+                    if (memoryExtractorService.shouldExtract(messageCount)) {
+                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                        val llmFacts = memoryExtractorService.extractWithLLM(
+                            char.id, allMessages.reversed(), char.name, config, chatId
+                        )
+                        if (llmFacts.isNotEmpty()) {
+                            memoryConsolidator.insertWithDedup(llmFacts)
+                            memoryConsolidator.maybeConsolidate(char.id)
+                        }
+                    }
+
+                    // Reload history so next character sees this one's response
+                    chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+
+                    // Delay between characters
+                    if (char != characters.last() && !wasCancelled) {
+                        delay(500 + (Math.random() * 500).toLong())
+                    }
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("API 错误: ${e.message}")
+            } finally {
+                _isGenerating.value = false
+                _respondingCharacter.value = null
+                // 触发群聊主动对话
+                if (!wasCancelled) {
+                    scheduleGroupProactiveDialogue()
+                }
+            }
+        }
+    }
+
     fun stopGeneration() {
+        wasCancelled = true
         streamingJob?.cancel()
         streamingJob = null
         _isGenerating.value = false
-        _streamingText.value = ""
     }
 
     /**
      * 活人感：将 AI 回复按段落拆分成多条消息，逐条显示。
-     * 在 finally 块中调用，isGenerating 仍为 true，streamingText 持续覆盖。
      */
     private suspend fun splitIntoMultipleMessages(assistantMsgId: Long?) {
         if (assistantMsgId == null) return
@@ -230,26 +372,337 @@ class ChatViewModel @Inject constructor(
 
         if (paragraphs.size <= 1) return // 只有一段，不需要拆分
 
+        val msgCharacterId = msg.characterId
+
         // 更新原消息为第一段
         chatRepository.updateMessageContent(assistantMsgId, paragraphs[0])
 
-        // 后续段落逐条发送，streamingText 持续更新以覆盖底层消息变化
+        // 后续段落逐条发送，带随机延迟模拟真人打字
         for (i in 1 until paragraphs.size) {
-            val isLast = i == paragraphs.size - 1
-            if (isLast) {
-                // 最后一段：先插入消息，再清 streamingText，避免闪烁
-                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
-                delay(100)
-                _streamingText.value = ""
-            } else {
-                _streamingText.value = paragraphs[i]
-                val len = paragraphs[i].length
-                val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-                val jitter = (Math.random() * 400 - 200).toLong()
-                delay(baseDelay + jitter)
-                chatRepository.sendMessage(chatId, paragraphs[i], "assistant")
+            val len = paragraphs[i].length
+            val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
+            val jitter = (Math.random() * 400 - 200).toLong()
+            delay(baseDelay + jitter)
+            chatRepository.sendMessage(chatId, paragraphs[i], "assistant", msgCharacterId)
+        }
+    }
+
+    // ==================== 主动对话逻辑 ====================
+
+    /**
+     * 单聊主动对话：延迟 2-4 秒后触发角色主动延伸话题
+     */
+    private fun scheduleProactiveDialogue() {
+        // 防止链式触发：主动消息不再触发主动消息
+        if (_isGroupChat.value || isProactiveMessage) return
+        val character = _character.value ?: return
+        val chattiness = character.chattiness
+        if (chattiness <= 0) return  // 健谈度为 0 不触发
+
+        // 根据健谈度计算概率 (chattiness/100)
+        val probability = chattiness / 100.0
+        if (Math.random() > probability) return
+
+        // 延迟 2-4 秒后触发
+        viewModelScope.launch {
+            delay(2000 + (Math.random() * 2000).toLong())
+            if (!_isGenerating.value) {
+                sendProactiveSingleMessage()
             }
         }
+    }
+
+    /**
+     * 单聊主动发言：构建主动对话 prompt 并发送
+     */
+    private fun sendProactiveSingleMessage() {
+        streamingJob = viewModelScope.launch {
+            _isGenerating.value = true
+            isProactiveMessage = true  // 标记为主动消息，防止链式触发
+            try {
+                val character = _character.value ?: return@launch
+                val config = apiConfigStore.configFlow.first()
+                val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+                if (chatHistory.isEmpty()) return@launch
+
+                val persona = personaRepository.getEffectivePersona(characterId)
+
+                // 构建带主动发言指令的 prompt
+                val promptMessages = PromptBuilder.buildProactive(
+                    character = character,
+                    chatHistory = chatHistory.reversed(),
+                    userName = config.userName,
+                    persona = persona
+                )
+
+                var responseBuffer = ""
+                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                    responseBuffer += chunk
+                }
+
+                if (responseBuffer.isBlank()) return@launch
+
+                // 清理可能的 [CharName]: 前缀
+                val cleanContent = cleanCharacterPrefix(responseBuffer, character.name)
+                if (cleanContent.isNotBlank()) {
+                    // 应用正则脚本
+                    val processedReply = scriptRepository.applyScripts(characterId, cleanContent, 1)
+                    val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
+                    chatRepository.sendMessage(chatId, finalContent, "assistant")
+
+                    // 记忆提取
+                    messageCount++
+                    if (memoryExtractorService.shouldExtract(messageCount)) {
+                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                        val llmFacts = memoryExtractorService.extractWithLLM(
+                            characterId, allMessages.reversed(), character.name, config, chatId
+                        )
+                        if (llmFacts.isNotEmpty()) {
+                            memoryConsolidator.insertWithDedup(llmFacts)
+                            memoryConsolidator.maybeConsolidate(characterId)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("API 错误: ${e.message}")
+            } finally {
+                _isGenerating.value = false
+                isProactiveMessage = false
+            }
+        }
+    }
+
+    /**
+     * 群聊主动对话：按概率触发角色主动发言
+     */
+    private fun scheduleGroupProactiveDialogue() {
+        // 防止链式触发：主动消息不再触发主动消息
+        if (!_isGroupChat.value || isProactiveMessage) return
+        val characters = _groupCharacters.value
+        if (characters.isEmpty()) return
+
+        // 获取群聊健谈度（取所有角色的最大值，让最健谈的角色主导）
+        val maxChattiness = characters.maxOf { it.chattiness }
+        if (maxChattiness <= 0) return
+
+        // 30-50% 概率触发（根据最高健谈度调整）
+        val probability = 0.3 + (maxChattiness / 100.0) * 0.2  // 30%-50%
+        if (Math.random() > probability) return
+
+        // 延迟 1-3 秒
+        viewModelScope.launch {
+            delay(1000 + (Math.random() * 2000).toLong())
+            if (!_isGenerating.value) {
+                // 选择下一个发言角色（排除刚发言的，考虑冷却）
+                val nextChar = selectNextProactiveCharacter(characters)
+                if (nextChar != null) {
+                    sendProactiveGroupMessage(nextChar)
+                }
+            }
+        }
+    }
+
+    /**
+     * 选择下一个主动发言的角色（按健谈度加权随机，带冷却机制）
+     */
+    private fun selectNextProactiveCharacter(characters: List<CharacterEntity>): CharacterEntity? {
+        val now = System.currentTimeMillis()
+        val cooldownMs = 30_000L  // 30 秒冷却
+
+        // 过滤掉冷却中的角色
+        val available = characters.filter { char ->
+            val lastTime = _lastProactiveTime[char.id] ?: 0
+            now - lastTime > cooldownMs
+        }
+
+        if (available.isEmpty()) return null
+
+        // 按健谈度加权随机选择
+        val totalWeight = available.sumOf { it.chattiness }
+        if (totalWeight <= 0) return available.random()
+
+        var random = Math.random() * totalWeight
+        for (char in available) {
+            random -= char.chattiness
+            if (random <= 0) {
+                _lastProactiveTime[char.id] = now
+                return char
+            }
+        }
+
+        val selected = available.last()
+        _lastProactiveTime[selected.id] = now
+        return selected
+    }
+
+    /**
+     * 群聊主动发言：让指定角色主动插话
+     */
+    private fun sendProactiveGroupMessage(character: CharacterEntity) {
+        streamingJob = viewModelScope.launch {
+            _isGenerating.value = true
+            _respondingCharacter.value = character
+            isProactiveMessage = true  // 标记为主动消息，防止链式触发
+
+            try {
+                val characters = _groupCharacters.value
+                val config = apiConfigStore.configFlow.first()
+                val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+                if (chatHistory.isEmpty()) return@launch
+
+                val persona = personaRepository.getEffectivePersona(characterId)
+                val characterMap = characters.associateBy { it.id }
+
+                val promptMessages = PromptBuilder.buildGroupProactive(
+                    characters = characters,
+                    respondingCharacter = character,
+                    chatHistory = chatHistory.reversed(),
+                    characterMap = characterMap,
+                    userName = config.userName,
+                    persona = persona
+                )
+
+                var fullResponse = ""
+                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                    fullResponse += chunk
+                }
+
+                val cleanContent = cleanCharacterPrefix(fullResponse, character.name)
+                if (cleanContent.isNotBlank()) {
+                    // 应用正则脚本
+                    val processedReply = scriptRepository.applyScripts(character.id, cleanContent, 1)
+                    val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
+                    chatRepository.sendMessage(chatId, finalContent, "assistant", character.id)
+
+                    // 记忆提取
+                    messageCount++
+                    if (memoryExtractorService.shouldExtract(messageCount)) {
+                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                        val llmFacts = memoryExtractorService.extractWithLLM(
+                            character.id, allMessages.reversed(), character.name, config, chatId
+                        )
+                        if (llmFacts.isNotEmpty()) {
+                            memoryConsolidator.insertWithDedup(llmFacts)
+                            memoryConsolidator.maybeConsolidate(character.id)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("API 错误: ${e.message}")
+            } finally {
+                _isGenerating.value = false
+                _respondingCharacter.value = null
+                isProactiveMessage = false
+            }
+        }
+    }
+
+    /**
+     * 处理 @ 消息：检测 @ 角色名 并只让该角色回复
+     */
+    private fun handleAtMention(content: String): Boolean {
+        if (!_isGroupChat.value) return false
+
+        // 检测 @角色名 格式（角色名后跟空格或到达末尾）
+        val atPattern = Regex("@(\\S+?)(?:\\s|$)")
+        val match = atPattern.find(content)
+        if (match != null) {
+            val mentionedName = match.groupValues[1]
+            val mentionedChar = _groupCharacters.value.find {
+                it.name.equals(mentionedName, ignoreCase = true)
+            }
+
+            if (mentionedChar != null) {
+                // 移除 @前缀，发送给指定角色
+                val cleanContent = content.replaceFirst(atPattern, "").trim()
+                sendDirectMessage(cleanContent, mentionedChar)
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * 发送定向消息：只让指定角色回复
+     */
+    private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity) {
+        wasCancelled = false
+        streamingJob = viewModelScope.launch {
+            // 发送用户消息
+            if (content.isNotBlank()) {
+                val processedContent = scriptRepository.applyScripts(characterId, content, 0)
+                chatRepository.sendMessage(chatId, processedContent, "user")
+            }
+
+            _isGenerating.value = true
+            _respondingCharacter.value = targetCharacter
+
+            try {
+                val characters = _groupCharacters.value
+                val config = apiConfigStore.configFlow.first()
+                val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+                val persona = personaRepository.getEffectivePersona(characterId)
+                val characterMap = characters.associateBy { it.id }
+
+                val promptMessages = PromptBuilder.buildGroupChat(
+                    characters = characters,
+                    respondingCharacter = targetCharacter,
+                    userMessage = content,
+                    chatHistory = chatHistory.reversed(),
+                    characterMap = characterMap,
+                    userName = config.userName,
+                    persona = persona
+                )
+
+                var fullResponse = ""
+                chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                    fullResponse += chunk
+                }
+
+                val cleanContent = cleanCharacterPrefix(fullResponse, targetCharacter.name)
+                if (cleanContent.isNotBlank()) {
+                    // 应用正则脚本
+                    val processedReply = scriptRepository.applyScripts(targetCharacter.id, cleanContent, 1)
+                    val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
+                    chatRepository.sendMessage(chatId, finalContent, "assistant", targetCharacter.id)
+
+                    // 记忆提取
+                    messageCount++
+                    if (memoryExtractorService.shouldExtract(messageCount)) {
+                        val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                        val llmFacts = memoryExtractorService.extractWithLLM(
+                            targetCharacter.id, allMessages.reversed(), targetCharacter.name, config, chatId
+                        )
+                        if (llmFacts.isNotEmpty()) {
+                            memoryConsolidator.insertWithDedup(llmFacts)
+                            memoryConsolidator.maybeConsolidate(targetCharacter.id)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("API 错误: ${e.message}")
+            } finally {
+                _isGenerating.value = false
+                _respondingCharacter.value = null
+            }
+        }
+    }
+
+    /**
+     * 清理角色名前缀，如 "[Alice]: 你好" → "你好"
+     */
+    private fun cleanCharacterPrefix(response: String, charName: String): String {
+        val trimmed = response.trim()
+        val prefix = "[$charName]"
+        if (!trimmed.startsWith(prefix)) return trimmed
+        val afterPrefix = trimmed.substring(prefix.length)
+        // 跳过冒号和空白
+        var i = 0
+        while (i < afterPrefix.length && (afterPrefix[i] == ':' || afterPrefix[i] == '：' || afterPrefix[i] == ' ' || afterPrefix[i] == '\t')) {
+            i++
+        }
+        return afterPrefix.substring(i).trim()
     }
 
     fun continueGeneration() {
@@ -258,7 +711,6 @@ class ChatViewModel @Inject constructor(
 
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
-            _streamingText.value = lastMsg.content // Show existing content while streaming
 
             try {
                 val character = _character.value ?: return@launch
@@ -273,6 +725,7 @@ class ChatViewModel @Inject constructor(
                 }
 
                 val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
+                memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
                 val memories = if (memoryAtoms.isEmpty()) {
                     memoryRepository.getRelevantMemories(characterId, "")
                 } else emptyList()
@@ -291,23 +744,40 @@ class ChatViewModel @Inject constructor(
                     persona = persona
                 )
 
-                var newContent = lastMsg.content
+                // 静默累积新内容
+                var newContent = ""
                 chatApiService.streamChat(promptMessages, config).collect { chunk ->
                     newContent += chunk
-                    _streamingText.value = newContent
-                    chatRepository.appendToMessage(lastMsg.id, chunk)
                 }
 
-                // Apply regex scripts to the new content
-                val processedReply = scriptRepository.applyScripts(characterId, newContent, 1)
-                if (processedReply != newContent) {
+                if (newContent.isBlank()) return@launch
+
+                // 追加到现有消息
+                chatRepository.appendToMessage(lastMsg.id, newContent)
+
+                // Apply regex scripts to the full content
+                val fullContent = lastMsg.content + newContent
+                val processedReply = scriptRepository.applyScripts(characterId, fullContent, 1)
+                if (processedReply != fullContent) {
                     chatRepository.updateMessageContent(lastMsg.id, processedReply)
+                }
+
+                // 记忆提取（continue 也需要触发）
+                messageCount++
+                if (memoryExtractorService.shouldExtract(messageCount)) {
+                    val allMessages = chatRepository.getRecentMessages(chatId, 30)
+                    val llmFacts = memoryExtractorService.extractWithLLM(
+                        characterId, allMessages.reversed(), character.name, config, chatId
+                    )
+                    if (llmFacts.isNotEmpty()) {
+                        memoryConsolidator.insertWithDedup(llmFacts)
+                        memoryConsolidator.maybeConsolidate(characterId)
+                    }
                 }
             } catch (e: Exception) {
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
-                _streamingText.value = ""
             }
         }
     }
@@ -325,7 +795,6 @@ class ChatViewModel @Inject constructor(
 
             // 保存当前回复作为旧 swipe，然后生成新的
             _isGenerating.value = true
-            _streamingText.value = ""
 
             try {
                 val character = _character.value ?: return@launch
@@ -359,11 +828,10 @@ class ChatViewModel @Inject constructor(
                     persona = persona
                 )
 
-                // 流式接收新回复
+                // 静默累积新回复
                 var newContent = ""
                 chatApiService.streamChat(promptMessages, config).collect { chunk ->
                     newContent += chunk
-                    _streamingText.value = newContent
                 }
 
                 // 将新回复添加为 swipe
@@ -380,7 +848,6 @@ class ChatViewModel @Inject constructor(
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
-                _streamingText.value = ""
             }
         }
     }
@@ -398,7 +865,7 @@ class ChatViewModel @Inject constructor(
     fun swipeRight(messageId: Long) {
         viewModelScope.launch {
             val msg = messages.value.find { it.id == messageId } ?: return@launch
-            val swipes = parseSwipeContent(msg.swipeContent)
+            val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
             val newIndex = msg.swipeIndex + 1
             if (newIndex < swipes.size) {
                 chatRepository.switchSwipe(messageId, newIndex)
@@ -408,19 +875,9 @@ class ChatViewModel @Inject constructor(
 
     fun getSwipeInfo(messageId: Long): Pair<Int, Int> {
         val msg = messages.value.find { it.id == messageId } ?: return Pair(0, 0)
-        val swipes = parseSwipeContent(msg.swipeContent)
+        val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
         val count = if (swipes.isEmpty()) 1 else swipes.size
         return Pair(msg.swipeIndex + 1, count)
-    }
-
-    private fun parseSwipeContent(json: String): List<String> {
-        if (json == "[]" || json.isBlank()) return emptyList()
-        return try {
-            val arr = org.json.JSONArray(json)
-            (0 until arr.length()).map { arr.getString(it) }
-        } catch (_: Exception) {
-            emptyList()
-        }
     }
 
     fun editMessage(messageId: Long, newContent: String) {
@@ -478,5 +935,45 @@ class ChatViewModel @Inject constructor(
 
     fun clearChatBackground() {
         setChatBackground(null)
+    }
+
+    /**
+     * Get the character that sent a specific message (for group chat display).
+     * Returns null for user messages or single-char chats.
+     */
+    fun getCharacterForMessage(message: MessageEntity): CharacterEntity? {
+        if (!_isGroupChat.value) return _character.value
+        val charId = message.characterId ?: return null
+        return _groupCharacters.value.find { it.id == charId }
+    }
+
+    /**
+     * 主动发言：检查是否有未回复的消息，自动触发回复。
+     * 用于进入对话时自动回复用户未回复的消息，或群聊中角色之间的互动。
+     */
+    fun triggerProactiveIfNeeded() {
+        val currentMessages = messages.value
+        if (_isGenerating.value || isProactiveMessage) return
+
+        val lastMsg = currentMessages.lastOrNull() ?: return
+
+        // 如果最后一条是用户消息（未回复），触发回复
+        if (lastMsg.role == "user") {
+            if (_isGroupChat.value) {
+                sendGroupChatMessage("")
+            } else {
+                sendSingleChatMessage("")
+            }
+        }
+        // 群聊：如果最后一条是某个角色的消息，让下一个角色接话
+        else if (_isGroupChat.value && lastMsg.role == "assistant") {
+            val characters = _groupCharacters.value
+            val lastCharIndex = characters.indexOfFirst { it.id == lastMsg.characterId }
+            if (lastCharIndex >= 0 && lastCharIndex < characters.size - 1) {
+                // 只让下一个角色发言，而非全部
+                val nextChar = characters[lastCharIndex + 1]
+                sendDirectMessage("", nextChar)
+            }
+        }
     }
 }

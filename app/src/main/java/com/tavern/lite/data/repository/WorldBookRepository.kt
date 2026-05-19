@@ -10,7 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class WorldBookRepository @Inject constructor(
-    private val worldBookDao: WorldBookDao
+    private val worldBookDao: WorldBookDao,
+    private val json: Json
 ) {
     fun getAllWorldBooks(): Flow<List<WorldBookEntity>> = worldBookDao.getAllWorldBooks()
 
@@ -46,12 +47,12 @@ class WorldBookRepository @Inject constructor(
 
     private fun matchEntry(entry: WorldBookEntryEntity, lowerText: String): Boolean {
         val primaryKeys: List<String> = try {
-            Json.decodeFromString(entry.keys)
+            json.decodeFromString(entry.keys)
         } catch (_: Exception) {
             emptyList()
         }
         val secondaryKeys: List<String> = try {
-            Json.decodeFromString(entry.keysSecondary)
+            json.decodeFromString(entry.keysSecondary)
         } catch (_: Exception) {
             emptyList()
         }
