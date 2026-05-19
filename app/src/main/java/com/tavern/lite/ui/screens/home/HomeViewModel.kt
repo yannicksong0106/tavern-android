@@ -5,7 +5,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.repository.CharacterRepository
+import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.util.SillyTavernImporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,6 +31,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterRepository: CharacterRepository,
+    private val chatRepository: ChatRepository,
     private val importer: SillyTavernImporter
 ) : ViewModel() {
 
@@ -44,6 +47,9 @@ class HomeViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val groupChats: StateFlow<List<ChatEntity>> = chatRepository.getAllGroupChats()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
     }
@@ -51,6 +57,12 @@ class HomeViewModel @Inject constructor(
     fun deleteCharacter(id: Long) {
         viewModelScope.launch {
             characterRepository.deleteCharacter(id)
+        }
+    }
+
+    fun deleteGroupChat(chatId: Long) {
+        viewModelScope.launch {
+            chatRepository.deleteChatById(chatId)
         }
     }
 

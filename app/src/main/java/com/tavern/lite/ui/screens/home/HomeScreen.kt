@@ -67,8 +67,11 @@ import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.ui.components.CharacterAvatar
-import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,12 +82,15 @@ fun HomeScreen(
     onSettingsClick: () -> Unit,
     onWorldBookClick: () -> Unit,
     onGroupChatClick: () -> Unit = {},
+    onGroupChatItemClick: (chatId: Long, primaryCharacterId: Long) -> Unit = { _, _ -> },
     onMemoryClick: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val characters by viewModel.characters.collectAsStateWithLifecycle()
+    val groupChats by viewModel.groupChats.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var deletingCharacter by remember { mutableStateOf<CharacterEntity?>(null) }
+    var deletingGroupChat by remember { mutableStateOf<ChatEntity?>(null) }
     val context = LocalContext.current
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -115,6 +121,24 @@ fun HomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deletingCharacter = null }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
+    // 删除群聊确认对话框
+    if (deletingGroupChat != null) {
+        AlertDialog(
+            onDismissRequest = { deletingGroupChat = null },
+            title = { Text(stringResource(R.string.delete_group_chat_title)) },
+            text = { Text(stringResource(R.string.delete_group_chat_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteGroupChat(deletingGroupChat!!.id)
+                    deletingGroupChat = null
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingGroupChat = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -166,13 +190,44 @@ fun HomeScreen(
                 SearchBar(onQueryChanged = viewModel::onSearchQueryChanged)
             }
 
-            if (characters.isEmpty()) {
-                EmptyState(onCreate = onCreateCharacter)
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // 群聊区域
+                if (groupChats.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.group_chats),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    items(groupChats, key = { it.id }) { chat ->
+                        GroupChatCard(
+                            chat = chat,
+                            onClick = { onGroupChatItemClick(chat.id, chat.characterId) },
+                            onDelete = { deletingGroupChat = chat }
+                        )
+                    }
+                }
+
+                // 角色区域
+                if (characters.isEmpty() && groupChats.isEmpty()) {
+                    item { EmptyState(onCreate = onCreateCharacter) }
+                } else if (characters.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.home_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                top = if (groupChats.isNotEmpty()) 8.dp else 0.dp,
+                                bottom = 4.dp
+                            )
+                        )
+                    }
                     items(characters, key = { it.id }) { character ->
                         CharacterCard(
                             character = character,
@@ -324,6 +379,58 @@ private fun CharacterCard(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupChatCard(
+    chat: ChatEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onDelete
+            )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(
+                Icons.Default.Group,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = chat.name ?: stringResource(R.string.group_chats),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = dateFormat.format(Date(chat.updatedAt)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }

@@ -281,4 +281,11 @@
 
     <!-- @ 功能 / At Mention -->
     <string name="at_mention_hint">@ 角色名 指定回复</string>
+
+    <!-- 群聊列表 / Group Chat List -->
+    <string name="group_chats">群聊</string>
+    <string name="no_group_chats">还没有群聊</string>
+    <string name="group_members_count">%d 人</string>
+    <string name="delete_group_chat_title">删除群聊</string>
+    <string name="delete_group_chat_text">确定要删除这个群聊吗？所有消息都会被删除。</string>
 </resources>

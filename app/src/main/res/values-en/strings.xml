@@ -260,4 +260,11 @@
     <string name="bg_rose_gold">Rose Gold</string>
     <string name="bg_arctic">Aurora</string>
     <string name="bg_cherry">Cherry Blossom</string>
+
+    <!-- Group Chat List -->
+    <string name="group_chats">Group Chats</string>
+    <string name="no_group_chats">No group chats yet</string>
+    <string name="group_members_count">%d members</string>
+    <string name="delete_group_chat_title">Delete Group Chat</string>
+    <string name="delete_group_chat_text">Are you sure you want to delete this group chat? All messages will be deleted.</string>
 </resources>

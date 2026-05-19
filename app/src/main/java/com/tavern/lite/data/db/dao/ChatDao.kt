@@ -40,4 +40,7 @@ interface ChatDao {
 
     @Query("SELECT * FROM chats WHERE character_id = :characterId ORDER BY updated_at DESC")
     suspend fun getAllChatsForCharacter(characterId: Long): List<ChatEntity>
+
+    @Query("SELECT * FROM chats WHERE is_group = 1 ORDER BY updated_at DESC")
+    fun getAllGroupChats(): Flow<List<ChatEntity>>
 }

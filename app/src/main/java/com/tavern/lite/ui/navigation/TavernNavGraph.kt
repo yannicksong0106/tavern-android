@@ -85,6 +85,9 @@ fun TavernNavGraph() {
                 },
                 onGroupChatClick = {
                     navController.navigate(Routes.GROUP_CHAT_CREATE)
+                },
+                onGroupChatItemClick = { chatId, primaryCharacterId ->
+                    navController.navigate(Routes.chat(primaryCharacterId, chatId))
                 }
             )
         }
@@ -156,7 +159,7 @@ fun TavernNavGraph() {
                 onBack = { navController.popBackStack() },
                 onGroupCreated = { chatId, primaryCharacterId ->
                     navController.navigate(Routes.chat(primaryCharacterId, chatId)) {
-                        popUpTo(Routes.HOME)
+                        popUpTo(Routes.GROUP_CHAT_CREATE) { inclusive = true }
                     }
                 }
             )

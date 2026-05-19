@@ -17,6 +17,9 @@ class ChatRepository @Inject constructor(
     fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>> =
         chatDao.getChatsForCharacter(characterId)
 
+    fun getAllGroupChats(): Flow<List<ChatEntity>> =
+        chatDao.getAllGroupChats()
+
     suspend fun getChatById(id: Long): ChatEntity? = chatDao.getChatById(id)
 
     suspend fun getLatestChatForCharacter(characterId: Long): ChatEntity? =
