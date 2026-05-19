@@ -278,6 +278,22 @@
     <string name="group_chattiness_desc">Overall group proactive dialogue frequency</string>
     <string name="character_chattiness">Character Chattiness</string>
 
+    <!-- Search -->
+    <string name="search_messages">Search messages…</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+
+    <!-- Preset -->
+    <string name="preset_management">Preset Management</string>
+    <string name="preset_management_desc">Manage system prompt preset library</string>
+    <string name="add_preset">Add Preset</string>
+    <string name="edit_preset">Edit Preset</string>
+    <string name="delete_preset_title">Delete Preset</string>
+    <string name="delete_preset_text">Delete 「%s」?</string>
+    <string name="preset_name">Preset Name</string>
+    <string name="no_presets">No presets yet</string>
+    <string name="no_presets_hint">Tap + to add system prompt presets</string>
+
     <!-- Group Chat List -->
     <string name="group_chats">Group Chats</string>
     <string name="no_group_chats">No group chats yet</string>

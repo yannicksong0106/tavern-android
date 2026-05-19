@@ -2,17 +2,24 @@ package com.tavern.lite.ui.screens.chat.components
 
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
@@ -32,19 +39,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
@@ -53,6 +66,7 @@ import com.tavern.lite.ui.theme.AssistantBubbleDark
 import com.tavern.lite.ui.theme.AssistantBubbleLight
 import com.tavern.lite.ui.theme.UserBubbleDark
 import com.tavern.lite.ui.theme.UserBubbleLight
+import com.tavern.lite.ui.components.CharacterAvatar
 import io.noties.markwon.Markwon
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -66,12 +80,17 @@ fun MessageBubble(
     showTimestamp: Boolean = true,
     isGroupedTop: Boolean = false,
     isGroupedBottom: Boolean = false,
+    avatarPath: String? = null,
+    showAvatar: Boolean = false,
+    isSearchResult: Boolean = false,
+    isCurrentSearchResult: Boolean = false,
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onBranch: () -> Unit = {},
     onSwipeLeft: () -> Unit = {},
-    onSwipeRight: () -> Unit = {}
+    onSwipeRight: () -> Unit = {},
+    onReply: () -> Unit = {}
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
@@ -80,6 +99,12 @@ fun MessageBubble(
     var showMenu by remember { mutableStateOf(false) }
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val maxBubbleWidth = (screenWidth * 0.75f).dp
+
+    // 滑动手势状态
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    val swipeThreshold = with(LocalDensity.current) { 80.dp.toPx() }
+    val maxSwipe = with(LocalDensity.current) { 120.dp.toPx() }
 
     val swipeList = remember(message.swipeContent) {
         if (message.swipeContent == "[]" || message.swipeContent.isBlank()) emptyList()
@@ -106,14 +131,118 @@ fun MessageBubble(
     }
     val cornerRadius = bubbleStyle.cornerRadius.dp
 
-    Row(
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+    Box(
         modifier = Modifier.fillMaxWidth()
     ) {
+        // 滑动时露出的操作图标
+        val revealAlpha = (offsetX.value / swipeThreshold).coerceIn(-1f, 1f)
+        if (revealAlpha < -0.3f) {
+            // 左滑露出：回复/重新生成
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isUser) Icons.Default.Edit else Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        if (revealAlpha > 0.3f) {
+            // 右滑露出：删除
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 8.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+    Row(
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+            .pointerInput(message.id) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            when {
+                                offsetX.value < -swipeThreshold -> {
+                                    // 左滑超过阈值 → 回复/重新生成
+                                    if (isUser) onEdit() else onReply()
+                                    offsetX.animateTo(0f, tween(200))
+                                }
+                                offsetX.value > swipeThreshold -> {
+                                    // 右滑超过阈值 → 删除
+                                    onDelete()
+                                    offsetX.animateTo(0f, tween(200))
+                                }
+                                else -> {
+                                    offsetX.animateTo(0f, tween(200))
+                                }
+                            }
+                        }
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        scope.launch {
+                            val newValue = (offsetX.value + dragAmount)
+                                .coerceIn(-maxSwipe, maxSwipe)
+                            offsetX.snapTo(newValue)
+                        }
+                    }
+                )
+            }
+    ) {
+        // 群聊头像：只在非用户消息且 showAvatar=true 时显示
+        if (showAvatar && !isUser) {
+            CharacterAvatar(
+                name = characterName,
+                avatarPath = avatarPath,
+                size = 28.dp,
+                modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)
+            )
+        }
+
         Box {
+            val borderWidth = if (isCurrentSearchResult) 2.dp else 0.dp
+            val borderColor = if (isCurrentSearchResult) MaterialTheme.colorScheme.primary else Color.Transparent
+
             Column(
                 modifier = Modifier
                     .widthIn(max = maxBubbleWidth)
+                    .then(
+                        if (isCurrentSearchResult) {
+                            Modifier.border(
+                                width = borderWidth,
+                                color = borderColor,
+                                shape = RoundedCornerShape(
+                                    topStart = if (isGroupedTop) 4.dp else cornerRadius,
+                                    topEnd = if (isGroupedTop) 4.dp else cornerRadius,
+                                    bottomStart = if (isUser) (if (isGroupedBottom) 4.dp else cornerRadius) else 4.dp,
+                                    bottomEnd = if (isUser) 4.dp else (if (isGroupedBottom) 4.dp else cornerRadius)
+                                )
+                            )
+                        } else Modifier
+                    )
                     .clip(
                         RoundedCornerShape(
                             topStart = if (isGroupedTop) 4.dp else cornerRadius,
@@ -271,6 +400,7 @@ fun MessageBubble(
                 )
             }
         }
+    }
     }
 }
 

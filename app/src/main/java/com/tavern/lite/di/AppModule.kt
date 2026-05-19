@@ -14,6 +14,7 @@ import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
+import com.tavern.lite.data.db.dao.PresetDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -42,7 +43,8 @@ object AppModule {
             TavernDatabase.MIGRATION_1_8,
             TavernDatabase.MIGRATION_8_9,
             TavernDatabase.MIGRATION_9_10,
-            TavernDatabase.MIGRATION_10_11
+            TavernDatabase.MIGRATION_10_11,
+            TavernDatabase.MIGRATION_11_12
         ).build()
     }
 
@@ -75,6 +77,9 @@ object AppModule {
 
     @Provides
     fun providePersonaDao(db: TavernDatabase): PersonaDao = db.personaDao()
+
+    @Provides
+    fun providePresetDao(db: TavernDatabase): PresetDao = db.presetDao()
 
     @Provides
     @Singleton

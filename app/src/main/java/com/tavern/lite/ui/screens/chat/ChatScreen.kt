@@ -1,10 +1,15 @@
 package com.tavern.lite.ui.screens.chat
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +24,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -92,10 +102,14 @@ fun ChatScreen(
     val characterChattiness by viewModel.characterChattiness.collectAsStateWithLifecycle()
     val groupChattiness by viewModel.groupChattiness.collectAsStateWithLifecycle()
     val groupCharacterChattiness by viewModel.groupCharacterChattiness.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
     var showChattinessSheet by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
 
     if (showBackgroundPicker) {
         BackgroundPickerSheet(
@@ -161,6 +175,14 @@ fun ChatScreen(
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    // 搜索结果滚动
+    LaunchedEffect(currentSearchIndex) {
+        if (currentSearchIndex >= 0 && searchResults.isNotEmpty()) {
+            val messageIndex = searchResults[currentSearchIndex]
+            listState.animateScrollToItem(messageIndex)
         }
     }
 
@@ -261,6 +283,9 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showSearch = !showSearch }) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
+                    }
                     IconButton(onClick = { showChattinessSheet = true }) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.chat_settings))
                     }
@@ -313,6 +338,49 @@ fun ChatScreen(
                 )
             }
 
+            // 搜索栏
+            AnimatedVisibility(
+                visible = showSearch,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.searchMessages(it) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.search_messages)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    if (searchResults.isNotEmpty()) {
+                        Text(
+                            text = "${currentSearchIndex + 1}/${searchResults.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        IconButton(onClick = { viewModel.previousSearchResult() }) {
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.previous))
+                        }
+                        IconButton(onClick = { viewModel.nextSearchResult() }) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.next))
+                        }
+                    }
+                    IconButton(onClick = {
+                        showSearch = false
+                        viewModel.clearSearch()
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                    }
+                }
+            }
+
             Column(modifier = Modifier.fillMaxSize().imePadding()) {
                 if (branches.size > 1) {
                     BranchNavigationBar(
@@ -344,13 +412,13 @@ fun ChatScreen(
                                 nextMessage?.role == message.role
                             }
                             val topSpacing = if (isSameRoleAsPrev) 3.dp else 8.dp
-                            val msgCharName = if (isGroupChat && message.role == "assistant") {
+                            val msgChar = if (isGroupChat && message.role == "assistant") {
                                 message.characterId?.let { charId ->
-                                    groupCharacters.find { it.id == charId }?.name
-                                } ?: character?.name ?: ""
-                            } else {
-                                character?.name ?: ""
-                            }
+                                    groupCharacters.find { it.id == charId }
+                                }
+                            } else null
+                            val msgCharName = msgChar?.name ?: character?.name ?: ""
+                            val msgAvatarPath = msgChar?.avatarPath ?: character?.avatarPath
                             Column(
                                 modifier = Modifier
                                     .animateItem()
@@ -365,12 +433,17 @@ fun ChatScreen(
                                     showTimestamp = !isSameRoleAsNext,
                                     isGroupedTop = isSameRoleAsPrev,
                                     isGroupedBottom = isSameRoleAsNext,
+                                    avatarPath = msgAvatarPath,
+                                    showAvatar = isGroupChat && message.role == "assistant" && !isSameRoleAsPrev,
+                                    isSearchResult = index in searchResults,
+                                    isCurrentSearchResult = currentSearchIndex >= 0 && searchResults.getOrNull(currentSearchIndex) == index,
                                     onRegenerate = { viewModel.regenerate(message.id) },
                                     onEdit = { editingMessage = message },
                                     onDelete = { deletingMessageId = message.id },
                                     onBranch = { viewModel.createBranchFromMessage(message.id) },
                                     onSwipeLeft = { viewModel.swipeLeft(message.id) },
-                                    onSwipeRight = { viewModel.swipeRight(message.id) }
+                                    onSwipeRight = { viewModel.swipeRight(message.id) },
+                                    onReply = { viewModel.regenerate(message.id) }
                                 )
                             }
                         }

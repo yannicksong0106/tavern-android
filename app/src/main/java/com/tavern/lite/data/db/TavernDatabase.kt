@@ -12,6 +12,7 @@ import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
+import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
@@ -23,6 +24,7 @@ import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
+import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.ScriptEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
@@ -41,8 +43,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         PersonaEntity::class,
         CharacterPersonaEntity::class,
         ChatCharacterEntity::class,
+        PresetEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -56,6 +59,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun authorNoteDao(): AuthorNoteDao
     abstract fun personaDao(): PersonaDao
     abstract fun chatCharacterDao(): ChatCharacterDao
+    abstract fun presetDao(): PresetDao
 
     companion object {
         /**
@@ -223,6 +227,24 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE characters ADD COLUMN chattiness INTEGER NOT NULL DEFAULT 50")
                 db.execSQL("ALTER TABLE chat_characters ADD COLUMN chattiness INTEGER NOT NULL DEFAULT 50")
                 db.execSQL("ALTER TABLE chats ADD COLUMN group_chattiness INTEGER NOT NULL DEFAULT 50")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS presets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        system_prompt TEXT NOT NULL DEFAULT '',
+                        post_history_instructions TEXT NOT NULL DEFAULT '',
+                        author_note TEXT NOT NULL DEFAULT '',
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
             }
         }
 

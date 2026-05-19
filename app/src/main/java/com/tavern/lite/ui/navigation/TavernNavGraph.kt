@@ -18,6 +18,7 @@ import com.tavern.lite.ui.screens.groupchat.GroupChatCreateScreen
 import com.tavern.lite.ui.screens.home.HomeScreen
 import com.tavern.lite.ui.screens.memory.MemoryScreen
 import com.tavern.lite.ui.screens.persona.PersonaScreen
+import com.tavern.lite.ui.screens.preset.PresetScreen
 import com.tavern.lite.ui.screens.script.ScriptScreen
 import com.tavern.lite.ui.screens.settings.SettingsScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookEditScreen
@@ -35,6 +36,7 @@ object Routes {
     const val SCRIPT = "script/{characterId}"
     const val PERSONA = "persona"
     const val GROUP_CHAT_CREATE = "group_chat_create"
+    const val PRESET = "preset"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
     fun chat(characterId: Long, chatId: Long) = "chat/$characterId/$chatId"
@@ -139,7 +141,8 @@ fun TavernNavGraph() {
                 onBack = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
                 onMemoryClick = { charId -> navController.navigate(Routes.memory(charId)) },
-                onScriptClick = { charId -> navController.navigate(Routes.script(charId)) }
+                onScriptClick = { charId -> navController.navigate(Routes.script(charId)) },
+                onPresetClick = { navController.navigate(Routes.PRESET) }
             )
         }
 
@@ -207,6 +210,12 @@ fun TavernNavGraph() {
         ) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getLong("characterId") ?: return@composable
             ScriptScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.PRESET) {
+            PresetScreen(
                 onBack = { navController.popBackStack() }
             )
         }

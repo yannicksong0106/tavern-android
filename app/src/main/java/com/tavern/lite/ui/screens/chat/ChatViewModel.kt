@@ -506,4 +506,48 @@ class ChatViewModel @Inject constructor(
             groupChatRepository.updateCharacterChattiness(chatId, characterId, value)
         }
     }
+
+    // === 搜索功能 ===
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<Int>>(emptyList())
+    val searchResults: StateFlow<List<Int>> = _searchResults.asStateFlow()
+
+    private val _currentSearchIndex = MutableStateFlow(-1)
+    val currentSearchIndex: StateFlow<Int> = _currentSearchIndex.asStateFlow()
+
+    fun searchMessages(query: String) {
+        _searchQuery.value = query
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            _currentSearchIndex.value = -1
+            return
+        }
+        val lowerQuery = query.lowercase()
+        val results = messages.value.mapIndexedNotNull { index, msg ->
+            if (msg.content.lowercase().contains(lowerQuery)) index else null
+        }
+        _searchResults.value = results
+        _currentSearchIndex.value = if (results.isNotEmpty()) 0 else -1
+    }
+
+    fun nextSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+        _currentSearchIndex.value = (_currentSearchIndex.value + 1) % results.size
+    }
+
+    fun previousSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+        _currentSearchIndex.value = (_currentSearchIndex.value - 1 + results.size) % results.size
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        _currentSearchIndex.value = -1
+    }
 }
