@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -83,6 +84,7 @@ import com.tavern.lite.data.model.ApiProvider
 fun SettingsScreen(
     onBack: () -> Unit,
     onPersonaClick: () -> Unit = {},
+    onDevLogClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
@@ -182,14 +184,36 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDevLogClick() }
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        stringResource(R.string.about_version),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.about_version),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            stringResource(R.string.about_click_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .graphicsLayer { rotationZ = 180f },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

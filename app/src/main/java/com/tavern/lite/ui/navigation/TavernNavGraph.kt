@@ -20,6 +20,7 @@ import com.tavern.lite.ui.screens.memory.MemoryScreen
 import com.tavern.lite.ui.screens.persona.PersonaScreen
 import com.tavern.lite.ui.screens.preset.PresetScreen
 import com.tavern.lite.ui.screens.script.ScriptScreen
+import com.tavern.lite.ui.screens.settings.DevLogScreen
 import com.tavern.lite.ui.screens.settings.SettingsScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookEditScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookListScreen
@@ -37,6 +38,7 @@ object Routes {
     const val PERSONA = "persona"
     const val GROUP_CHAT_CREATE = "group_chat_create"
     const val PRESET = "preset"
+    const val DEV_LOG = "dev_log"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
     fun chat(characterId: Long, chatId: Long) = "chat/$characterId/$chatId"
@@ -149,7 +151,8 @@ fun TavernNavGraph() {
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
-                onPersonaClick = { navController.navigate(Routes.PERSONA) }
+                onPersonaClick = { navController.navigate(Routes.PERSONA) },
+                onDevLogClick = { navController.navigate(Routes.DEV_LOG) }
             )
         }
 
@@ -216,6 +219,12 @@ fun TavernNavGraph() {
 
         composable(Routes.PRESET) {
             PresetScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.DEV_LOG) {
+            DevLogScreen(
                 onBack = { navController.popBackStack() }
             )
         }
