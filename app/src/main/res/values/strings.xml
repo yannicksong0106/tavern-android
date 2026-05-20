@@ -44,6 +44,9 @@
     <string name="delete_message_text">确定要删除这条消息吗？</string>
     <string name="delete_from_here">从此处删除</string>
     <string name="delete_from_here_text">确定要删除这条消息及之后的所有消息吗？</string>
+    <string name="pin_message">置顶消息</string>
+    <string name="unpin_message">取消置顶</string>
+    <string name="pinned_messages">置顶消息</string>
     <string name="edit_message_title">编辑消息</string>
     <string name="regenerate">重新生成</string>
     <string name="branch_from_here">从此处分叉</string>
@@ -333,6 +336,13 @@
     <string name="share_backup">分享备份</string>
     <string name="restore_confirm_title">恢复数据</string>
     <string name="restore_confirm_text">恢复将合并现有数据，不会覆盖已有内容。确定继续吗？</string>
+    <string name="storage_management">存储管理</string>
+    <string name="database_size">数据库大小</string>
+    <string name="cache_size">缓存大小</string>
+    <string name="backup_size">备份大小</string>
+    <string name="clear_cache">清除缓存</string>
+    <string name="clear_cache_desc">清除临时文件和缓存数据</string>
+    <string name="cache_cleared">缓存已清除</string>
 
     <!-- TTS 语音朗读 -->
     <!-- 引用回复 / Quote Reply -->

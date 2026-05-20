@@ -1,5 +1,6 @@
 package com.tavern.lite.ui.screens.settings
 
+import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
@@ -15,6 +16,7 @@ import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +45,7 @@ sealed class ConnectionTestState {
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val apiConfigStore: ApiConfigStore,
     private val chatApiService: ChatApiService,
     private val settingsStore: SettingsStore,
@@ -221,5 +224,47 @@ class SettingsViewModel @Inject constructor(
 
     fun resetBackupState() {
         _backupState.value = BackupState.Idle
+    }
+
+    // Storage management
+    fun getDatabaseSize(): Long {
+        val dbFile = context.getDatabasePath("tavern_db")
+        return if (dbFile.exists()) dbFile.length() else 0
+    }
+
+    fun getCacheSize(): Long {
+        return calculateDirSize(context.cacheDir)
+    }
+
+    fun getBackupSize(): Long {
+        val backupDir = File(context.cacheDir, "backups")
+        return if (backupDir.exists()) calculateDirSize(backupDir) else 0
+    }
+
+    fun clearCache() {
+        viewModelScope.launch {
+            context.cacheDir.deleteRecursively()
+        }
+    }
+
+    private fun calculateDirSize(dir: File): Long {
+        var size = 0L
+        if (dir.isDirectory) {
+            dir.listFiles()?.forEach { file ->
+                size += if (file.isDirectory) calculateDirSize(file) else file.length()
+            }
+        } else {
+            size = dir.length()
+        }
+        return size
+    }
+
+    fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
+            else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
+        }
     }
 }

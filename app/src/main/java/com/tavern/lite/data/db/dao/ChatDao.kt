@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.tavern.lite.data.db.entity.ChatEntity
+import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,6 +14,16 @@ interface ChatDao {
 
     @Query("SELECT * FROM chats WHERE character_id = :characterId ORDER BY updated_at DESC")
     fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>>
+
+    @Query("""
+        SELECT c.*,
+            (SELECT m.role FROM messages m WHERE m.chat_id = c.id AND m.is_active = 1 ORDER BY m.created_at DESC LIMIT 1) as last_message_role,
+            (SELECT m.content FROM messages m WHERE m.chat_id = c.id AND m.is_active = 1 ORDER BY m.created_at DESC LIMIT 1) as last_message_content
+        FROM chats c
+        WHERE c.character_id = :characterId
+        ORDER BY c.updated_at DESC
+    """)
+    fun getChatsWithLastMessage(characterId: Long): Flow<List<ChatWithLastMessage>>
 
     @Query("SELECT * FROM chats WHERE id = :id")
     suspend fun getChatById(id: Long): ChatEntity?

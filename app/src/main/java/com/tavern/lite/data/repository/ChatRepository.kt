@@ -3,6 +3,7 @@ package com.tavern.lite.data.repository
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.entity.ChatEntity
+import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.util.SwipeUtils
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,9 @@ class ChatRepository @Inject constructor(
 ) {
     fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>> =
         chatDao.getChatsForCharacter(characterId)
+
+    fun getChatsWithLastMessage(characterId: Long): Flow<List<ChatWithLastMessage>> =
+        chatDao.getChatsWithLastMessage(characterId)
 
     fun getAllGroupChats(): Flow<List<ChatEntity>> =
         chatDao.getAllGroupChats()
@@ -68,6 +72,10 @@ class ChatRepository @Inject constructor(
     suspend fun deleteMessage(messageId: Long) = messageDao.softDelete(messageId)
 
     suspend fun deleteMessagesFromHere(chatId: Long, messageId: Long) = messageDao.softDeleteFromHere(chatId, messageId)
+
+    suspend fun togglePinMessage(messageId: Long, pinned: Boolean) = messageDao.setPinned(messageId, pinned)
+
+    fun getPinnedMessages(chatId: Long) = messageDao.getPinnedMessages(chatId)
 
     suspend fun getMessageById(messageId: Long): MessageEntity? = messageDao.getMessageById(messageId)
 

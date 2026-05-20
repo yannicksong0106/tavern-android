@@ -45,7 +45,8 @@ object AppModule {
             TavernDatabase.MIGRATION_9_10,
             TavernDatabase.MIGRATION_10_11,
             TavernDatabase.MIGRATION_11_12,
-            TavernDatabase.MIGRATION_12_13
+            TavernDatabase.MIGRATION_12_13,
+            TavernDatabase.MIGRATION_13_14
         ).build()
     }
 

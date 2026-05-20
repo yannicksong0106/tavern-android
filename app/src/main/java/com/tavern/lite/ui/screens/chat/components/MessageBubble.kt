@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -53,11 +54,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +107,7 @@ fun MessageBubble(
     onStopSpeak: () -> Unit = {},
     onQuoteReply: () -> Unit = {},
     onDeleteFromHere: () -> Unit = {},
+    onPinToggle: () -> Unit = {},
     quotedMessage: MessageEntity? = null,
     quotedMessageName: String? = null,
     onQuoteClick: ((Long) -> Unit)? = null
@@ -112,6 +116,7 @@ fun MessageBubble(
     val isDark = isSystemInDarkTheme()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     var showMenu by remember { mutableStateOf(false) }
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val maxBubbleWidth = (screenWidth * 0.75f).dp
@@ -278,7 +283,10 @@ fun MessageBubble(
                     .background(color = bubbleColor)
                     .combinedClickable(
                         onClick = {},
-                        onLongClick = { showMenu = true }
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showMenu = true
+                        }
                     )
                     .animateContentSize()
                     .padding(12.dp)
@@ -475,6 +483,20 @@ fun MessageBubble(
                         }
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(if (message.isPinned) R.string.unpin_message else R.string.pin_message)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.PushPin,
+                            contentDescription = null,
+                            tint = if (message.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = {
+                        onPinToggle()
+                        showMenu = false
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete_from_here), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = {

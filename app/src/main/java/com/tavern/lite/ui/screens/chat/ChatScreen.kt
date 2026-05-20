@@ -485,6 +485,7 @@ fun ChatScreen(
                                     onStopSpeak = { viewModel.stopSpeaking() },
                                     onQuoteReply = { viewModel.setReplyTo(message) },
                                     onDeleteFromHere = { deletingFromHereId = message.id },
+                                    onPinToggle = { viewModel.togglePinMessage(message.id) },
                                     quotedMessage = quotedMsg,
                                     quotedMessageName = quotedName,
                                     onQuoteClick = scrollToMessage

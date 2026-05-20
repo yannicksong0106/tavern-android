@@ -31,5 +31,6 @@ data class MessageEntity(
     // Swipe alternatives: JSON array of alternative content strings
     @ColumnInfo(name = "swipe_content", defaultValue = "[]") val swipeContent: String = "[]",
     @ColumnInfo(name = "swipe_index", defaultValue = "0") val swipeIndex: Int = 0,
-    @ColumnInfo(name = "reply_to_id") val replyToId: Long? = null
+    @ColumnInfo(name = "reply_to_id") val replyToId: Long? = null,
+    @ColumnInfo(name = "is_pinned", defaultValue = "0") val isPinned: Boolean = false
 )

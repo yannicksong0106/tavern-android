@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.ChatEntity
+import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.util.ChatExporter
@@ -18,10 +19,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
 
@@ -39,7 +39,14 @@ class ChatListViewModel @Inject constructor(
     private val _character = MutableStateFlow<CharacterEntity?>(null)
     val character: StateFlow<CharacterEntity?> = _character.asStateFlow()
 
-    val chats: StateFlow<List<ChatEntity>> = chatRepository.getChatsForCharacter(characterId)
+    // Optimized: single query with JOIN instead of N+1 queries
+    val chatsWithLastMessage: StateFlow<List<ChatWithLastMessage>> =
+        chatRepository.getChatsWithLastMessage(characterId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Derived chats list for compatibility
+    val chats: StateFlow<List<ChatEntity>> = chatsWithLastMessage
+        .map { list -> list.map { it.toChatEntity() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _exportResult = MutableSharedFlow<String>()
@@ -48,26 +55,9 @@ class ChatListViewModel @Inject constructor(
     private val _exportedFile = MutableSharedFlow<File>()
     val exportedFile: SharedFlow<File> = _exportedFile.asSharedFlow()
 
-    // chatId -> Pair(raw role string, content preview)
-    private val _lastMessages = MutableStateFlow<Map<Long, Pair<String, String>>>(emptyMap())
-    val lastMessages: StateFlow<Map<Long, Pair<String, String>>> = _lastMessages.asStateFlow()
-
     init {
         viewModelScope.launch {
             _character.value = characterRepository.getCharacterById(characterId)
-        }
-        viewModelScope.launch {
-            chats.collectLatest { chatList ->
-                val map = mutableMapOf<Long, Pair<String, String>>()
-                for (chat in chatList) {
-                    val msg = chatRepository.getLastMessageForChat(chat.id)
-                    if (msg != null) {
-                        val preview = msg.content.take(80).replace("\n", " ")
-                        map[chat.id] = Pair(msg.role, preview)
-                    }
-                }
-                _lastMessages.value = map
-            }
         }
     }
 

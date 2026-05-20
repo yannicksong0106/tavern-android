@@ -58,7 +58,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -278,6 +280,7 @@ private fun CharacterCard(
     onExportPng: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -288,7 +291,10 @@ private fun CharacterCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
             )
     ) {
         Row(
@@ -395,6 +401,7 @@ private fun GroupChatCard(
     onDelete: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    val haptic = LocalHapticFeedback.current
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -405,7 +412,10 @@ private fun GroupChatCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onDelete
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                }
             )
     ) {
         Row(

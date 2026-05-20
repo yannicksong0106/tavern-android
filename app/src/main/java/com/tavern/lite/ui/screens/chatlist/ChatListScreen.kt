@@ -1,9 +1,16 @@
 package com.tavern.lite.ui.screens.chatlist
 
 import android.content.Intent
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -55,7 +62,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -80,8 +89,7 @@ fun ChatListScreen(
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val character by viewModel.character.collectAsStateWithLifecycle()
-    val chats by viewModel.chats.collectAsStateWithLifecycle()
-    val lastMessages by viewModel.lastMessages.collectAsStateWithLifecycle()
+    val chatsWithLastMessage by viewModel.chatsWithLastMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var deletingChat by remember { mutableStateOf<ChatEntity?>(null) }
@@ -191,7 +199,7 @@ fun ChatListScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = stringResource(R.string.chat_count, chats.size),
+                                text = stringResource(R.string.chat_count, chatsWithLastMessage.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -240,7 +248,7 @@ fun ChatListScreen(
             }
         }
     ) { padding ->
-        if (chats.isEmpty()) {
+        if (chatsWithLastMessage.isEmpty()) {
             EmptyChatList(
                 modifier = Modifier
                     .fillMaxSize()
@@ -252,10 +260,14 @@ fun ChatListScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(padding)
             ) {
-                items(chats, key = { it.id }) { chat ->
+                items(chatsWithLastMessage, key = { it.id }) { chatWithMsg ->
+                    val chat = chatWithMsg.toChatEntity()
+                    val lastMsg = if (chatWithMsg.lastMessageContent != null) {
+                        Pair(chatWithMsg.lastMessageRole ?: "", chatWithMsg.lastMessageContent)
+                    } else null
                     ChatItem(
                         chat = chat,
-                        lastMessage = lastMessages[chat.id],
+                        lastMessage = lastMsg,
                         characterName = character?.name,
                         onClick = { onChatClick(chat.id) },
                         onLongClick = { renamingChat = chat },
@@ -283,6 +295,7 @@ private fun ChatItem(
     onExport: () -> Unit = {}
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    val haptic = LocalHapticFeedback.current
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -291,9 +304,13 @@ private fun ChatItem(
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
             )
     ) {
         Row(

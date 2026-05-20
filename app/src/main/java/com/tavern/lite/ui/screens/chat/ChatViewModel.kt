@@ -418,6 +418,16 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    fun togglePinMessage(messageId: Long) {
+        viewModelScope.launch {
+            val msg = messages.value.find { it.id == messageId } ?: return@launch
+            chatRepository.togglePinMessage(messageId, !msg.isPinned)
+        }
+    }
+
+    val pinnedMessages: StateFlow<List<MessageEntity>> = chatRepository.getPinnedMessages(chatId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // 分支操作
     private val _branches = MutableStateFlow<List<Long?>>(emptyList())
     val branches: StateFlow<List<Long?>> = _branches.asStateFlow()

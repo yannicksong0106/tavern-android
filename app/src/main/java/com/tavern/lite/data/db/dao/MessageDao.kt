@@ -72,4 +72,10 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages ORDER BY id ASC")
     suspend fun getAllMessages(): List<MessageEntity>
+
+    @Query("UPDATE messages SET is_pinned = :pinned WHERE id = :messageId")
+    suspend fun setPinned(messageId: Long, pinned: Boolean)
+
+    @Query("SELECT * FROM messages WHERE chat_id = :chatId AND is_active = 1 AND is_pinned = 1 ORDER BY created_at DESC")
+    fun getPinnedMessages(chatId: Long): Flow<List<MessageEntity>>
 }
