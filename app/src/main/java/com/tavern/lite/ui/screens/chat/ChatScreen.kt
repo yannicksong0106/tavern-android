@@ -422,6 +422,17 @@ fun ChatScreen(
                             } else null
                             val msgCharName = msgChar?.name ?: character?.name ?: ""
                             val msgAvatarPath = msgChar?.avatarPath ?: character?.avatarPath
+                            // 引用消息查找
+                            val quotedMsg = remember(message.replyToId, messages) {
+                                message.replyToId?.let { qid -> messages.find { it.id == qid } }
+                            }
+                            val quotedName = remember(quotedMsg) {
+                                quotedMsg?.let { qm ->
+                                    if (qm.role == "user") null
+                                    else if (isGroupChat) qm.characterId?.let { cid -> groupCharacters.find { it.id == cid }?.name }
+                                    else character?.name
+                                }
+                            }
                             Column(
                                 modifier = Modifier
                                     .animateItem()
@@ -450,7 +461,9 @@ fun ChatScreen(
                                     onReply = { viewModel.regenerate(message.id) },
                                     onSpeak = { viewModel.speakMessage(message) },
                                     onStopSpeak = { viewModel.stopSpeaking() },
-                                    onQuoteReply = { viewModel.setReplyTo(message) }
+                                    onQuoteReply = { viewModel.setReplyTo(message) },
+                                    quotedMessage = quotedMsg,
+                                    quotedMessageName = quotedName
                                 )
                             }
                         }

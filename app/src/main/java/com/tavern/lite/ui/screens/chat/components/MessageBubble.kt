@@ -14,10 +14,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,7 +101,9 @@ fun MessageBubble(
     onReply: () -> Unit = {},
     onSpeak: () -> Unit = {},
     onStopSpeak: () -> Unit = {},
-    onQuoteReply: () -> Unit = {}
+    onQuoteReply: () -> Unit = {},
+    quotedMessage: MessageEntity? = null,
+    quotedMessageName: String? = null
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
@@ -281,6 +287,42 @@ fun MessageBubble(
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 11.sp
                     )
+                }
+
+                // 引用消息卡片
+                if (quotedMessage != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(36.dp)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = quotedMessageName ?: if (quotedMessage.role == "user") stringResource(R.string.user_persona) else stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                text = quotedMessage.content.take(120),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                fontSize = 11.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 val content = message.content.ifEmpty { stringResource(R.string.empty_message) }

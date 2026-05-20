@@ -316,6 +316,7 @@
     <string name="restore_data_desc">Restore data from a backup file</string>
     <string name="restore_success">Restored: %1$d characters, %2$d chats, %3$d messages</string>
     <string name="restore_failed">Restore failed: %s</string>
+    <string name="share_backup">Share Backup</string>
     <string name="restore_confirm_title">Restore Data</string>
     <string name="restore_confirm_text">Restore will merge with existing data without overwriting. Continue?</string>
 

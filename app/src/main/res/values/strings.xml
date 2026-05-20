@@ -328,6 +328,7 @@
     <string name="restore_data_desc">从备份文件恢复数据</string>
     <string name="restore_success">恢复成功：角色 %1$d，对话 %2$d，消息 %3$d</string>
     <string name="restore_failed">恢复失败：%s</string>
+    <string name="share_backup">分享备份</string>
     <string name="restore_confirm_title">恢复数据</string>
     <string name="restore_confirm_text">恢复将合并现有数据，不会覆盖已有内容。确定继续吗？</string>
 
