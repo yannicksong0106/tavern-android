@@ -49,10 +49,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1001,6 +1003,8 @@ private fun TtsSettingsSection(ttsSettings: TtsSettings, viewModel: SettingsView
 @Composable
 private fun DataManagementSection(backupState: BackupState, viewModel: SettingsViewModel) {
     val context = LocalContext.current
+    val storageSizes by viewModel.storageSizes.collectAsStateWithLifecycle()
+    val cacheCleared by viewModel.cacheCleared.collectAsStateWithLifecycle()
 
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -1009,6 +1013,13 @@ private fun DataManagementSection(backupState: BackupState, viewModel: SettingsV
             context.contentResolver.openInputStream(it)?.let { stream ->
                 viewModel.restoreData(stream)
             }
+        }
+    }
+
+    // Show toast when cache is cleared
+    LaunchedEffect(cacheCleared) {
+        if (cacheCleared) {
+            Toast.makeText(context, context.getString(R.string.cache_cleared), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1135,7 +1146,7 @@ private fun DataManagementSection(backupState: BackupState, viewModel: SettingsV
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = viewModel.formatFileSize(viewModel.getDatabaseSize()),
+                    text = viewModel.formatFileSize(storageSizes.first),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1154,7 +1165,7 @@ private fun DataManagementSection(backupState: BackupState, viewModel: SettingsV
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = viewModel.formatFileSize(viewModel.getCacheSize()),
+                    text = viewModel.formatFileSize(storageSizes.second),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1173,7 +1184,7 @@ private fun DataManagementSection(backupState: BackupState, viewModel: SettingsV
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = viewModel.formatFileSize(viewModel.getBackupSize()),
+                    text = viewModel.formatFileSize(storageSizes.third),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

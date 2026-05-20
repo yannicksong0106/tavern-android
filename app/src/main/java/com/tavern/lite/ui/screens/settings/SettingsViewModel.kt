@@ -76,6 +76,14 @@ class SettingsViewModel @Inject constructor(
 
     private var _lastBackupFile: File? = null
 
+    // Cache clearing state
+    private val _cacheCleared = MutableStateFlow(false)
+    val cacheCleared: StateFlow<Boolean> = _cacheCleared.asStateFlow()
+
+    // Storage sizes (mutable to trigger recomposition)
+    private val _storageSizes = MutableStateFlow(Triple(0L, 0L, 0L))
+    val storageSizes: StateFlow<Triple<Long, Long, Long>> = _storageSizes.asStateFlow()
+
     private val _pendingConfig = MutableSharedFlow<ApiConfig>(extraBufferCapacity = 1)
 
     init {
@@ -84,6 +92,7 @@ class SettingsViewModel @Inject constructor(
                 apiConfigStore.save(config)
             }
         }
+        refreshStorageSizes()
     }
 
     fun saveConfig(config: ApiConfig) {
@@ -244,7 +253,20 @@ class SettingsViewModel @Inject constructor(
     fun clearCache() {
         viewModelScope.launch {
             context.cacheDir.deleteRecursively()
+            _cacheCleared.value = true
+            refreshStorageSizes()
+            // Reset after a delay
+            kotlinx.coroutines.delay(2000)
+            _cacheCleared.value = false
         }
+    }
+
+    fun refreshStorageSizes() {
+        _storageSizes.value = Triple(
+            getDatabaseSize(),
+            getCacheSize(),
+            getBackupSize()
+        )
     }
 
     private fun calculateDirSize(dir: File): Long {
