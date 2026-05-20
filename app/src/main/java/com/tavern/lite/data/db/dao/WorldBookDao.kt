@@ -53,4 +53,10 @@ interface WorldBookDao {
         ORDER BY order_val ASC
     """)
     suspend fun getMatchableEntries(worldBookId: Long): List<WorldBookEntryEntity>
+
+    @Query("SELECT * FROM world_books ORDER BY id ASC")
+    suspend fun getAllWorldBooksSync(): List<WorldBookEntity>
+
+    @Query("SELECT * FROM world_book_entries ORDER BY id ASC")
+    suspend fun getAllEntriesSync(): List<WorldBookEntryEntity>
 }

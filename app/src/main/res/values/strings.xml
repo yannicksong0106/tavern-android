@@ -97,7 +97,7 @@
     <string name="chat_bubble">聊天气泡</string>
     <string name="theme">主题</string>
     <string name="about">关于</string>
-    <string name="about_version">版本 1.0.0 · 基于 SillyTavern 数据格式</string>
+    <string name="about_version">版本 1.2.0 · 基于 SillyTavern 数据格式</string>
     <string name="custom_provider">自定义</string>
     <string name="model">模型</string>
     <string name="context_length">上下文条数</string>
@@ -318,7 +318,25 @@
     <string name="delete_group_chat_title">删除群聊</string>
     <string name="delete_group_chat_text">确定要删除这个群聊吗？所有消息都会被删除。</string>
 
+    <!-- 数据管理 / Data Management -->
+    <string name="data_management">数据管理</string>
+    <string name="backup_data">备份数据</string>
+    <string name="backup_data_desc">将所有数据导出为 JSON 文件</string>
+    <string name="backup_success">备份成功：%s</string>
+    <string name="backup_failed">备份失败：%s</string>
+    <string name="restore_data">恢复数据</string>
+    <string name="restore_data_desc">从备份文件恢复数据</string>
+    <string name="restore_success">恢复成功：角色 %1$d，对话 %2$d，消息 %3$d</string>
+    <string name="restore_failed">恢复失败：%s</string>
+    <string name="restore_confirm_title">恢复数据</string>
+    <string name="restore_confirm_text">恢复将合并现有数据，不会覆盖已有内容。确定继续吗？</string>
+
     <!-- TTS 语音朗读 -->
+    <!-- 引用回复 / Quote Reply -->
+    <string name="quote_reply">引用回复</string>
+    <string name="replying_to">回复 %s</string>
+    <string name="cancel_reply">取消回复</string>
+
     <string name="tts_speak">朗读</string>
     <string name="tts_stop">停止朗读</string>
     <string name="tts_settings">语音朗读</string>

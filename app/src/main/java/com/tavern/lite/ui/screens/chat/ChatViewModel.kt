@@ -137,13 +137,15 @@ class ChatViewModel @Inject constructor(
 
     private fun sendSingleChatMessage(content: String) {
         wasCancelled = false
+        val replyToId = _replyingTo.value?.id
+        _replyingTo.value = null
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
                 val character = _character.value ?: return@launch
                 val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config)
+                val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, replyToId)
                 if (result?.assistantMsgId != null && !wasCancelled) {
                     splitIntoMultipleMessages(result.assistantMsgId)
                     scheduleProactiveDialogue()
@@ -551,6 +553,19 @@ class ChatViewModel @Inject constructor(
         _searchQuery.value = ""
         _searchResults.value = emptyList()
         _currentSearchIndex.value = -1
+    }
+
+    // === 引用回复 ===
+
+    private val _replyingTo = MutableStateFlow<MessageEntity?>(null)
+    val replyingTo: StateFlow<MessageEntity?> = _replyingTo.asStateFlow()
+
+    fun setReplyTo(message: MessageEntity) {
+        _replyingTo.value = message
+    }
+
+    fun clearReplyTo() {
+        _replyingTo.value = null
     }
 
     // === TTS 语音朗读 ===

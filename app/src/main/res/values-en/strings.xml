@@ -97,7 +97,7 @@
     <string name="chat_bubble">Chat Bubbles</string>
     <string name="theme">Theme</string>
     <string name="about">About</string>
-    <string name="about_version">Version 1.0.0 · Based on SillyTavern data format</string>
+    <string name="about_version">Version 1.2.0 · Based on SillyTavern data format</string>
     <string name="custom_provider">Custom</string>
     <string name="model">Model</string>
     <string name="context_length">Context Length</string>
@@ -306,7 +306,25 @@
     <string name="delete_group_chat_title">Delete Group Chat</string>
     <string name="delete_group_chat_text">Are you sure you want to delete this group chat? All messages will be deleted.</string>
 
+    <!-- Data Management -->
+    <string name="data_management">Data Management</string>
+    <string name="backup_data">Backup Data</string>
+    <string name="backup_data_desc">Export all data as a JSON file</string>
+    <string name="backup_success">Backup successful: %s</string>
+    <string name="backup_failed">Backup failed: %s</string>
+    <string name="restore_data">Restore Data</string>
+    <string name="restore_data_desc">Restore data from a backup file</string>
+    <string name="restore_success">Restored: %1$d characters, %2$d chats, %3$d messages</string>
+    <string name="restore_failed">Restore failed: %s</string>
+    <string name="restore_confirm_title">Restore Data</string>
+    <string name="restore_confirm_text">Restore will merge with existing data without overwriting. Continue?</string>
+
     <!-- TTS -->
+    <!-- Quote Reply -->
+    <string name="quote_reply">Quote Reply</string>
+    <string name="replying_to">Replying to %s</string>
+    <string name="cancel_reply">Cancel Reply</string>
+
     <string name="tts_speak">Read Aloud</string>
     <string name="tts_stop">Stop Reading</string>
     <string name="tts_settings">Text-to-Speech</string>

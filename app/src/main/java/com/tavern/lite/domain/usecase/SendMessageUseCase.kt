@@ -44,10 +44,11 @@ class SendMessageUseCase @Inject constructor(
         character: CharacterEntity,
         userContent: String,
         config: ApiConfig,
+        replyToId: Long? = null,
     ): Result? {
         val processedContent = if (userContent.isNotBlank()) {
             val processed = scriptRepository.applyScripts(character.id, userContent, 0)
-            chatRepository.sendMessage(chatId, processed, "user")
+            chatRepository.sendMessage(chatId, processed, "user", replyToId = replyToId)
             processed
         } else ""
 

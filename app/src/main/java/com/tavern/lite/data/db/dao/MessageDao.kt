@@ -63,4 +63,7 @@ interface MessageDao {
 
     @Query("UPDATE messages SET swipe_index = :swipeIndex, content = :currentContent WHERE id = :id")
     suspend fun updateSwipeIndex(id: Long, swipeIndex: Int, currentContent: String)
+
+    @Query("SELECT * FROM messages ORDER BY id ASC")
+    suspend fun getAllMessages(): List<MessageEntity>
 }

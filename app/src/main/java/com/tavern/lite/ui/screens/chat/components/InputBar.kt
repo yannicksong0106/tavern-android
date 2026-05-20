@@ -2,17 +2,22 @@ package com.tavern.lite.ui.screens.chat.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,9 +40,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MessageEntity
 
 @Composable
 fun InputBar(
@@ -50,6 +57,9 @@ fun InputBar(
     showContinue: Boolean = false,
     isGroupChat: Boolean = false,
     groupCharacters: List<CharacterEntity> = emptyList(),
+    replyingTo: MessageEntity? = null,
+    replyingToName: String? = null,
+    onCancelReply: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
@@ -75,10 +85,57 @@ fun InputBar(
     }
 
     Box {
-        Row(
-            verticalAlignment = Alignment.Bottom,
+        Column(
             modifier = modifier
                 .background(MaterialTheme.colorScheme.surface)
+        ) {
+            // 引用回复预览
+            if (replyingTo != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(32.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = replyingToName ?: if (replyingTo.role == "user") stringResource(R.string.user_persona) else stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = replyingTo.content.take(100),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(
+                        onClick = onCancelReply,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.cancel_reply),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier
+                .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             TextField(
@@ -152,6 +209,7 @@ fun InputBar(
                 }
             }
         }
+        } // Column
 
         if (showAtMenu && groupCharacters.isNotEmpty()) {
             val filteredCharacters = remember(atSearchText, groupCharacters) {

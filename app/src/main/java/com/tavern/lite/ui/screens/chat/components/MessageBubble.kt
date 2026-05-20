@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
@@ -95,7 +96,8 @@ fun MessageBubble(
     onSwipeRight: () -> Unit = {},
     onReply: () -> Unit = {},
     onSpeak: () -> Unit = {},
-    onStopSpeak: () -> Unit = {}
+    onStopSpeak: () -> Unit = {},
+    onQuoteReply: () -> Unit = {}
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
@@ -389,6 +391,14 @@ fun MessageBubble(
                         }
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.quote_reply)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
+                    onClick = {
+                        onQuoteReply()
+                        showMenu = false
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.branch_from_here)) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null) },

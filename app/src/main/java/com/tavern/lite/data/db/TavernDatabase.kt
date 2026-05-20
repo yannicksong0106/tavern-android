@@ -45,7 +45,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         ChatCharacterEntity::class,
         PresetEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -277,6 +277,12 @@ abstract class TavernDatabase : RoomDatabase() {
                     INSERT INTO chat_characters (chat_id, character_id, display_order, is_active, created_at)
                     SELECT id, character_id, 0, 1, created_at FROM chats
                 """.trimIndent())
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN reply_to_id INTEGER")
             }
         }
 

@@ -30,5 +30,6 @@ data class MessageEntity(
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     // Swipe alternatives: JSON array of alternative content strings
     @ColumnInfo(name = "swipe_content", defaultValue = "[]") val swipeContent: String = "[]",
-    @ColumnInfo(name = "swipe_index", defaultValue = "0") val swipeIndex: Int = 0
+    @ColumnInfo(name = "swipe_index", defaultValue = "0") val swipeIndex: Int = 0,
+    @ColumnInfo(name = "reply_to_id") val replyToId: Long? = null
 )

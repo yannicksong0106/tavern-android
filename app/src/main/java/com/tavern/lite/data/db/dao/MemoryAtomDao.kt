@@ -108,4 +108,7 @@ interface MemoryAtomDao {
         LIMIT :limit
     """)
     suspend fun getRelevantAtoms(characterId: Long, limit: Int = 10, now: Long = System.currentTimeMillis()): List<MemoryAtomEntity>
+
+    @Query("SELECT * FROM memory_atoms ORDER BY id ASC")
+    suspend fun getAllMemoryAtoms(): List<MemoryAtomEntity>
 }

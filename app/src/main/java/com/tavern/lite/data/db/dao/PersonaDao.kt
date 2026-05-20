@@ -55,4 +55,7 @@ interface PersonaDao {
         LIMIT 1
     """)
     suspend fun getLinkedPersona(characterId: Long): PersonaEntity?
+
+    @Query("SELECT * FROM personas ORDER BY id ASC")
+    suspend fun getAllPersonasSync(): List<PersonaEntity>
 }

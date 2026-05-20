@@ -28,4 +28,7 @@ interface ScriptDao {
 
     @Query("DELETE FROM scripts WHERE character_id = :characterId")
     suspend fun deleteAllForCharacter(characterId: Long)
+
+    @Query("SELECT * FROM scripts ORDER BY id ASC")
+    suspend fun getAllScripts(): List<ScriptEntity>
 }

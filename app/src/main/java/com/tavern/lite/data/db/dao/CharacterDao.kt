@@ -15,6 +15,9 @@ interface CharacterDao {
     @Query("SELECT * FROM characters ORDER BY updated_at DESC")
     fun getAllCharacters(): Flow<List<CharacterEntity>>
 
+    @Query("SELECT * FROM characters ORDER BY id ASC")
+    suspend fun getAllCharactersSync(): List<CharacterEntity>
+
     @Query("SELECT * FROM characters WHERE id = :id")
     suspend fun getCharacterById(id: Long): CharacterEntity?
 

@@ -49,4 +49,7 @@ interface ChatDao {
 
     @Query("SELECT * FROM chats ORDER BY updated_at DESC LIMIT :limit")
     suspend fun getRecentChats(limit: Int): List<ChatEntity>
+
+    @Query("SELECT * FROM chats ORDER BY id ASC")
+    suspend fun getAllChatsSync(): List<ChatEntity>
 }

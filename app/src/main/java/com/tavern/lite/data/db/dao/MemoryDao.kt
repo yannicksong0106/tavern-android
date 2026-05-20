@@ -48,4 +48,7 @@ interface MemoryDao {
 
     @Query("UPDATE memories SET last_accessed = :now, access_count = access_count + 1 WHERE id IN (:ids)")
     suspend fun touchMemories(ids: List<Long>, now: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM memories ORDER BY id ASC")
+    suspend fun getAllMemories(): List<MemoryEntity>
 }

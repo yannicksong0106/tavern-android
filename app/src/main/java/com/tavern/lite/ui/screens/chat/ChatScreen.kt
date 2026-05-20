@@ -107,6 +107,7 @@ fun ChatScreen(
     val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
+    val replyingTo by viewModel.replyingTo.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -448,7 +449,8 @@ fun ChatScreen(
                                     onSwipeRight = { viewModel.swipeRight(message.id) },
                                     onReply = { viewModel.regenerate(message.id) },
                                     onSpeak = { viewModel.speakMessage(message) },
-                                    onStopSpeak = { viewModel.stopSpeaking() }
+                                    onStopSpeak = { viewModel.stopSpeaking() },
+                                    onQuoteReply = { viewModel.setReplyTo(message) }
                                 )
                             }
                         }
@@ -506,6 +508,11 @@ fun ChatScreen(
                 }
 
                 val haptic = LocalHapticFeedback.current
+                val replyingToCharacterName = replyingTo?.let { msg ->
+                    if (msg.role == "user") null
+                    else if (isGroupChat) msg.characterId?.let { id -> groupCharacters.find { it.id == id }?.name }
+                    else character?.name
+                }
                 InputBar(
                     value = inputText,
                     onValueChange = { inputText = it },
@@ -522,6 +529,9 @@ fun ChatScreen(
                     showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
                     isGroupChat = isGroupChat,
                     groupCharacters = groupCharacters,
+                    replyingTo = replyingTo,
+                    replyingToName = replyingToCharacterName,
+                    onCancelReply = { viewModel.clearReplyTo() },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

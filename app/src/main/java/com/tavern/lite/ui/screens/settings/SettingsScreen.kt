@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -22,6 +25,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +38,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -53,7 +59,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.tavern.lite.R
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.TtsSettings
@@ -78,6 +86,7 @@ fun SettingsScreen(
     val language by viewModel.language.collectAsStateWithLifecycle()
     val backgroundProactive by viewModel.backgroundProactive.collectAsStateWithLifecycle()
     val ttsSettings by viewModel.ttsSettings.collectAsStateWithLifecycle()
+    val backupState by viewModel.backupState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -154,6 +163,12 @@ fun SettingsScreen(
             // TTS 语音朗读
             SectionHeader(stringResource(R.string.tts_settings))
             TtsSettingsSection(ttsSettings, viewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 数据管理
+            SectionHeader(stringResource(R.string.data_management))
+            DataManagementSection(backupState, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -962,6 +977,99 @@ private fun TtsSettingsSection(ttsSettings: TtsSettings, viewModel: SettingsView
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DataManagementSection(backupState: BackupState, viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            context.contentResolver.openInputStream(it)?.let { stream ->
+                viewModel.restoreData(stream)
+            }
+        }
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // 备份按钮
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.backup_data), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = stringResource(R.string.backup_data_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Button(
+                    onClick = { viewModel.backupData() },
+                    enabled = backupState !is BackupState.Working
+                ) {
+                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.backup_data))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 恢复按钮
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.restore_data), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = stringResource(R.string.restore_data_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(
+                    onClick = { restoreLauncher.launch(arrayOf("application/json")) },
+                    enabled = backupState !is BackupState.Working
+                ) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.restore_data))
+                }
+            }
+
+            // 状态消息
+            when (val state = backupState) {
+                is BackupState.Success -> {
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                is BackupState.Error -> {
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                else -> {}
             }
         }
     }

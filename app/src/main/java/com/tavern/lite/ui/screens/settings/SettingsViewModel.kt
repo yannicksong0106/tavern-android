@@ -12,6 +12,7 @@ import com.tavern.lite.data.store.TtsSettings
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,7 +23,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.InputStream
 import javax.inject.Inject
+
+sealed class BackupState {
+    data object Idle : BackupState()
+    data object Working : BackupState()
+    data class Success(val message: String) : BackupState()
+    data class Error(val message: String) : BackupState()
+}
 
 sealed class ConnectionTestState {
     data object Idle : ConnectionTestState()
@@ -36,7 +46,8 @@ class SettingsViewModel @Inject constructor(
     private val apiConfigStore: ApiConfigStore,
     private val chatApiService: ChatApiService,
     private val settingsStore: SettingsStore,
-    private val proactiveWorkScheduler: ProactiveWorkScheduler
+    private val proactiveWorkScheduler: ProactiveWorkScheduler,
+    private val backupManager: BackupManager
 ) : ViewModel() {
 
     val config: StateFlow<ApiConfig> = apiConfigStore.configFlow
@@ -56,6 +67,11 @@ class SettingsViewModel @Inject constructor(
 
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
+
+    private val _backupState = MutableStateFlow<BackupState>(BackupState.Idle)
+    val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
+
+    private var _lastBackupFile: File? = null
 
     private val _pendingConfig = MutableSharedFlow<ApiConfig>(extraBufferCapacity = 1)
 
@@ -168,5 +184,42 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsStore.saveTtsSettings(settings)
         }
+    }
+
+    fun backupData() {
+        viewModelScope.launch {
+            _backupState.value = BackupState.Working
+            backupManager.backup().fold(
+                onSuccess = { file ->
+                    _lastBackupFile = file
+                    _backupState.value = BackupState.Success(file.name)
+                },
+                onFailure = { e ->
+                    _backupState.value = BackupState.Error(e.message ?: "Unknown error")
+                }
+            )
+        }
+    }
+
+    fun restoreData(inputStream: InputStream) {
+        viewModelScope.launch {
+            _backupState.value = BackupState.Working
+            backupManager.restore(inputStream).fold(
+                onSuccess = { result ->
+                    _backupState.value = BackupState.Success(
+                        "chars=${result.charactersRestored}, chats=${result.chatsRestored}, msgs=${result.messagesRestored}"
+                    )
+                },
+                onFailure = { e ->
+                    _backupState.value = BackupState.Error(e.message ?: "Unknown error")
+                }
+            )
+        }
+    }
+
+    fun getLastBackupFile(): File? = _lastBackupFile
+
+    fun resetBackupState() {
+        _backupState.value = BackupState.Idle
     }
 }

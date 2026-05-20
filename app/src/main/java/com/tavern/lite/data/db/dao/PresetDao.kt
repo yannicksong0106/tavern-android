@@ -34,4 +34,7 @@ interface PresetDao {
 
     @Query("UPDATE presets SET is_default = 1 WHERE id = :id")
     suspend fun setDefaultPreset(id: Long)
+
+    @Query("SELECT * FROM presets ORDER BY id ASC")
+    suspend fun getAllPresetsSync(): List<PresetEntity>
 }
