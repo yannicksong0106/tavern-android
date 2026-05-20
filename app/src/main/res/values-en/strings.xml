@@ -305,4 +305,26 @@
     <string name="group_members_count">%d members</string>
     <string name="delete_group_chat_title">Delete Group Chat</string>
     <string name="delete_group_chat_text">Are you sure you want to delete this group chat? All messages will be deleted.</string>
+
+    <!-- TTS -->
+    <string name="tts_speak">Read Aloud</string>
+    <string name="tts_stop">Stop Reading</string>
+    <string name="tts_settings">Text-to-Speech</string>
+    <string name="tts_enabled">Enable TTS</string>
+    <string name="tts_enabled_desc">Long press messages to read aloud</string>
+    <string name="tts_engine">TTS Engine</string>
+    <string name="tts_engine_system">System TTS</string>
+    <string name="tts_engine_openai">OpenAI TTS</string>
+    <string name="tts_speed">Speed: %.1fx</string>
+    <string name="tts_pitch">Pitch: %.1f</string>
+    <string name="tts_openai_endpoint">API Endpoint</string>
+    <string name="tts_openai_api_key">API Key</string>
+    <string name="tts_openai_model">Model</string>
+    <string name="tts_openai_voice">Voice</string>
+    <string name="tts_voice_alloy">Alloy</string>
+    <string name="tts_voice_echo">Echo</string>
+    <string name="tts_voice_fable">Fable</string>
+    <string name="tts_voice_onyx">Onyx</string>
+    <string name="tts_voice_nova">Nova</string>
+    <string name="tts_voice_shimmer">Shimmer</string>
 </resources>

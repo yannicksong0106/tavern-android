@@ -8,6 +8,7 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.data.store.TtsSettings
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
@@ -49,6 +50,9 @@ class SettingsViewModel @Inject constructor(
 
     val backgroundProactive: StateFlow<Boolean> = settingsStore.backgroundProactiveFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val ttsSettings: StateFlow<TtsSettings> = settingsStore.ttsSettingsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TtsSettings())
 
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
@@ -157,6 +161,12 @@ class SettingsViewModel @Inject constructor(
             } else {
                 proactiveWorkScheduler.cancel()
             }
+        }
+    }
+
+    fun updateTtsSettings(settings: TtsSettings) {
+        viewModelScope.launch {
+            settingsStore.saveTtsSettings(settings)
         }
     }
 }

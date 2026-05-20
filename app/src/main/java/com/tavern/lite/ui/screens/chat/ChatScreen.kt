@@ -105,6 +105,8 @@ fun ChatScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
+    val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
+    val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -437,13 +439,16 @@ fun ChatScreen(
                                     showAvatar = isGroupChat && message.role == "assistant" && !isSameRoleAsPrev,
                                     isSearchResult = index in searchResults,
                                     isCurrentSearchResult = currentSearchIndex >= 0 && searchResults.getOrNull(currentSearchIndex) == index,
+                                    isSpeaking = speakingMessageId == message.id,
                                     onRegenerate = { viewModel.regenerate(message.id) },
                                     onEdit = { editingMessage = message },
                                     onDelete = { deletingMessageId = message.id },
                                     onBranch = { viewModel.createBranchFromMessage(message.id) },
                                     onSwipeLeft = { viewModel.swipeLeft(message.id) },
                                     onSwipeRight = { viewModel.swipeRight(message.id) },
-                                    onReply = { viewModel.regenerate(message.id) }
+                                    onReply = { viewModel.regenerate(message.id) },
+                                    onSpeak = { viewModel.speakMessage(message) },
+                                    onStopSpeak = { viewModel.stopSpeaking() }
                                 )
                             }
                         }

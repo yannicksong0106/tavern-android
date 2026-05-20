@@ -317,4 +317,26 @@
     <string name="group_members_count">%d 人</string>
     <string name="delete_group_chat_title">删除群聊</string>
     <string name="delete_group_chat_text">确定要删除这个群聊吗？所有消息都会被删除。</string>
+
+    <!-- TTS 语音朗读 -->
+    <string name="tts_speak">朗读</string>
+    <string name="tts_stop">停止朗读</string>
+    <string name="tts_settings">语音朗读</string>
+    <string name="tts_enabled">启用语音朗读</string>
+    <string name="tts_enabled_desc">长按消息可朗读内容</string>
+    <string name="tts_engine">TTS 引擎</string>
+    <string name="tts_engine_system">系统 TTS</string>
+    <string name="tts_engine_openai">OpenAI TTS</string>
+    <string name="tts_speed">语速: %.1fx</string>
+    <string name="tts_pitch">音调: %.1f</string>
+    <string name="tts_openai_endpoint">API 地址</string>
+    <string name="tts_openai_api_key">API Key</string>
+    <string name="tts_openai_model">模型</string>
+    <string name="tts_openai_voice">声音</string>
+    <string name="tts_voice_alloy">Alloy</string>
+    <string name="tts_voice_echo">Echo</string>
+    <string name="tts_voice_fable">Fable</string>
+    <string name="tts_voice_onyx">Onyx</string>
+    <string name="tts_voice_nova">Nova</string>
+    <string name="tts_voice_shimmer">Shimmer</string>
 </resources>

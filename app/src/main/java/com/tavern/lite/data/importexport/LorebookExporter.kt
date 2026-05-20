@@ -4,6 +4,8 @@ import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import com.tavern.lite.data.model.WorldBook
 import com.tavern.lite.data.model.WorldBookEntryData
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -71,8 +73,8 @@ class LorebookExporter @Inject constructor(
                 worldBookId = worldBookId,
                 uid = data.uid,
                 comment = data.comment,
-                keys = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.String.serializer()), data.key),
-                keysSecondary = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.String.serializer()), data.keysecondary),
+                keys = json.encodeToString(ListSerializer(String.serializer()), data.key),
+                keysSecondary = json.encodeToString(ListSerializer(String.serializer()), data.keysecondary),
                 content = data.content,
                 constant = data.constant,
                 position = data.position,

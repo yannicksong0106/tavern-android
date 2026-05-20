@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -84,13 +86,16 @@ fun MessageBubble(
     showAvatar: Boolean = false,
     isSearchResult: Boolean = false,
     isCurrentSearchResult: Boolean = false,
+    isSpeaking: Boolean = false,
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onBranch: () -> Unit = {},
     onSwipeLeft: () -> Unit = {},
     onSwipeRight: () -> Unit = {},
-    onReply: () -> Unit = {}
+    onReply: () -> Unit = {},
+    onSpeak: () -> Unit = {},
+    onStopSpeak: () -> Unit = {}
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
@@ -223,14 +228,22 @@ fun MessageBubble(
         }
 
         Box {
-            val borderWidth = if (isCurrentSearchResult) 2.dp else 0.dp
-            val borderColor = if (isCurrentSearchResult) MaterialTheme.colorScheme.primary else Color.Transparent
+            val borderWidth = when {
+                isSpeaking -> 2.dp
+                isCurrentSearchResult -> 2.dp
+                else -> 0.dp
+            }
+            val borderColor = when {
+                isSpeaking -> MaterialTheme.colorScheme.tertiary
+                isCurrentSearchResult -> MaterialTheme.colorScheme.primary
+                else -> Color.Transparent
+            }
 
             Column(
                 modifier = Modifier
                     .widthIn(max = maxBubbleWidth)
                     .then(
-                        if (isCurrentSearchResult) {
+                        if (isCurrentSearchResult || isSpeaking) {
                             Modifier.border(
                                 width = borderWidth,
                                 color = borderColor,
@@ -384,6 +397,25 @@ fun MessageBubble(
                         showMenu = false
                     }
                 )
+                if (isSpeaking) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.tts_stop)) },
+                        leadingIcon = { Icon(Icons.Default.Stop, contentDescription = null) },
+                        onClick = {
+                            onStopSpeak()
+                            showMenu = false
+                        }
+                    )
+                } else {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.tts_speak)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null) },
+                        onClick = {
+                            onSpeak()
+                            showMenu = false
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = {

@@ -15,6 +15,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.util.SwipeUtils
+import com.tavern.lite.util.TtsHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.Job
@@ -42,6 +43,7 @@ class ChatViewModel @Inject constructor(
     private val sendMessageUseCase: SendMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
+    private val ttsHelper: TtsHelper,
     val markwon: Markwon
 ) : ViewModel() {
 
@@ -549,5 +551,26 @@ class ChatViewModel @Inject constructor(
         _searchQuery.value = ""
         _searchResults.value = emptyList()
         _currentSearchIndex.value = -1
+    }
+
+    // === TTS 语音朗读 ===
+
+    val isSpeaking: StateFlow<Boolean> = ttsHelper.isSpeaking
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val speakingMessageId: StateFlow<Long?> = ttsHelper.speakingMessageId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun speakMessage(message: MessageEntity) {
+        ttsHelper.speak(message.content, message.id)
+    }
+
+    fun stopSpeaking() {
+        ttsHelper.stop()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsHelper.stop()
     }
 }
