@@ -155,7 +155,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "长按消息可引用回复，显示引用卡片",
             "消息置顶功能",
             "从此处删除功能"
-        )
+        ),
+        lifeLog = "什么520？我只知道今天原神更新。谁能给我520亿 token？ʚ♡⃛ɞ(ू•ᴗ•ू❁)"
     ),
     VersionEntry(
         version = "v1.1.0",
@@ -165,7 +166,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "系统 TTS + OpenAI TTS 双引擎",
             "支持语速、音调调节",
             "长按消息即可朗读"
-        )
+        ),
+        lifeLog = "不愧是蜜桃四季春，大佬，同款"
     ),
     VersionEntry(
         version = "v1.0.7",
@@ -175,7 +177,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "角色可在后台主动发起对话",
             "通知栏直接回复",
             "API Key 加密存储（Android Keystore AES-256-GCM）"
-        )
+        ),
+        lifeLog = "今天满课，好累"
     ),
     VersionEntry(
         version = "v1.0.6",
@@ -184,7 +187,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
         details = listOf(
             "单聊 + 群聊分离的健谈度控制",
             "优化消息分段和流式输出"
-        )
+        ),
+        lifeLog = "还是要多多学习啊，能力严重不够分＞(￣▽￣ = ￣︿￣)<裂"
     ),
     VersionEntry(
         version = "v1.0.5",
@@ -193,7 +197,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
         details = listOf(
             "优化消息清理逻辑",
             "提升稳定性"
-        )
+        ),
+        lifeLog = "不管了，玩游戏去了ღ(✞╹◡╹✞)ற"
     ),
     VersionEntry(
         version = "v1.0.4",
@@ -202,7 +207,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
         details = listOf(
             "优化内存使用",
             "修复多个边界情况"
-        )
+        ),
+        lifeLog = "各种小问题接连冒出来，越修越累˃̣̣̥᷄⌓˂̣̣̥᷅"
     ),
     VersionEntry(
         version = "v1.0.3",
@@ -212,7 +218,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "群聊数据持久化存储",
             "首页显示已创建的群聊",
             "群聊成员管理优化"
-        )
+        ),
+        lifeLog = "这玩意真的能做出来吗？Bug好多"
     ),
     VersionEntry(
         version = "v1.0.2",
@@ -223,7 +230,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "群聊支持 @ 提及",
             "健谈度控制",
             "活人感深度优化：多消息拆分 + 自然间隔"
-        )
+        ),
+        lifeLog = "吃了份塔斯汀，感觉他家的汉堡没以前大了，但是也挺好吃的"
     ),
     VersionEntry(
         version = "v1.0.1",
@@ -233,7 +241,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "修复中英文语言切换竞态条件",
             "双语 strings.xml 完整覆盖",
             "README/Release 英文化"
-        )
+        ),
+        lifeLog = "早知道不搞了，这么多bug"
     ),
     VersionEntry(
         version = "v1.0.0-beta1",
@@ -245,6 +254,7 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "世界书系统",
             "多 API 支持（OpenAI/Claude/KoboldAI）",
             "聊天界面 + 消息管理"
-        )
+        ),
+        lifeLog = "今天晚上突然来了兴趣，于是把这个项目赶出来了"
     )
 )
