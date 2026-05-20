@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
 
@@ -46,9 +48,26 @@ class ChatListViewModel @Inject constructor(
     private val _exportedFile = MutableSharedFlow<File>()
     val exportedFile: SharedFlow<File> = _exportedFile.asSharedFlow()
 
+    // chatId -> Pair(raw role string, content preview)
+    private val _lastMessages = MutableStateFlow<Map<Long, Pair<String, String>>>(emptyMap())
+    val lastMessages: StateFlow<Map<Long, Pair<String, String>>> = _lastMessages.asStateFlow()
+
     init {
         viewModelScope.launch {
             _character.value = characterRepository.getCharacterById(characterId)
+        }
+        viewModelScope.launch {
+            chats.collectLatest { chatList ->
+                val map = mutableMapOf<Long, Pair<String, String>>()
+                for (chat in chatList) {
+                    val msg = chatRepository.getLastMessageForChat(chat.id)
+                    if (msg != null) {
+                        val preview = msg.content.take(80).replace("\n", " ")
+                        map[chat.id] = Pair(msg.role, preview)
+                    }
+                }
+                _lastMessages.value = map
+            }
         }
     }
 

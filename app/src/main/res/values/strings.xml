@@ -42,6 +42,8 @@
     <string name="change_background">更换背景</string>
     <string name="delete_message_title">删除消息</string>
     <string name="delete_message_text">确定要删除这条消息吗？</string>
+    <string name="delete_from_here">从此处删除</string>
+    <string name="delete_from_here_text">确定要删除这条消息及之后的所有消息吗？</string>
     <string name="edit_message_title">编辑消息</string>
     <string name="regenerate">重新生成</string>
     <string name="branch_from_here">从此处分叉</string>
@@ -337,6 +339,10 @@
     <string name="quote_reply">引用回复</string>
     <string name="replying_to">回复 %s</string>
     <string name="cancel_reply">取消回复</string>
+
+    <!-- 消息预览 / Message Preview -->
+    <string name="preview_user">你</string>
+    <string name="preview_ai">AI</string>
 
     <string name="tts_speak">朗读</string>
     <string name="tts_stop">停止朗读</string>

@@ -81,6 +81,7 @@ fun ChatListScreen(
 ) {
     val character by viewModel.character.collectAsStateWithLifecycle()
     val chats by viewModel.chats.collectAsStateWithLifecycle()
+    val lastMessages by viewModel.lastMessages.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var deletingChat by remember { mutableStateOf<ChatEntity?>(null) }
@@ -254,6 +255,8 @@ fun ChatListScreen(
                 items(chats, key = { it.id }) { chat ->
                     ChatItem(
                         chat = chat,
+                        lastMessage = lastMessages[chat.id],
+                        characterName = character?.name,
                         onClick = { onChatClick(chat.id) },
                         onLongClick = { renamingChat = chat },
                         onDelete = { deletingChat = chat },
@@ -272,6 +275,8 @@ fun ChatListScreen(
 @Composable
 private fun ChatItem(
     chat: ChatEntity,
+    lastMessage: Pair<String, String>?,
+    characterName: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDelete: () -> Unit,
@@ -311,10 +316,25 @@ private fun ChatItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (lastMessage != null) {
+                    val roleLabel = when (lastMessage.first) {
+                        "user" -> stringResource(R.string.preview_user)
+                        "assistant" -> characterName ?: stringResource(R.string.preview_ai)
+                        else -> lastMessage.first
+                    }
+                    Text(
+                        text = "$roleLabel: ${lastMessage.second}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
                 Text(
                     text = dateFormat.format(Date(chat.updatedAt)),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }

@@ -75,6 +75,7 @@ import com.tavern.lite.ui.components.presetBackgrounds
 import com.tavern.lite.ui.screens.chat.components.BranchNavigationBar
 import com.tavern.lite.ui.screens.chat.components.ChattinessSheet
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
+import com.tavern.lite.ui.screens.chat.components.DeleteFromHereConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
@@ -157,6 +158,16 @@ fun ChatScreen(
     var inputText by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // 引用消息点击跳转
+    val scrollToMessage: (Long) -> Unit = remember(messages) {
+        { messageId: Long ->
+            val index = messages.indexOfFirst { it.id == messageId }
+            if (index >= 0) {
+                scope.launch { listState.animateScrollToItem(index) }
+            }
+        }
+    }
     val markwon = viewModel.markwon
 
     LaunchedEffect(Unit) {
@@ -214,6 +225,17 @@ fun ChatScreen(
                 deletingMessageId = null
             },
             onDismiss = { deletingMessageId = null }
+        )
+    }
+
+    var deletingFromHereId by remember { mutableStateOf<Long?>(null) }
+    if (deletingFromHereId != null) {
+        DeleteFromHereConfirmDialog(
+            onConfirm = {
+                viewModel.deleteMessagesFromHere(deletingFromHereId!!)
+                deletingFromHereId = null
+            },
+            onDismiss = { deletingFromHereId = null }
         )
     }
 
@@ -462,8 +484,10 @@ fun ChatScreen(
                                     onSpeak = { viewModel.speakMessage(message) },
                                     onStopSpeak = { viewModel.stopSpeaking() },
                                     onQuoteReply = { viewModel.setReplyTo(message) },
+                                    onDeleteFromHere = { deletingFromHereId = message.id },
                                     quotedMessage = quotedMsg,
-                                    quotedMessageName = quotedName
+                                    quotedMessageName = quotedName,
+                                    onQuoteClick = scrollToMessage
                                 )
                             }
                         }

@@ -412,6 +412,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    fun deleteMessagesFromHere(messageId: Long) {
+        viewModelScope.launch {
+            chatRepository.deleteMessagesFromHere(chatId, messageId)
+        }
+    }
+
     // 分支操作
     private val _branches = MutableStateFlow<List<Long?>>(emptyList())
     val branches: StateFlow<List<Long?>> = _branches.asStateFlow()

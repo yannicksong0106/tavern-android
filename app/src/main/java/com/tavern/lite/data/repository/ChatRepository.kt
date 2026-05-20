@@ -46,6 +46,9 @@ class ChatRepository @Inject constructor(
     suspend fun getRecentMessages(chatId: Long, limit: Int): List<MessageEntity> =
         messageDao.getRecentMessages(chatId, limit)
 
+    suspend fun getLastMessageForChat(chatId: Long): MessageEntity? =
+        messageDao.getLastMessageForChat(chatId)
+
     suspend fun sendMessage(chatId: Long, content: String, role: String, characterId: Long? = null, replyToId: Long? = null): Long {
         val id = messageDao.insert(
             MessageEntity(chatId = chatId, role = role, content = content, characterId = characterId, replyToId = replyToId)
@@ -63,6 +66,8 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun deleteMessage(messageId: Long) = messageDao.softDelete(messageId)
+
+    suspend fun deleteMessagesFromHere(chatId: Long, messageId: Long) = messageDao.softDeleteFromHere(chatId, messageId)
 
     suspend fun getMessageById(messageId: Long): MessageEntity? = messageDao.getMessageById(messageId)
 

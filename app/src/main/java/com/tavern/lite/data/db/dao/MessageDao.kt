@@ -17,6 +17,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE chat_id = :chatId AND is_active = 1 ORDER BY created_at DESC LIMIT :limit")
     suspend fun getRecentMessages(chatId: Long, limit: Int): List<MessageEntity>
 
+    @Query("SELECT * FROM messages WHERE chat_id = :chatId AND is_active = 1 ORDER BY created_at DESC LIMIT 1")
+    suspend fun getLastMessageForChat(chatId: Long): MessageEntity?
+
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun getMessageById(id: Long): MessageEntity?
 
@@ -40,6 +43,9 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE chat_id = :chatId")
     suspend fun deleteAllForChat(chatId: Long)
+
+    @Query("UPDATE messages SET is_active = 0 WHERE chat_id = :chatId AND is_active = 1 AND created_at >= (SELECT created_at FROM messages WHERE id = :messageId)")
+    suspend fun softDeleteFromHere(chatId: Long, messageId: Long)
 
     // 分支操作
     @Query("SELECT DISTINCT branch_id FROM messages WHERE chat_id = :chatId AND branch_id IS NOT NULL ORDER BY created_at ASC")

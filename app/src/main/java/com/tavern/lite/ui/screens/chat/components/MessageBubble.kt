@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -102,8 +103,10 @@ fun MessageBubble(
     onSpeak: () -> Unit = {},
     onStopSpeak: () -> Unit = {},
     onQuoteReply: () -> Unit = {},
+    onDeleteFromHere: () -> Unit = {},
     quotedMessage: MessageEntity? = null,
-    quotedMessageName: String? = null
+    quotedMessageName: String? = null,
+    onQuoteClick: ((Long) -> Unit)? = null
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
@@ -296,6 +299,10 @@ fun MessageBubble(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .then(
+                                if (onQuoteClick != null) Modifier.clickable { onQuoteClick(quotedMessage.id) }
+                                else Modifier
+                            )
                             .padding(8.dp)
                     ) {
                         Box(
@@ -468,6 +475,20 @@ fun MessageBubble(
                         }
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.delete_from_here), color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    onClick = {
+                        onDeleteFromHere()
+                        showMenu = false
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = {
