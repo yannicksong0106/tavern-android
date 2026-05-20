@@ -394,18 +394,29 @@ private fun ProviderFields(
     showApiKey: Boolean = true,
     showBaseUrl: Boolean = true
 ) {
+    // 使用本地状态避免光标跳动问题
+    var localBaseUrl by remember(baseUrl) { mutableStateOf(baseUrl) }
+    var localApiKey by remember(apiKey) { mutableStateOf(apiKey) }
+    var localModel by remember(model) { mutableStateOf(model) }
+
     if (showBaseUrl) {
         OutlinedTextField(
-            value = baseUrl,
-            onValueChange = onBaseUrlChange,
+            value = localBaseUrl,
+            onValueChange = {
+                localBaseUrl = it
+                onBaseUrlChange(it)
+            },
             label = { Text("Base URL") },
             modifier = Modifier.fillMaxWidth()
         )
     }
     if (showApiKey) {
         OutlinedTextField(
-            value = apiKey,
-            onValueChange = onApiKeyChange,
+            value = localApiKey,
+            onValueChange = {
+                localApiKey = it
+                onApiKeyChange(it)
+            },
             label = { Text("API Key") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
@@ -414,8 +425,11 @@ private fun ProviderFields(
         )
     }
     OutlinedTextField(
-        value = model,
-        onValueChange = onModelChange,
+        value = localModel,
+        onValueChange = {
+            localModel = it
+            onModelChange(it)
+        },
         label = { Text(stringResource(R.string.model)) },
         modifier = Modifier
             .fillMaxWidth()
