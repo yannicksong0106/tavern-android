@@ -241,7 +241,7 @@ private fun ConnectionTestSection(viewModel: SettingsViewModel) {
 @Composable
 private fun ApiProviderSection(config: ApiConfig, viewModel: SettingsViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    val providers = listOf("OpenAI", "Claude", "Ollama", "Custom")
+    val providers = listOf("OpenAI", "Claude", "Ollama", "KoboldAI", "Gemini", "Custom")
     val currentProviderName = config.provider.displayName
 
     Card(
@@ -276,6 +276,8 @@ private fun ApiProviderSection(config: ApiConfig, viewModel: SettingsViewModel) 
                                     "OpenAI" -> ApiProvider.OpenAI()
                                     "Claude" -> ApiProvider.Claude()
                                     "Ollama" -> ApiProvider.Ollama()
+                                    "KoboldAI" -> ApiProvider.KoboldAI()
+                                    "Gemini" -> ApiProvider.Gemini()
                                     else -> ApiProvider.Custom()
                                 }
                                 viewModel.updateProvider(provider)
@@ -320,6 +322,27 @@ private fun ApiProviderSection(config: ApiConfig, viewModel: SettingsViewModel) 
                         showApiKey = false
                     )
                 }
+                is ApiProvider.KoboldAI -> {
+                    ProviderFields(
+                        baseUrl = provider.baseUrl,
+                        apiKey = provider.apiKey,
+                        model = provider.model,
+                        onBaseUrlChange = { viewModel.updateProvider(provider.copy(baseUrl = it)) },
+                        onApiKeyChange = { viewModel.updateProvider(provider.copy(apiKey = it)) },
+                        onModelChange = { viewModel.updateProvider(provider.copy(model = it)) }
+                    )
+                }
+                is ApiProvider.Gemini -> {
+                    ProviderFields(
+                        baseUrl = "",
+                        apiKey = provider.apiKey,
+                        model = provider.model,
+                        onBaseUrlChange = {},
+                        onApiKeyChange = { viewModel.updateProvider(provider.copy(apiKey = it)) },
+                        onModelChange = { viewModel.updateProvider(provider.copy(model = it)) },
+                        showBaseUrl = false
+                    )
+                }
                 is ApiProvider.Custom -> {
                     ProviderFields(
                         baseUrl = provider.baseUrl,
@@ -343,14 +366,17 @@ private fun ProviderFields(
     onBaseUrlChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onModelChange: (String) -> Unit,
-    showApiKey: Boolean = true
+    showApiKey: Boolean = true,
+    showBaseUrl: Boolean = true
 ) {
-    OutlinedTextField(
-        value = baseUrl,
-        onValueChange = onBaseUrlChange,
-        label = { Text("Base URL") },
-        modifier = Modifier.fillMaxWidth()
-    )
+    if (showBaseUrl) {
+        OutlinedTextField(
+            value = baseUrl,
+            onValueChange = onBaseUrlChange,
+            label = { Text("Base URL") },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
     if (showApiKey) {
         OutlinedTextField(
             value = apiKey,

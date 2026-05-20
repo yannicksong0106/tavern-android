@@ -228,6 +228,12 @@ $conversation
                     ApiProvider.OpenAI(baseUrl = "${provider.baseUrl}/v1", model = provider.model),
                     config
                 )
+                is ApiProvider.KoboldAI -> callOpenAINonStreaming(
+                    messages,
+                    ApiProvider.OpenAI(baseUrl = "${provider.baseUrl}/v1", apiKey = provider.apiKey, model = provider.model),
+                    config
+                )
+                is ApiProvider.Gemini -> callGeminiNonStreaming(messages, provider, config)
                 is ApiProvider.Custom -> callOpenAINonStreaming(
                     messages,
                     ApiProvider.OpenAI(baseUrl = provider.baseUrl, apiKey = provider.apiKey, model = provider.model),
@@ -306,6 +312,56 @@ $conversation
                 .map { content.getJSONObject(it) }
                 .firstOrNull { it.getString("type") == "text" }
             textBlock?.getString("text")
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun callGeminiNonStreaming(
+        messages: JSONArray,
+        provider: ApiProvider.Gemini,
+        config: ApiConfig
+    ): String? {
+        val contents = JSONArray()
+        for (i in 0 until messages.length()) {
+            val msg = messages.getJSONObject(i)
+            val role = when (msg.getString("role")) {
+                "user" -> "user"
+                "assistant" -> "model"
+                else -> "user"
+            }
+            contents.put(JSONObject().apply {
+                put("role", role)
+                put("parts", JSONArray().apply {
+                    put(JSONObject().apply { put("text", msg.getString("content")) })
+                })
+            })
+        }
+
+        val body = JSONObject().apply {
+            put("contents", contents)
+            put("generationConfig", JSONObject().apply {
+                put("maxOutputTokens", 1024)
+            })
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:generateContent?key=${provider.apiKey}"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) return null
+
+        val responseBody = response.body?.string() ?: return null
+        return try {
+            val json = JSONObject(responseBody)
+            val candidates = json.getJSONArray("candidates")
+            val content = candidates.getJSONObject(0).getJSONObject("content")
+            val parts = content.getJSONArray("parts")
+            parts.getJSONObject(0).getString("text")
         } catch (_: Exception) {
             null
         }

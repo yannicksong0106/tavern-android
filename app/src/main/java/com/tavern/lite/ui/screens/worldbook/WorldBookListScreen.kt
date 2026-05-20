@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -42,9 +44,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import com.tavern.lite.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +66,8 @@ fun WorldBookListScreen(
     val worldBooks by viewModel.worldBooks.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     var deletingBook by remember { mutableStateOf<WorldBookEntity?>(null) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importJson by remember { mutableStateOf("") }
 
     // 创建对话框
     if (showCreateDialog) {
@@ -92,6 +100,45 @@ fun WorldBookListScreen(
         )
     }
 
+    // 导入对话框
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text(stringResource(R.string.import_lorebook)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.import_lorebook_hint))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = importJson,
+                        onValueChange = { importJson = it },
+                        label = { Text("JSON") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 5
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (importJson.isNotBlank()) {
+                            // 创建新世界书并导入
+                            viewModel.createWorldBook("Imported Lorebook", "") { id ->
+                                viewModel.importWorldBook(importJson, id)
+                                showImportDialog = false
+                                importJson = ""
+                            }
+                        }
+                    },
+                    enabled = importJson.isNotBlank()
+                ) { Text(stringResource(R.string.import_btn)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,6 +146,11 @@ fun WorldBookListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showImportDialog = true }) {
+                        Icon(Icons.Default.FileUpload, contentDescription = stringResource(R.string.import_lorebook))
                     }
                 }
             )
@@ -145,10 +197,18 @@ fun WorldBookListScreen(
                 modifier = Modifier.padding(padding)
             ) {
                 items(worldBooks, key = { it.id }) { book ->
+                    val context = LocalContext.current
                     WorldBookCard(
                         worldBook = book,
                         onClick = { onWorldBookClick(book.id) },
-                        onDelete = { deletingBook = book }
+                        onDelete = { deletingBook = book },
+                        onExport = {
+                            viewModel.exportWorldBook(book) { json ->
+                                val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Lorebook", json))
+                                Toast.makeText(context, context.getString(R.string.export_copied), Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     )
                 }
             }
@@ -161,7 +221,8 @@ fun WorldBookListScreen(
 private fun WorldBookCard(
     worldBook: WorldBookEntity,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onExport: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -200,6 +261,14 @@ private fun WorldBookCard(
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
+            }
+            IconButton(onClick = onExport) {
+                Icon(
+                    Icons.Default.FileDownload,
+                    contentDescription = stringResource(R.string.export_lorebook),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(

@@ -39,6 +39,12 @@ class ChatApiService @Inject constructor(
                 ApiProvider.OpenAI(baseUrl = "${provider.baseUrl}/v1", model = provider.model),
                 config
             ))
+            is ApiProvider.KoboldAI -> emitAll(streamOpenAI(
+                messages,
+                ApiProvider.OpenAI(baseUrl = "${provider.baseUrl}/v1", apiKey = provider.apiKey, model = provider.model),
+                config
+            ))
+            is ApiProvider.Gemini -> emitAll(streamGemini(messages, provider, config))
             is ApiProvider.Custom -> emitAll(streamOpenAI(messages, provider.let {
                 ApiProvider.OpenAI(baseUrl = it.baseUrl, apiKey = it.apiKey, model = it.model)
             }, config))
@@ -179,6 +185,83 @@ class ChatApiService @Inject constructor(
                             if (!text.isNullOrEmpty()) emit(text)
                         }
                         "message_stop" -> break
+                    }
+                } catch (_: Exception) {
+                    // Skip malformed chunks
+                }
+            }
+        } finally {
+            reader.close()
+            response.close()
+        }
+    }
+
+    private fun streamGemini(
+        messages: List<ChatMessage>,
+        provider: ApiProvider.Gemini,
+        config: ApiConfig
+    ): Flow<String> = flow {
+        // Gemini API: convert messages to contents format
+        val contents = JSONArray()
+        messages.forEach { msg ->
+            val role = when (msg.role) {
+                "user" -> "user"
+                "assistant" -> "model"
+                else -> "user" // system messages become user messages
+            }
+            contents.put(JSONObject().apply {
+                put("role", role)
+                put("parts", JSONArray().apply {
+                    put(JSONObject().apply { put("text", msg.content) })
+                })
+            })
+        }
+
+        val body = JSONObject().apply {
+            put("contents", contents)
+            put("generationConfig", JSONObject().apply {
+                put("maxOutputTokens", config.maxTokens)
+                put("temperature", config.temperature.toDouble())
+                if (config.topP < 1f) put("topP", config.topP.toDouble())
+            })
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:streamGenerateContent?key=${provider.apiKey}"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Unknown error"
+            throw ApiException(response.code, errorBody)
+        }
+
+        val body2 = response.body ?: return@flow
+        val reader = BufferedReader(InputStreamReader(body2.byteStream()))
+
+        try {
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                val l = line ?: continue
+                if (!l.startsWith("data: ")) continue
+                val data = l.removePrefix("data: ").trim()
+
+                try {
+                    val chunk = JSONObject(data)
+                    val candidates = chunk.optJSONArray("candidates")
+                    if (candidates != null && candidates.length() > 0) {
+                        val candidate = candidates.getJSONObject(0)
+                        val content = candidate.optJSONObject("content")
+                        val parts = content?.optJSONArray("parts")
+                        if (parts != null && parts.length() > 0) {
+                            val text = parts.getJSONObject(0).optString("text")
+                            if (!text.isNullOrEmpty()) {
+                                emit(text)
+                            }
+                        }
                     }
                 } catch (_: Exception) {
                     // Skip malformed chunks

@@ -166,6 +166,11 @@
     <string name="delete_world_book_text">确定要删除「%s」吗？所有条目也会被删除。</string>
     <string name="no_world_books">还没有世界书</string>
     <string name="no_world_books_hint">世界书用于存储角色的世界观设定</string>
+    <string name="import_lorebook">导入 Lorebook</string>
+    <string name="import_lorebook_hint">粘贴 SillyTavern 格式的 Lorebook JSON</string>
+    <string name="import_btn">导入</string>
+    <string name="export_lorebook">导出 Lorebook</string>
+    <string name="export_copied">Lorebook JSON 已复制到剪贴板</string>
     <string name="name_required">名称 *</string>
     <string name="description">描述</string>
     <string name="entry_count">%d 个条目</string>

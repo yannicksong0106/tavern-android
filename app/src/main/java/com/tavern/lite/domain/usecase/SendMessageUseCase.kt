@@ -53,7 +53,7 @@ class SendMessageUseCase @Inject constructor(
 
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
         val worldBookEntries = if (character.worldBookId != null) {
-            worldBookRepository.matchEntries(character.worldBookId, processedContent)
+            worldBookRepository.matchEntriesRecursive(character.worldBookId, processedContent)
         } else emptyList()
 
         val memoryAtoms = memoryAtomDao.getRelevantAtoms(character.id, 10)
@@ -103,7 +103,7 @@ class SendMessageUseCase @Inject constructor(
 
         for (char in characters) {
             val worldBookEntries = if (char.worldBookId != null) {
-                worldBookRepository.matchEntries(char.worldBookId, processedContent)
+                worldBookRepository.matchEntriesRecursive(char.worldBookId, processedContent)
             } else emptyList()
 
             val memoryAtoms = memoryAtomDao.getRelevantAtoms(char.id, 10)
@@ -158,7 +158,7 @@ class SendMessageUseCase @Inject constructor(
         val characterMap = characters.associateBy { it.id }
 
         val worldBookEntries = if (targetCharacter.worldBookId != null) {
-            worldBookRepository.matchEntries(targetCharacter.worldBookId, userContent)
+            worldBookRepository.matchEntriesRecursive(targetCharacter.worldBookId, userContent)
         } else emptyList()
 
         val memoryAtoms = memoryAtomDao.getRelevantAtoms(targetCharacter.id, 10)
@@ -199,7 +199,7 @@ class SendMessageUseCase @Inject constructor(
         val worldBookEntries = if (character.worldBookId != null) {
             val lastUserMsg = chatRepository.getRecentMessages(chatId, 100)
                 .lastOrNull { it.role == "user" }
-            worldBookRepository.matchEntries(character.worldBookId, lastUserMsg?.content ?: "")
+            worldBookRepository.matchEntriesRecursive(character.worldBookId, lastUserMsg?.content ?: "")
         } else emptyList()
 
         val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
@@ -258,7 +258,7 @@ class SendMessageUseCase @Inject constructor(
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
 
         val worldBookEntries = if (character.worldBookId != null) {
-            worldBookRepository.matchEntries(character.worldBookId, userMessageContent)
+            worldBookRepository.matchEntriesRecursive(character.worldBookId, userMessageContent)
         } else emptyList()
 
         val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)

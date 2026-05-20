@@ -45,6 +45,23 @@ sealed class ApiProvider {
     }
 
     @Serializable
+    data class KoboldAI(
+        val baseUrl: String = "http://localhost:5001",
+        val apiKey: String = "",
+        val model: String = "kobold"
+    ) : ApiProvider() {
+        override val displayName = "KoboldAI"
+    }
+
+    @Serializable
+    data class Gemini(
+        val apiKey: String = "",
+        val model: String = "gemini-2.0-flash"
+    ) : ApiProvider() {
+        override val displayName = "Gemini"
+    }
+
+    @Serializable
     data class Custom(
         val baseUrl: String = "",
         val apiKey: String = "",
