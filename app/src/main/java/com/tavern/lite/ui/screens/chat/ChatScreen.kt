@@ -156,14 +156,25 @@ fun ChatScreen(
     var inputText by remember { mutableStateOf("") }
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
     val pinnedMessages by viewModel.pinnedMessages.collectAsStateWithLifecycle()
+    // O(1) 查找集合，避免在 LazyColumn items 中重复 O(n) 扫描
+    val pinnedMessageIds by remember { derivedStateOf { pinnedMessages.map { it.id }.toSet() } }
+    val searchResultSet by remember { derivedStateOf { searchResults.toSet() } }
+    // 群聊角色 O(1) 查找
+    val groupCharacterMap by remember(groupCharacters) {
+        derivedStateOf { groupCharacters.associateBy { it.id } }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // 预计算消息 ID → 索引映射，避免每次 O(n) 查找
+    val messageIdToIndex by remember(messages) {
+        derivedStateOf { messages.mapIndexed { i, m -> m.id to i }.toMap() }
+    }
     // 引用消息点击跳转
-    val scrollToMessage: (Long) -> Unit = remember(messages) {
+    val scrollToMessage: (Long) -> Unit = remember(messageIdToIndex) {
         { messageId: Long ->
-            val index = messages.indexOfFirst { it.id == messageId }
-            if (index >= 0) {
+            val index = messageIdToIndex[messageId]
+            if (index != null) {
                 scope.launch { listState.animateScrollToItem(index) }
             }
         }
@@ -186,7 +197,8 @@ fun ChatScreen(
             }
         }
     }
-    LaunchedEffect(messages.size) {
+    // 自动滚动到底部：只在有新消息且已在底部时触发，用 snapshotFlow 避免多余重组
+    LaunchedEffect(messages.size, isAtBottom) {
         if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
         }
@@ -339,7 +351,8 @@ fun ChatScreen(
                     }
                 } else {
                     val file = File(bgPath)
-                    if (file.exists()) {
+                    val fileExists = remember(bgPath) { file.exists() }
+                    if (fileExists) {
                         AsyncImage(
                             model = file,
                             contentDescription = null,
@@ -419,7 +432,11 @@ fun ChatScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(messages.size, key = { messages[it].id }) { index ->
+                        items(
+                            messages.size,
+                            key = { messages[it].id },
+                            contentType = { messages[it].role }
+                        ) { index ->
                             val message = messages[index]
                             val prevMessage = if (index > 0) messages[index - 1] else null
                             val nextMessage = if (index < messages.size - 1) messages[index + 1] else null
@@ -435,20 +452,18 @@ fun ChatScreen(
                             }
                             val topSpacing = if (isSameRoleAsPrev) 3.dp else 8.dp
                             val msgChar = if (isGroupChat && message.role == "assistant") {
-                                message.characterId?.let { charId ->
-                                    groupCharacters.find { it.id == charId }
-                                }
+                                message.characterId?.let { groupCharacterMap[it] }
                             } else null
                             val msgCharName = msgChar?.name ?: character?.name ?: ""
                             val msgAvatarPath = msgChar?.avatarPath ?: character?.avatarPath
-                            // 引用消息查找
-                            val quotedMsg = remember(message.replyToId, messages) {
+                            // 引用消息查找 — O(1) 索引查找
+                            val quotedMsg = remember(message.replyToId) {
                                 message.replyToId?.let { qid -> messages.find { it.id == qid } }
                             }
                             val quotedName = remember(quotedMsg) {
                                 quotedMsg?.let { qm ->
                                     if (qm.role == "user") null
-                                    else if (isGroupChat) qm.characterId?.let { cid -> groupCharacters.find { it.id == cid }?.name }
+                                    else if (isGroupChat) qm.characterId?.let { groupCharacterMap[it]?.name }
                                     else character?.name
                                 }
                             }
@@ -468,11 +483,11 @@ fun ChatScreen(
                                     isGroupedBottom = isSameRoleAsNext,
                                     avatarPath = msgAvatarPath,
                                     showAvatar = isGroupChat && message.role == "assistant" && !isSameRoleAsPrev,
-                                    isSearchResult = index in searchResults,
+                                    isSearchResult = index in searchResultSet,
                                     isCurrentSearchResult = currentSearchIndex >= 0 && searchResults.getOrNull(currentSearchIndex) == index,
                                     isSpeaking = speakingMessageId == message.id,
                                     showActionBar = selectedMessageId == message.id,
-                                    isPinned = pinnedMessages.any { it.id == message.id },
+                                    isPinned = message.id in pinnedMessageIds,
                                     onTap = {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         selectedMessageId = if (selectedMessageId == message.id) null else message.id

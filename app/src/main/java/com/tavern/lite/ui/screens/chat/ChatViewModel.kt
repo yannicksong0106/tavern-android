@@ -86,6 +86,16 @@ class ChatViewModel @Inject constructor(
     val messages: StateFlow<List<MessageEntity>> = chatRepository.getMessagesForChat(chatId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // O(1) message lookup by ID — updated when messages change
+    private val _messageMap = MutableStateFlow<Map<Long, MessageEntity>>(emptyMap())
+    init {
+        viewModelScope.launch {
+            messages.collect { list -> _messageMap.value = list.associateBy { it.id } }
+        }
+    }
+
+    private fun findMessage(id: Long): MessageEntity? = _messageMap.value[id]
+
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
@@ -140,6 +150,7 @@ class ChatViewModel @Inject constructor(
 
     private fun sendSingleChatMessage(content: String) {
         wasCancelled = false
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
@@ -155,12 +166,14 @@ class ChatViewModel @Inject constructor(
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
+                streamingJob = null
             }
         }
     }
 
     private fun sendGroupChatMessage(content: String) {
         wasCancelled = false
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
@@ -172,7 +185,7 @@ class ChatViewModel @Inject constructor(
                 val respondingChars = characters.filter { char ->
                     val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
                     val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
-                    Math.random() < responseChance
+                    kotlin.random.Random.nextDouble() < responseChance
                 }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
 
                 val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
@@ -191,7 +204,7 @@ class ChatViewModel @Inject constructor(
                             msgLen < 150 -> 1500L
                             else -> 2000L
                         }
-                        delay(baseDelay + (Math.random() * 800).toLong())
+                        delay(baseDelay + kotlin.random.Random.nextLong(800))
                     }
                 }
             } catch (e: Exception) {
@@ -199,6 +212,7 @@ class ChatViewModel @Inject constructor(
             } finally {
                 _isGenerating.value = false
                 _respondingCharacter.value = null
+                streamingJob = null
                 if (!wasCancelled) {
                     scheduleGroupProactiveDialogue()
                 }
@@ -208,6 +222,7 @@ class ChatViewModel @Inject constructor(
 
     private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity) {
         wasCancelled = false
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             _respondingCharacter.value = targetCharacter
@@ -224,6 +239,7 @@ class ChatViewModel @Inject constructor(
             } finally {
                 _isGenerating.value = false
                 _respondingCharacter.value = null
+                streamingJob = null
             }
         }
     }
@@ -256,7 +272,7 @@ class ChatViewModel @Inject constructor(
         for (i in 1 until paragraphs.size) {
             val len = paragraphs[i].length
             val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-            val jitter = (Math.random() * 400 - 200).toLong()
+            val jitter = kotlin.random.Random.nextLong(-200, 200)
             delay(baseDelay + jitter)
             chatRepository.sendMessage(chatId, paragraphs[i], "assistant", msgCharacterId)
         }
@@ -279,6 +295,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun sendProactiveSingleMessage() {
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             isProactiveMessage = true
@@ -295,6 +312,7 @@ class ChatViewModel @Inject constructor(
             } finally {
                 _isGenerating.value = false
                 isProactiveMessage = false
+                streamingJob = null
             }
         }
     }
@@ -318,6 +336,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun sendProactiveGroupMessage(character: CharacterEntity) {
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             _respondingCharacter.value = character
@@ -336,6 +355,7 @@ class ChatViewModel @Inject constructor(
                 _isGenerating.value = false
                 _respondingCharacter.value = null
                 isProactiveMessage = false
+                streamingJob = null
             }
         }
     }
@@ -344,6 +364,8 @@ class ChatViewModel @Inject constructor(
         val lastMsg = messages.value.lastOrNull { it.role == "assistant" }
         if (lastMsg == null || _isGenerating.value) return
 
+        wasCancelled = false
+        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
@@ -357,20 +379,23 @@ class ChatViewModel @Inject constructor(
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
+                streamingJob = null
             }
         }
     }
 
     fun regenerate(messageId: Long) {
-        viewModelScope.launch {
-            val msg = messages.value.find { it.id == messageId }
-            if (msg == null || msg.role != "assistant") return@launch
+        val allMessages = messages.value
+        val msg = allMessages.find { it.id == messageId }
+        if (msg == null || msg.role != "assistant") return
 
-            val allMessages = messages.value
-            val msgIndex = allMessages.indexOfFirst { it.id == messageId }
-            val userMsg = allMessages.take(msgIndex).lastOrNull { it.role == "user" }
-            if (userMsg == null) return@launch
+        val msgIndex = allMessages.indexOfFirst { it.id == messageId }
+        val userMsg = allMessages.take(msgIndex).lastOrNull { it.role == "user" }
+        if (userMsg == null) return
 
+        wasCancelled = false
+        streamingJob?.cancel()
+        streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
                 val character = _character.value ?: return@launch
@@ -383,13 +408,14 @@ class ChatViewModel @Inject constructor(
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
+                streamingJob = null
             }
         }
     }
 
     fun swipeLeft(messageId: Long) {
         viewModelScope.launch {
-            val msg = messages.value.find { it.id == messageId } ?: return@launch
+            val msg = findMessage(messageId) ?: return@launch
             val newIndex = msg.swipeIndex - 1
             if (newIndex >= 0) {
                 chatRepository.switchSwipe(messageId, newIndex)
@@ -399,7 +425,7 @@ class ChatViewModel @Inject constructor(
 
     fun swipeRight(messageId: Long) {
         viewModelScope.launch {
-            val msg = messages.value.find { it.id == messageId } ?: return@launch
+            val msg = findMessage(messageId) ?: return@launch
             val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
             val newIndex = msg.swipeIndex + 1
             if (newIndex < swipes.size) {
@@ -409,7 +435,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun getSwipeInfo(messageId: Long): Pair<Int, Int> {
-        val msg = messages.value.find { it.id == messageId } ?: return Pair(0, 0)
+        val msg = findMessage(messageId) ?: return Pair(0, 0)
         val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
         val count = if (swipes.isEmpty()) 1 else swipes.size
         return Pair(msg.swipeIndex + 1, count)
@@ -429,7 +455,7 @@ class ChatViewModel @Inject constructor(
 
     fun togglePinMessage(messageId: Long) {
         viewModelScope.launch {
-            val msg = messages.value.find { it.id == messageId } ?: return@launch
+            val msg = findMessage(messageId) ?: return@launch
             chatRepository.togglePinMessage(messageId, !msg.isPinned)
         }
     }
@@ -589,13 +615,14 @@ class ChatViewModel @Inject constructor(
     }
 
     fun copyMessage(context: Context, messageId: Long) {
-        val msg = messages.value.find { it.id == messageId } ?: return
+        val msg = findMessage(messageId) ?: return
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("message", msg.content))
     }
 
     override fun onCleared() {
         super.onCleared()
+        streamingJob?.cancel()
         ttsHelper.stop()
     }
 }

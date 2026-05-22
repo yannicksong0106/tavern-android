@@ -10,6 +10,31 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 
 object PromptBuilder {
 
+    // 静态 prompt 缓存：key = "characterId_userName_descHash"，避免每条消息重复构建
+    private val staticPromptCache = LinkedHashMap<String, String>(8, 0.75f, true)
+    private const val MAX_CACHE_SIZE = 16
+
+    private fun getStaticPromptCacheKey(character: CharacterEntity, userName: String): String {
+        val descHash = (character.description.hashCode() * 31 + character.personality.hashCode()) * 31 +
+            (character.systemPrompt?.hashCode() ?: 0)
+        return "${character.id}_${userName}_$descHash"
+    }
+
+    private fun getCachedStaticPrompt(character: CharacterEntity, userName: String): String {
+        val key = getStaticPromptCacheKey(character, userName)
+        return staticPromptCache.getOrPut(key) {
+            if (staticPromptCache.size >= MAX_CACHE_SIZE) {
+                val eldest = staticPromptCache.keys.first()
+                staticPromptCache.remove(eldest)
+            }
+            buildStaticSystemPrompt(character, userName)
+        }
+    }
+
+    fun invalidateCache() {
+        staticPromptCache.clear()
+    }
+
     fun build(
         character: CharacterEntity,
         userMessage: String,
@@ -26,10 +51,10 @@ object PromptBuilder {
         // Resolve effective user name: persona name > userName param
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
-        // 1. 系统 prompt
-        val systemPrompt = buildSystemPrompt(character, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
-        if (systemPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = systemPrompt))
+        // 1. 静态系统 prompt（角色描述、性格、回复风格 — 几乎不变，利于 API 缓存前缀命中）
+        val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
+        if (staticPrompt.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = staticPrompt))
         }
 
         // 2. 示例对话
@@ -52,14 +77,20 @@ object PromptBuilder {
             messages.add(ChatMessage(role = role, content = msg.content))
         }
 
-        // 4.5 Author's Note injection (at specified depth from end of history)
+        // 5. 动态上下文（世界书、记忆、人格 — 每轮可能变化，放在历史之后避免破坏缓存前缀）
+        val dynamicContext = buildDynamicContext(character, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
+        if (dynamicContext.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = dynamicContext))
+        }
+
+        // 5.5 Author's Note injection (at specified depth from end of history)
         if (authorNote != null && authorNote.content.isNotBlank()) {
             val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, character.name)
             val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
 
-        // 4.6 历史后指令（post_history_instructions）
+        // 5.6 历史后指令（post_history_instructions）
         val postHistory = character.postHistoryInstructions
         if (!postHistory.isNullOrBlank()) {
             messages.add(ChatMessage(
@@ -68,19 +99,19 @@ object PromptBuilder {
             ))
         }
 
-        // 5. 当前用户消息
+        // 6. 当前用户消息
         messages.add(ChatMessage(role = "user", content = userMessage))
 
         return messages
     }
 
-    private fun buildSystemPrompt(
+    /**
+     * 构建静态系统 prompt（回复风格 + 角色描述 + 性格 + 角色系统 prompt）。
+     * 这些内容在同一角色的连续对话中几乎不变，放在消息数组最前面可最大化 API 缓存命中率。
+     */
+    private fun buildStaticSystemPrompt(
         character: CharacterEntity,
-        worldBookEntries: List<WorldBookEntryEntity>,
-        userName: String,
-        memories: List<MemoryEntity> = emptyList(),
-        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
-        persona: PersonaEntity? = null
+        userName: String
     ): String {
         val parts = mutableListOf<String>()
 
@@ -105,6 +136,30 @@ object PromptBuilder {
         // 性格
         val personality = replacePlaceholders(character.personality, userName, character.name)
         if (personality.isNotBlank()) parts.add("Personality: $personality")
+
+        // 角色系统 prompt
+        val sysPrompt = character.systemPrompt
+        if (!sysPrompt.isNullOrBlank()) {
+            parts.add(replacePlaceholders(sysPrompt, userName, character.name))
+        }
+
+        return parts.joinToString("\n\n")
+    }
+
+    /**
+     * 构建动态上下文（世界书 + 记忆 + 用户人格）。
+     * 这些内容每轮对话可能变化（世界书按关键词匹配、记忆每 10 条提取一次），
+     * 放在聊天历史之后，避免破坏缓存前缀。
+     */
+    private fun buildDynamicContext(
+        character: CharacterEntity,
+        worldBookEntries: List<WorldBookEntryEntity>,
+        userName: String,
+        memories: List<MemoryEntity> = emptyList(),
+        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
+        persona: PersonaEntity? = null
+    ): String {
+        val parts = mutableListOf<String>()
 
         // 世界书条目
         if (worldBookEntries.isNotEmpty()) {
@@ -131,38 +186,53 @@ object PromptBuilder {
             parts.add("[User Persona: ${persona.name}]\n$bio")
         }
 
-        // 系统 prompt
-        val sysPrompt = character.systemPrompt
-        if (!sysPrompt.isNullOrBlank()) {
-            parts.add(replacePlaceholders(sysPrompt, userName, character.name))
-        }
-
         return parts.joinToString("\n\n")
     }
 
+    private const val MEMORY_CONTENT_LIMIT = 100
+    private const val TEMP_CONTENT_LIMIT = 80
+    private const val CORE_MEMORY_LIMIT = 5
+    private const val TEMP_MEMORY_LIMIT = 3
+
+    private val MEMORY_CATEGORIES = listOf(
+        "fact" to "已知的用户事实",
+        "emotion" to "用户的情感状态",
+        "preference" to "用户的偏好",
+        "event" to "重要事件与约定",
+        "habit" to "用户的习惯"
+    )
+
     private fun formatMemoryAtoms(atoms: List<MemoryAtomEntity>, charName: String): String {
+        if (atoms.isEmpty()) return ""
+
+        // 单次遍历分组，避免多次 filter 扫描
+        val grouped = atoms.groupBy { it.category }
         val parts = mutableListOf<String>()
 
-        // Character consistency is ALWAYS injected (人设不能崩)
-        val characterAtoms = atoms.filter { it.category == "character_consistency" }
-        if (characterAtoms.isNotEmpty()) {
-            val lines = characterAtoms.joinToString("\n") { "- ${it.content}" }
-            parts.add("[${charName} 的核心人设 — 必须严格遵守]\n$lines")
+        // 角色核心人设 — 最高优先级
+        grouped["character_consistency"]?.let { list ->
+            val lines = list.sortedByDescending { it.importance }
+                .take(CORE_MEMORY_LIMIT)
+                .joinToString("\n") { "- ${it.content.take(MEMORY_CONTENT_LIMIT)}" }
+            parts.add("[$charName 的核心人设 — 必须严格遵守]\n$lines")
         }
 
-        // 其他分类：category -> 中文标题
-        val categories = listOf(
-            "commitment" to "承诺与约定",
-            "user_info" to "已知的用户信息",
-            "relationship" to "人物关系",
-            "event" to "重要事件"
-        )
-        for ((category, title) in categories) {
-            val filtered = atoms.filter { it.category == category }
-            if (filtered.isNotEmpty()) {
-                val lines = filtered.joinToString("\n") { "- ${it.content}" }
+        // 核心记忆分类
+        for ((category, title) in MEMORY_CATEGORIES) {
+            grouped[category]?.let { list ->
+                val lines = list.sortedByDescending { it.importance }
+                    .take(CORE_MEMORY_LIMIT)
+                    .joinToString("\n") { "- ${it.content.take(MEMORY_CONTENT_LIMIT)}" }
                 parts.add("[$title]\n$lines")
             }
+        }
+
+        // 临时记忆最后注入
+        grouped["temporary"]?.let { list ->
+            val lines = list.sortedByDescending { it.importance }
+                .take(TEMP_MEMORY_LIMIT)
+                .joinToString("\n") { "- ${it.content.take(TEMP_CONTENT_LIMIT)}" }
+            parts.add("[当前对话上下文]\n$lines")
         }
 
         return parts.joinToString("\n\n")
@@ -227,13 +297,10 @@ object PromptBuilder {
 
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
-        // 1. System prompt with group chat context
-        val systemPrompt = buildGroupSystemPrompt(
-            characters, respondingCharacter, worldBookEntries, effectiveUserName,
-            memories, memoryAtoms, persona
-        )
-        if (systemPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = systemPrompt))
+        // 1. 静态系统 prompt（群聊风格 + 角色描述 + 性格）
+        val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
+        if (staticPrompt.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = staticPrompt))
         }
 
         // 2. Example dialog for responding character
@@ -264,27 +331,32 @@ object PromptBuilder {
             }
         }
 
-        // 4.5 Author's Note injection
+        // 5. 动态上下文（世界书 + 记忆 + 人格）
+        val dynamicContext = buildDynamicContext(respondingCharacter, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
+        if (dynamicContext.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = dynamicContext))
+        }
+
+        // 5.5 Author's Note injection
         if (authorNote != null && authorNote.content.isNotBlank()) {
             val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name)
             val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
 
-        // 5. Current user message
+        // 6. Current user message
         messages.add(ChatMessage(role = "user", content = userMessage))
 
         return messages
     }
 
-    private fun buildGroupSystemPrompt(
+    /**
+     * 构建群聊静态系统 prompt（群聊风格 + 角色描述 + 性格 + 其他角色简介）。
+     */
+    private fun buildGroupStaticSystemPrompt(
         characters: List<CharacterEntity>,
         respondingCharacter: CharacterEntity,
-        worldBookEntries: List<WorldBookEntryEntity>,
-        userName: String,
-        memories: List<MemoryEntity>,
-        memoryAtoms: List<MemoryAtomEntity>,
-        persona: PersonaEntity?
+        userName: String
     ): String {
         val parts = mutableListOf<String>()
 
@@ -315,30 +387,6 @@ object PromptBuilder {
             parts.add("[群聊中的其他角色]\n$otherInfo")
         }
 
-        // World book entries
-        if (worldBookEntries.isNotEmpty()) {
-            val worldInfo = worldBookEntries.joinToString("\n") { entry ->
-                val comment = entry.comment.ifBlank { "World Info" }
-                "[$comment]\n${entry.content}"
-            }
-            parts.add(worldInfo)
-        }
-
-        // Memories
-        if (memoryAtoms.isNotEmpty()) {
-            val atomText = formatMemoryAtoms(memoryAtoms, respondingCharacter.name)
-            if (atomText.isNotBlank()) parts.add(atomText)
-        } else if (memories.isNotEmpty()) {
-            val memoryText = memories.joinToString("\n") { "- ${it.content}" }
-            parts.add("[Memory]\n$memoryText")
-        }
-
-        // User persona
-        if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, userName, respondingCharacter.name)
-            parts.add("[User Persona: ${persona.name}]\n$bio")
-        }
-
         // Responding character's system prompt
         val sysPrompt = respondingCharacter.systemPrompt
         if (!sysPrompt.isNullOrBlank()) {
@@ -361,10 +409,10 @@ object PromptBuilder {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
-        // 系统 prompt
-        val systemPrompt = buildSystemPrompt(character, emptyList(), effectiveUserName, emptyList(), emptyList(), persona)
-        if (systemPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = systemPrompt))
+        // 静态系统 prompt
+        val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
+        if (staticPrompt.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = staticPrompt))
         }
 
         // 主动对话指令
@@ -390,6 +438,12 @@ object PromptBuilder {
             messages.add(ChatMessage(role = role, content = msg.content))
         }
 
+        // 用户人格（动态上下文）
+        if (persona != null && persona.biography.isNotBlank()) {
+            val bio = replacePlaceholders(persona.biography, effectiveUserName, character.name)
+            messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
+        }
+
         // 添加一个空的 user 消息触发回复
         messages.add(ChatMessage(role = "user", content = "..."))
 
@@ -411,13 +465,10 @@ object PromptBuilder {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
-        // 群聊系统 prompt
-        val systemPrompt = buildGroupSystemPrompt(
-            characters, respondingCharacter, emptyList(), effectiveUserName,
-            emptyList(), emptyList(), persona
-        )
-        if (systemPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = systemPrompt))
+        // 群聊静态系统 prompt
+        val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
+        if (staticPrompt.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = staticPrompt))
         }
 
         // 主动发言指令
@@ -444,6 +495,12 @@ object PromptBuilder {
                 }
                 else -> messages.add(ChatMessage(role = "system", content = msg.content))
             }
+        }
+
+        // 用户人格（动态上下文）
+        if (persona != null && persona.biography.isNotBlank()) {
+            val bio = replacePlaceholders(persona.biography, effectiveUserName, respondingCharacter.name)
+            messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
         }
 
         // 添加一个空的 user 消息触发回复

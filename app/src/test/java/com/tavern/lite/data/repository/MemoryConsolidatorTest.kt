@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.dao.CategoryCount
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito.mock
 
 class MemoryConsolidatorTest {
 
@@ -18,14 +20,17 @@ class MemoryConsolidatorTest {
     @Before
     fun setup() {
         fakeDao = FakeMemoryAtomDao()
-        consolidator = MemoryConsolidator(fakeDao)
+        val mockDb = mock(com.tavern.lite.data.db.TavernDatabase::class.java)
+        consolidator = MemoryConsolidator(fakeDao, mockDb).also {
+            it.transactionOverride = { block -> block() }
+        }
     }
 
     @Test
     fun `insertWithDedup inserts all when no duplicates`() = runTest {
         val atoms = listOf(
-            MemoryAtomEntity(id = 0, characterId = 1, content = "User likes cats", category = "user_info"),
-            MemoryAtomEntity(id = 0, characterId = 1, content = "User is tall", category = "user_info")
+            MemoryAtomEntity(id = 0, characterId = 1, content = "User likes cats", category = "fact"),
+            MemoryAtomEntity(id = 0, characterId = 1, content = "User is tall", category = "fact")
         )
         val count = consolidator.insertWithDedup(atoms)
         assertEquals(2, count)
@@ -35,10 +40,13 @@ class MemoryConsolidatorTest {
     @Test
     fun `insertWithDedup skips exact substring match`() = runTest {
         fakeDao.existingAtoms.add(
-            MemoryAtomEntity(id = 1, characterId = 1, content = "User likes cats very much", category = "user_info")
+            MemoryAtomEntity(id = 1, characterId = 1, content = "User likes cats very much", category = "fact")
+        )
+        fakeDao.categoryAtoms["fact"] = listOf(
+            MemoryAtomEntity(id = 1, characterId = 1, content = "User likes cats very much", category = "fact")
         )
         val atoms = listOf(
-            MemoryAtomEntity(id = 0, characterId = 1, content = "likes cats", category = "user_info")
+            MemoryAtomEntity(id = 0, characterId = 1, content = "likes cats", category = "fact")
         )
         val count = consolidator.insertWithDedup(atoms)
         assertEquals(0, count)
@@ -48,11 +56,11 @@ class MemoryConsolidatorTest {
 
     @Test
     fun `insertWithDedup skips keyword-similar atom`() = runTest {
-        val existing = MemoryAtomEntity(id = 1, characterId = 1, content = "user likes cats and dogs", category = "user_info", importance = 5)
+        val existing = MemoryAtomEntity(id = 1, characterId = 1, content = "user likes cats and dogs", category = "fact", importance = 5)
         fakeDao.existingAtoms.add(existing)
-        fakeDao.categoryAtoms["user_info"] = listOf(existing)
+        fakeDao.categoryAtoms["fact"] = listOf(existing)
         val atoms = listOf(
-            MemoryAtomEntity(id = 0, characterId = 1, content = "user likes cats and birds", category = "user_info", importance = 3)
+            MemoryAtomEntity(id = 0, characterId = 1, content = "user likes cats and birds", category = "fact", importance = 3)
         )
         val count = consolidator.insertWithDedup(atoms)
         assertEquals(0, count)
@@ -60,11 +68,11 @@ class MemoryConsolidatorTest {
 
     @Test
     fun `insertWithDedup supersedes old atom when new is more important`() = runTest {
-        val existing = MemoryAtomEntity(id = 1, characterId = 1, content = "user likes cats and dogs", category = "user_info", importance = 3)
+        val existing = MemoryAtomEntity(id = 1, characterId = 1, content = "user likes cats and dogs", category = "fact", importance = 3)
         fakeDao.existingAtoms.add(existing)
-        fakeDao.categoryAtoms["user_info"] = listOf(existing)
+        fakeDao.categoryAtoms["fact"] = listOf(existing)
         val atoms = listOf(
-            MemoryAtomEntity(id = 0, characterId = 1, content = "user likes cats and birds", category = "user_info", importance = 8)
+            MemoryAtomEntity(id = 0, characterId = 1, content = "user likes cats and birds", category = "fact", importance = 8)
         )
         val count = consolidator.insertWithDedup(atoms)
         assertEquals(1, count)
@@ -94,9 +102,9 @@ class MemoryConsolidatorTest {
     @Test
     fun `consolidate resolves conflicts keeping newest and most important`() = runTest {
         val now = System.currentTimeMillis()
-        fakeDao.categoryAtoms["user_info"] = listOf(
-            MemoryAtomEntity(id = 1, characterId = 1, content = "user is a student at school", category = "user_info", importance = 5, createdAt = now - 1000),
-            MemoryAtomEntity(id = 2, characterId = 1, content = "user is a student at university", category = "user_info", importance = 7, createdAt = now)
+        fakeDao.categoryAtoms["fact"] = listOf(
+            MemoryAtomEntity(id = 1, characterId = 1, content = "user is a student at school", category = "fact", importance = 5, createdAt = now - 1000),
+            MemoryAtomEntity(id = 2, characterId = 1, content = "user is a student at university", category = "fact", importance = 7, createdAt = now)
         )
         consolidator.consolidate(1)
         // Keywords: {user, student, school} vs {user, student, university} → overlap=2/3=0.67 >= 0.6
@@ -144,4 +152,11 @@ private class FakeMemoryAtomDao : MemoryAtomDao {
     override suspend fun getRecentAtoms(characterId: Long, limit: Int): List<MemoryAtomEntity> = emptyList()
     override suspend fun getRelevantAtoms(characterId: Long, limit: Int, now: Long): List<MemoryAtomEntity> = emptyList()
     override suspend fun getAllMemoryAtoms(): List<MemoryAtomEntity> = inserted.toList()
+    // New queries for visual memory library
+    override fun getCategoryCounts(characterId: Long): Flow<List<CategoryCount>> = flowOf(emptyList())
+    override fun getAtomsByCategoryFlow(characterId: Long, category: String): Flow<List<MemoryAtomEntity>> = flowOf(emptyList())
+    override fun searchAtomsFlow(characterId: Long, query: String): Flow<List<MemoryAtomEntity>> = flowOf(emptyList())
+    override fun getLastExtractionTime(characterId: Long): Flow<Long?> = flowOf(null)
+    override suspend fun purgeExpired(now: Long) {}
+    override fun getExtractedCount(characterId: Long): Flow<Int> = flowOf(0)
 }

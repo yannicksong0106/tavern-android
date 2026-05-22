@@ -1,16 +1,15 @@
 package com.tavern.lite.ui.screens.chat.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -247,6 +246,16 @@ fun MessageBubble(
                 else -> Color.Transparent
             }
 
+            // 圆角形状只计算一次，.border() 和 .clip() 共用
+            val bubbleShape = remember(isGroupedTop, isGroupedBottom, isUser, cornerRadius) {
+                RoundedCornerShape(
+                    topStart = if (isGroupedTop) 4.dp else cornerRadius,
+                    topEnd = if (isGroupedTop) 4.dp else cornerRadius,
+                    bottomStart = if (isUser) (if (isGroupedBottom) 4.dp else cornerRadius) else 4.dp,
+                    bottomEnd = if (isUser) 4.dp else (if (isGroupedBottom) 4.dp else cornerRadius)
+                )
+            }
+
             Column(
                 modifier = Modifier
                     .widthIn(max = maxBubbleWidth)
@@ -255,23 +264,11 @@ fun MessageBubble(
                             Modifier.border(
                                 width = borderWidth,
                                 color = borderColor,
-                                shape = RoundedCornerShape(
-                                    topStart = if (isGroupedTop) 4.dp else cornerRadius,
-                                    topEnd = if (isGroupedTop) 4.dp else cornerRadius,
-                                    bottomStart = if (isUser) (if (isGroupedBottom) 4.dp else cornerRadius) else 4.dp,
-                                    bottomEnd = if (isUser) 4.dp else (if (isGroupedBottom) 4.dp else cornerRadius)
-                                )
+                                shape = bubbleShape
                             )
                         } else Modifier
                     )
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = if (isGroupedTop) 4.dp else cornerRadius,
-                            topEnd = if (isGroupedTop) 4.dp else cornerRadius,
-                            bottomStart = if (isUser) (if (isGroupedBottom) 4.dp else cornerRadius) else 4.dp,
-                            bottomEnd = if (isUser) 4.dp else (if (isGroupedBottom) 4.dp else cornerRadius)
-                        )
-                    )
+                    .clip(bubbleShape)
                     .background(color = bubbleColor)
                     .animateContentSize()
                     .clickable { onTap() }

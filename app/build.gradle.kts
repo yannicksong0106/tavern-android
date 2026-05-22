@@ -118,6 +118,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.mockito.core)
     testImplementation(libs.androidx.room.testing)
     testImplementation("org.json:json:20231013")
 
