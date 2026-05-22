@@ -220,7 +220,8 @@ object PromptBuilder {
         userName: String = "User",
         memories: List<MemoryEntity> = emptyList(),
         memoryAtoms: List<MemoryAtomEntity> = emptyList(),
-        persona: PersonaEntity? = null
+        persona: PersonaEntity? = null,
+        authorNote: AuthorNoteEntity? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -261,6 +262,13 @@ object PromptBuilder {
                 }
                 "system" -> messages.add(ChatMessage(role = "system", content = msg.content))
             }
+        }
+
+        // 4.5 Author's Note injection
+        if (authorNote != null && authorNote.content.isNotBlank()) {
+            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name)
+            val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
 
         // 5. Current user message

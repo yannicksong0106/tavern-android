@@ -64,22 +64,3 @@ fun DeleteConfirmDialog(
     )
 }
 
-@Composable
-fun DeleteFromHereConfirmDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_from_here)) },
-        text = { Text(stringResource(R.string.delete_from_here_text)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        }
-    )
-}

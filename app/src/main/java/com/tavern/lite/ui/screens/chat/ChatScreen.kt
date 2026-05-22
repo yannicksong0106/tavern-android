@@ -75,7 +75,6 @@ import com.tavern.lite.ui.components.presetBackgrounds
 import com.tavern.lite.ui.screens.chat.components.BranchNavigationBar
 import com.tavern.lite.ui.screens.chat.components.ChattinessSheet
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
-import com.tavern.lite.ui.screens.chat.components.DeleteFromHereConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
@@ -108,7 +107,6 @@ fun ChatScreen(
     val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
-    val replyingTo by viewModel.replyingTo.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -225,17 +223,6 @@ fun ChatScreen(
                 deletingMessageId = null
             },
             onDismiss = { deletingMessageId = null }
-        )
-    }
-
-    var deletingFromHereId by remember { mutableStateOf<Long?>(null) }
-    if (deletingFromHereId != null) {
-        DeleteFromHereConfirmDialog(
-            onConfirm = {
-                viewModel.deleteMessagesFromHere(deletingFromHereId!!)
-                deletingFromHereId = null
-            },
-            onDismiss = { deletingFromHereId = null }
         )
     }
 
@@ -477,14 +464,11 @@ fun ChatScreen(
                                     onRegenerate = { viewModel.regenerate(message.id) },
                                     onEdit = { editingMessage = message },
                                     onDelete = { deletingMessageId = message.id },
-                                    onBranch = { viewModel.createBranchFromMessage(message.id) },
                                     onSwipeLeft = { viewModel.swipeLeft(message.id) },
                                     onSwipeRight = { viewModel.swipeRight(message.id) },
                                     onReply = { viewModel.regenerate(message.id) },
                                     onSpeak = { viewModel.speakMessage(message) },
                                     onStopSpeak = { viewModel.stopSpeaking() },
-                                    onQuoteReply = { viewModel.setReplyTo(message) },
-                                    onDeleteFromHere = { deletingFromHereId = message.id },
                                     onPinToggle = { viewModel.togglePinMessage(message.id) },
                                     quotedMessage = quotedMsg,
                                     quotedMessageName = quotedName,
@@ -546,11 +530,6 @@ fun ChatScreen(
                 }
 
                 val haptic = LocalHapticFeedback.current
-                val replyingToCharacterName = replyingTo?.let { msg ->
-                    if (msg.role == "user") null
-                    else if (isGroupChat) msg.characterId?.let { id -> groupCharacters.find { it.id == id }?.name }
-                    else character?.name
-                }
                 InputBar(
                     value = inputText,
                     onValueChange = { inputText = it },
@@ -567,9 +546,6 @@ fun ChatScreen(
                     showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
                     isGroupChat = isGroupChat,
                     groupCharacters = groupCharacters,
-                    replyingTo = replyingTo,
-                    replyingToName = replyingToCharacterName,
-                    onCancelReply = { viewModel.clearReplyTo() },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

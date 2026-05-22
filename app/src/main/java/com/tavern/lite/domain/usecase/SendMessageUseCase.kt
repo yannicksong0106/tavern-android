@@ -100,9 +100,9 @@ class SendMessageUseCase @Inject constructor(
         val results = mutableListOf<Pair<Long, Result>>()
         val characterMap = characters.associateBy { it.id }
         var chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
-        val persona = personasafe(characters.first().id)
 
         for (char in characters) {
+            val persona = personasafe(char.id)
             val worldBookEntries = if (char.worldBookId != null) {
                 worldBookRepository.matchEntriesRecursive(char.worldBookId, processedContent)
             } else emptyList()
@@ -112,6 +112,8 @@ class SendMessageUseCase @Inject constructor(
             val memories = if (memoryAtoms.isEmpty()) {
                 memoryRepository.getRelevantMemories(char.id, processedContent)
             } else emptyList()
+
+            val authorNote = authorNoteDao.getAuthorNoteSync(char.id)
 
             val promptMessages = PromptBuilder.buildGroupChat(
                 characters = characters,
@@ -123,7 +125,8 @@ class SendMessageUseCase @Inject constructor(
                 userName = config.userName,
                 memories = memories,
                 memoryAtoms = memoryAtoms,
-                persona = persona
+                persona = persona,
+                authorNote = authorNote
             )
 
             val result = executeAndSave(chatId, char.id, char.name, promptMessages, config, processedContent)
@@ -168,6 +171,8 @@ class SendMessageUseCase @Inject constructor(
             memoryRepository.getRelevantMemories(targetCharacter.id, userContent)
         } else emptyList()
 
+        val authorNote = authorNoteDao.getAuthorNoteSync(targetCharacter.id)
+
         val promptMessages = PromptBuilder.buildGroupChat(
             characters = characters,
             respondingCharacter = targetCharacter,
@@ -178,7 +183,8 @@ class SendMessageUseCase @Inject constructor(
             userName = config.userName,
             memories = memories,
             memoryAtoms = memoryAtoms,
-            persona = persona
+            persona = persona,
+            authorNote = authorNote
         )
 
         return executeAndSave(chatId, targetCharacter.id, targetCharacter.name, promptMessages, config, userContent)

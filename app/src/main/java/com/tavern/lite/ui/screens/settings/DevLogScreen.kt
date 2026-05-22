@@ -147,6 +147,22 @@ private fun VersionCard(entry: VersionEntry) {
 
 private fun getDevLogEntries(): List<VersionEntry> = listOf(
     VersionEntry(
+        version = "v1.2.1",
+        date = "2026-05-22",
+        summary = "稳定性修复 + 代码清理 + 测试全覆盖",
+        details = listOf(
+            "修复 API 流式请求的资源泄漏（OkHttp Response 未关闭）",
+            "修复世界书递归匹配逻辑错误",
+            "群聊支持 Author's Note 注入",
+            "Gemini API 使用 systemInstruction 字段传递系统提示",
+            "TTS 关闭时清理状态",
+            "移除未使用的分支操作代码",
+            "数据库性能优化：消息查询新增复合索引",
+            "测试从 31 扩充到 178 个（16 个测试套件）"
+        ),
+        lifeLog = "我的生活被token掏光了一切(;´༎ຶД༎ຶ`)"
+    ),
+    VersionEntry(
         version = "v1.2.0",
         date = "2026-05-20",
         summary = "全量数据备份/恢复 + 消息引用回复",

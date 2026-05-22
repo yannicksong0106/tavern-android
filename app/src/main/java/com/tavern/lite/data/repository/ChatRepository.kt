@@ -71,8 +71,6 @@ class ChatRepository @Inject constructor(
 
     suspend fun deleteMessage(messageId: Long) = messageDao.softDelete(messageId)
 
-    suspend fun deleteMessagesFromHere(chatId: Long, messageId: Long) = messageDao.softDeleteFromHere(chatId, messageId)
-
     suspend fun togglePinMessage(messageId: Long, pinned: Boolean) = messageDao.setPinned(messageId, pinned)
 
     fun getPinnedMessages(chatId: Long) = messageDao.getPinnedMessages(chatId)
@@ -87,33 +85,6 @@ class ChatRepository @Inject constructor(
     suspend fun switchBranch(chatId: Long, branchId: Long) {
         messageDao.deactivateAllMessages(chatId)
         messageDao.activateBranch(chatId, branchId)
-    }
-
-    suspend fun createBranch(chatId: Long, fromMessageId: Long, newBranchId: Long) {
-        // 从 fromMessageId 之后的消息都设为非激活，并标记为旧分支
-        val allMessages = messageDao.getRecentMessages(chatId, 1000).reversed()
-        val fromIndex = allMessages.indexOfFirst { it.id == fromMessageId }
-        if (fromIndex < 0) return
-
-        val idsToDeactivate = ((fromIndex + 1) until allMessages.size)
-            .map { allMessages[it].id }
-        if (idsToDeactivate.isNotEmpty()) {
-            messageDao.deactivateAndSetBranch(chatId, idsToDeactivate, newBranchId)
-        }
-    }
-
-    suspend fun sendMessageInBranch(chatId: Long, content: String, role: String, branchId: Long, parentId: Long?): Long {
-        val id = messageDao.insert(
-            MessageEntity(
-                chatId = chatId,
-                role = role,
-                content = content,
-                branchId = branchId,
-                parentId = parentId
-            )
-        )
-        chatDao.updateTimestamp(chatId)
-        return id
     }
 
     suspend fun getAllChatsForCharacter(characterId: Long): List<ChatEntity> =

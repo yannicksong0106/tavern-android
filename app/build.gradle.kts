@@ -15,8 +15,8 @@ android {
         applicationId = "com.tavern.lite"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.2.0"
+        versionCode = 13
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -118,6 +118,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.androidx.room.testing)
+    testImplementation("org.json:json:20231013")
 
     // Android Instrumented Test
     androidTestImplementation(libs.androidx.test.ext)

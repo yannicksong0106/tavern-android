@@ -246,4 +246,6 @@ private class FakeScriptDao : ScriptDao {
 
     override suspend fun deleteAllForCharacter(characterId: Long) =
         throw UnsupportedOperationException("Not used in unit test")
+
+    override suspend fun getAllScripts(): List<ScriptEntity> = scripts
 }

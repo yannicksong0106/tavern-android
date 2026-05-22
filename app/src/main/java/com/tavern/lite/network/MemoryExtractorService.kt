@@ -266,10 +266,9 @@ $conversation
             .build()
 
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return null
-
-        val responseBody = response.body?.string() ?: return null
         return try {
+            if (!response.isSuccessful) return null
+            val responseBody = response.body?.string() ?: return null
             JSONObject(responseBody)
                 .getJSONArray("choices")
                 .getJSONObject(0)
@@ -277,6 +276,8 @@ $conversation
                 .getString("content")
         } catch (_: Exception) {
             null
+        } finally {
+            response.close()
         }
     }
 
@@ -302,10 +303,9 @@ $conversation
             .build()
 
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return null
-
-        val responseBody = response.body?.string() ?: return null
         return try {
+            if (!response.isSuccessful) return null
+            val responseBody = response.body?.string() ?: return null
             val json = JSONObject(responseBody)
             val content = json.getJSONArray("content")
             val textBlock = (0 until content.length())
@@ -314,6 +314,8 @@ $conversation
             textBlock?.getString("text")
         } catch (_: Exception) {
             null
+        } finally {
+            response.close()
         }
     }
 
@@ -353,10 +355,9 @@ $conversation
             .build()
 
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return null
-
-        val responseBody = response.body?.string() ?: return null
         return try {
+            if (!response.isSuccessful) return null
+            val responseBody = response.body?.string() ?: return null
             val json = JSONObject(responseBody)
             val candidates = json.getJSONArray("candidates")
             val content = candidates.getJSONObject(0).getJSONObject("content")
@@ -364,6 +365,8 @@ $conversation
             parts.getJSONObject(0).getString("text")
         } catch (_: Exception) {
             null
+        } finally {
+            response.close()
         }
     }
 

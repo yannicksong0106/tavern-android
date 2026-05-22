@@ -45,3 +45,15 @@
 # Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# WorkManager
+-keep class * extends androidx.work.Worker
+-keep class * extends androidx.work.ListenableWorker
+-keepclassmembers class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+
+# DataStore
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}

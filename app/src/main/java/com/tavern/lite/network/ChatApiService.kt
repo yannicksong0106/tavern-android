@@ -3,6 +3,7 @@ package com.tavern.lite.network
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -77,13 +78,21 @@ class ChatApiService @Inject constructor(
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Unknown error"
-            throw ApiException(response.code, errorBody)
+        val response = retryWithBackoff {
+            val resp = client.newCall(request).execute()
+            if (!resp.isSuccessful) {
+                val errorBody = resp.body?.string() ?: "Unknown error"
+                resp.close()
+                throw ApiException(resp.code, errorBody)
+            }
+            resp
         }
 
-        val body2 = response.body ?: return@flow
+        val body2 = response.body
+        if (body2 == null) {
+            response.close()
+            return@flow
+        }
         val reader = BufferedReader(InputStreamReader(body2.byteStream()))
 
         try {
@@ -106,8 +115,6 @@ class ChatApiService @Inject constructor(
                         reasoningBuffer.append(reasoningObj.toString())
                     }
 
-                    // 修复: optString 在 JSON null 时返回 "null" 字符串
-                    // 用 opt() 检查实际值，过滤掉 null 和 JSONObject.NULL
                     val contentObj = delta?.opt("content")
                     if (contentObj != null && contentObj != JSONObject.NULL) {
                         val content = contentObj.toString()
@@ -160,13 +167,21 @@ class ChatApiService @Inject constructor(
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Unknown error"
-            throw ApiException(response.code, errorBody)
+        val response = retryWithBackoff {
+            val resp = client.newCall(request).execute()
+            if (!resp.isSuccessful) {
+                val errorBody = resp.body?.string() ?: "Unknown error"
+                resp.close()
+                throw ApiException(resp.code, errorBody)
+            }
+            resp
         }
 
-        val body2 = response.body ?: return@flow
+        val body2 = response.body
+        if (body2 == null) {
+            response.close()
+            return@flow
+        }
         val reader = BufferedReader(InputStreamReader(body2.byteStream()))
 
         try {
@@ -201,13 +216,16 @@ class ChatApiService @Inject constructor(
         provider: ApiProvider.Gemini,
         config: ApiConfig
     ): Flow<String> = flow {
-        // Gemini API: convert messages to contents format
+        // Gemini API: 分离 system 消息和对话消息
+        val systemMsg = messages.firstOrNull { it.role == "system" }
+        val nonSystemMessages = messages.filter { it.role != "system" }
+
         val contents = JSONArray()
-        messages.forEach { msg ->
+        nonSystemMessages.forEach { msg ->
             val role = when (msg.role) {
                 "user" -> "user"
                 "assistant" -> "model"
-                else -> "user" // system messages become user messages
+                else -> "user"
             }
             contents.put(JSONObject().apply {
                 put("role", role)
@@ -219,6 +237,13 @@ class ChatApiService @Inject constructor(
 
         val body = JSONObject().apply {
             put("contents", contents)
+            if (systemMsg != null) {
+                put("systemInstruction", JSONObject().apply {
+                    put("parts", JSONArray().apply {
+                        put(JSONObject().apply { put("text", systemMsg.content) })
+                    })
+                })
+            }
             put("generationConfig", JSONObject().apply {
                 put("maxOutputTokens", config.maxTokens)
                 put("temperature", config.temperature.toDouble())
@@ -233,13 +258,21 @@ class ChatApiService @Inject constructor(
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Unknown error"
-            throw ApiException(response.code, errorBody)
+        val response = retryWithBackoff {
+            val resp = client.newCall(request).execute()
+            if (!resp.isSuccessful) {
+                val errorBody = resp.body?.string() ?: "Unknown error"
+                resp.close()
+                throw ApiException(resp.code, errorBody)
+            }
+            resp
         }
 
-        val body2 = response.body ?: return@flow
+        val body2 = response.body
+        if (body2 == null) {
+            response.close()
+            return@flow
+        }
         val reader = BufferedReader(InputStreamReader(body2.byteStream()))
 
         try {
@@ -296,3 +329,31 @@ data class ChatMessage(
 )
 
 class ApiException(val code: Int, override val message: String) : Exception(message)
+
+/**
+ * 带指数退避的重试，仅重试网络错误和 5xx 服务端错误，不重试 4xx 客户端错误。
+ */
+private suspend fun <T> retryWithBackoff(
+    maxRetries: Int = 3,
+    initialDelayMs: Long = 1000,
+    block: suspend () -> T
+): T {
+    var lastException: Exception? = null
+    var delayMs = initialDelayMs
+    repeat(maxRetries) { attempt ->
+        try {
+            return block()
+        } catch (e: ApiException) {
+            // 4xx 客户端错误不重试
+            if (e.code in 400..499) throw e
+            lastException = e
+        } catch (e: Exception) {
+            lastException = e
+        }
+        if (attempt < maxRetries - 1) {
+            delay(delayMs)
+            delayMs *= 2
+        }
+    }
+    throw lastException ?: Exception("Unknown retry error")
+}

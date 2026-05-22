@@ -1,14 +1,11 @@
 package com.tavern.lite.ui.screens.chat.components
 
-import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -26,43 +23,28 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.automirrored.filled.Reply
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -80,7 +62,6 @@ import com.tavern.lite.ui.theme.UserBubbleLight
 import com.tavern.lite.ui.components.CharacterAvatar
 import io.noties.markwon.Markwon
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     message: MessageEntity,
@@ -99,14 +80,11 @@ fun MessageBubble(
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onBranch: () -> Unit = {},
     onSwipeLeft: () -> Unit = {},
     onSwipeRight: () -> Unit = {},
     onReply: () -> Unit = {},
     onSpeak: () -> Unit = {},
     onStopSpeak: () -> Unit = {},
-    onQuoteReply: () -> Unit = {},
-    onDeleteFromHere: () -> Unit = {},
     onPinToggle: () -> Unit = {},
     quotedMessage: MessageEntity? = null,
     quotedMessageName: String? = null,
@@ -114,10 +92,7 @@ fun MessageBubble(
 ) {
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
-    val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
-    var showMenu by remember { mutableStateOf(false) }
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val maxBubbleWidth = (screenWidth * 0.75f).dp
 
@@ -281,13 +256,6 @@ fun MessageBubble(
                         )
                     )
                     .background(color = bubbleColor)
-                    .combinedClickable(
-                        onClick = {},
-                        onLongClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showMenu = true
-                        }
-                    )
                     .animateContentSize()
                     .padding(12.dp)
             ) {
@@ -417,115 +385,6 @@ fun MessageBubble(
                 }
             }
 
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.copy)) },
-                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                    onClick = {
-                        clipboardManager.setText(AnnotatedString(message.content))
-                        Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.edit)) },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    onClick = {
-                        onEdit()
-                        showMenu = false
-                    }
-                )
-                if (!isUser) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.regenerate)) },
-                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
-                        onClick = {
-                            onRegenerate()
-                            showMenu = false
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.quote_reply)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
-                    onClick = {
-                        onQuoteReply()
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.branch_from_here)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null) },
-                    onClick = {
-                        onBranch()
-                        showMenu = false
-                    }
-                )
-                if (isSpeaking) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.tts_stop)) },
-                        leadingIcon = { Icon(Icons.Default.Stop, contentDescription = null) },
-                        onClick = {
-                            onStopSpeak()
-                            showMenu = false
-                        }
-                    )
-                } else {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.tts_speak)) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null) },
-                        onClick = {
-                            onSpeak()
-                            showMenu = false
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(if (message.isPinned) R.string.unpin_message else R.string.pin_message)) },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = null,
-                            tint = if (message.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    onClick = {
-                        onPinToggle()
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete_from_here), color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    onClick = {
-                        onDeleteFromHere()
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    onClick = {
-                        onDelete()
-                        showMenu = false
-                    }
-                )
-            }
         }
     }
     }

@@ -45,7 +45,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         ChatCharacterEntity::class,
         PresetEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -289,6 +289,12 @@ abstract class TavernDatabase : RoomDatabase() {
         val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_created ON messages(chat_id, is_active, created_at)")
             }
         }
 

@@ -105,5 +105,7 @@ class TtsHelper @Inject constructor(
         tts?.shutdown()
         tts = null
         isInitialized = false
+        _isSpeaking.value = false
+        _speakingMessageId.value = null
     }
 }

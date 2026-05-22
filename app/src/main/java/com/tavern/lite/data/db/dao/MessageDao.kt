@@ -44,9 +44,6 @@ interface MessageDao {
     @Query("DELETE FROM messages WHERE chat_id = :chatId")
     suspend fun deleteAllForChat(chatId: Long)
 
-    @Query("UPDATE messages SET is_active = 0 WHERE chat_id = :chatId AND is_active = 1 AND created_at >= (SELECT created_at FROM messages WHERE id = :messageId)")
-    suspend fun softDeleteFromHere(chatId: Long, messageId: Long)
-
     // 分支操作
     @Query("SELECT DISTINCT branch_id FROM messages WHERE chat_id = :chatId AND branch_id IS NOT NULL ORDER BY created_at ASC")
     suspend fun getBranchIds(chatId: Long): List<Long?>
@@ -56,12 +53,6 @@ interface MessageDao {
 
     @Query("UPDATE messages SET is_active = 1 WHERE chat_id = :chatId AND branch_id = :branchId")
     suspend fun activateBranch(chatId: Long, branchId: Long)
-
-    @Query("UPDATE messages SET is_active = 0 WHERE id = :messageId AND chat_id = :chatId")
-    suspend fun deactivateMessage(chatId: Long, messageId: Long)
-
-    @Query("UPDATE messages SET is_active = 0, branch_id = :newBranchId WHERE chat_id = :chatId AND id IN (:messageIds)")
-    suspend fun deactivateAndSetBranch(chatId: Long, messageIds: List<Long>, newBranchId: Long)
 
     // Swipe alternatives
     @Query("UPDATE messages SET swipe_content = :swipeJson, swipe_index = :swipeIndex, content = :currentContent WHERE id = :id")

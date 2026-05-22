@@ -79,7 +79,7 @@ class WorldBookRepository @Inject constructor(
         // 递归匹配
         var depth = 1
         while (depth < maxDepth && remaining.isNotEmpty()) {
-            val matchedContent = firstRound
+            val matchedContent = matched
                 .filter { it.depth >= depth }  // 条目的 depth 控制最大扫描深度
                 .joinToString(" ") { it.content }
                 .lowercase()

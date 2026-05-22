@@ -44,7 +44,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
-import com.tavern.lite.data.db.entity.MessageEntity
 
 @Composable
 fun InputBar(
@@ -57,9 +56,6 @@ fun InputBar(
     showContinue: Boolean = false,
     isGroupChat: Boolean = false,
     groupCharacters: List<CharacterEntity> = emptyList(),
-    replyingTo: MessageEntity? = null,
-    replyingToName: String? = null,
-    onCancelReply: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
@@ -89,49 +85,6 @@ fun InputBar(
             modifier = modifier
                 .background(MaterialTheme.colorScheme.surface)
         ) {
-            // 引用回复预览
-            if (replyingTo != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(3.dp)
-                            .height(32.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = replyingToName ?: if (replyingTo.role == "user") stringResource(R.string.user_persona) else stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = replyingTo.content.take(100),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(
-                        onClick = onCancelReply,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.cancel_reply),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier

@@ -191,4 +191,6 @@ private class FakeWorldBookDao : WorldBookDao {
     override suspend fun insertEntry(entry: WorldBookEntryEntity): Long = 0
     override suspend fun updateEntry(entry: WorldBookEntryEntity) {}
     override suspend fun deleteEntry(entry: WorldBookEntryEntity) {}
+    override suspend fun getAllWorldBooksSync(): List<WorldBookEntity> = emptyList()
+    override suspend fun getAllEntriesSync(): List<WorldBookEntryEntity> = emptyList()
 }

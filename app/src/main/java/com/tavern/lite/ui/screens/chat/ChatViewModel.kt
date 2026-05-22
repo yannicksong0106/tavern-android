@@ -137,15 +137,13 @@ class ChatViewModel @Inject constructor(
 
     private fun sendSingleChatMessage(content: String) {
         wasCancelled = false
-        val replyToId = _replyingTo.value?.id
-        _replyingTo.value = null
         streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             try {
                 val character = _character.value ?: return@launch
                 val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, replyToId)
+                val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null)
                 if (result?.assistantMsgId != null && !wasCancelled) {
                     splitIntoMultipleMessages(result.assistantMsgId)
                     scheduleProactiveDialogue()
@@ -412,12 +410,6 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun deleteMessagesFromHere(messageId: Long) {
-        viewModelScope.launch {
-            chatRepository.deleteMessagesFromHere(chatId, messageId)
-        }
-    }
-
     fun togglePinMessage(messageId: Long) {
         viewModelScope.launch {
             val msg = messages.value.find { it.id == messageId } ?: return@launch
@@ -451,14 +443,6 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.switchBranch(chatId, branchId)
             _currentBranchIndex.value = index
-        }
-    }
-
-    fun createBranchFromMessage(messageId: Long) {
-        viewModelScope.launch {
-            val newBranchId = System.currentTimeMillis()
-            chatRepository.createBranch(chatId, messageId, newBranchId)
-            loadBranches()
         }
     }
 
@@ -569,19 +553,6 @@ class ChatViewModel @Inject constructor(
         _searchQuery.value = ""
         _searchResults.value = emptyList()
         _currentSearchIndex.value = -1
-    }
-
-    // === 引用回复 ===
-
-    private val _replyingTo = MutableStateFlow<MessageEntity?>(null)
-    val replyingTo: StateFlow<MessageEntity?> = _replyingTo.asStateFlow()
-
-    fun setReplyTo(message: MessageEntity) {
-        _replyingTo.value = message
-    }
-
-    fun clearReplyTo() {
-        _replyingTo.value = null
     }
 
     // === TTS 语音朗读 ===
