@@ -95,11 +95,30 @@ fun CharacterEditScreen(
         )
     }
 
+    val cropImage = rememberLauncherForActivityResult(
+        contract = com.canhub.cropper.CropImageContract()
+    ) { result ->
+        if (result.isSuccessful) {
+            result.uriContent?.let { uri -> viewModel.updateAvatar(uri) }
+        }
+    }
+
     val avatarPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            viewModel.updateAvatar(uri)
+            cropImage.launch(
+                com.canhub.cropper.CropImageContractOptions(
+                    uri = uri,
+                    cropImageOptions = com.canhub.cropper.CropImageOptions().apply {
+                        cropShape = com.canhub.cropper.CropImageView.CropShape.OVAL
+                        fixAspectRatio = true
+                        aspectRatioX = 1
+                        aspectRatioY = 1
+                        outputCompressFormat = android.graphics.Bitmap.CompressFormat.PNG
+                    }
+                )
+            )
         }
     }
 

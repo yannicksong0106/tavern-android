@@ -154,6 +154,8 @@ fun ChatScreen(
 
     val listState = rememberLazyListState()
     var inputText by remember { mutableStateOf("") }
+    var selectedMessageId by remember { mutableStateOf<Long?>(null) }
+    val pinnedMessages by viewModel.pinnedMessages.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -187,6 +189,13 @@ fun ChatScreen(
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    // 滚动时关闭操作栏
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
+            selectedMessageId = null
         }
     }
 
@@ -394,6 +403,7 @@ fun ChatScreen(
             }
 
             Column(modifier = Modifier.fillMaxSize().imePadding()) {
+                val haptic = LocalHapticFeedback.current
                 if (branches.size > 1) {
                     BranchNavigationBar(
                         currentIndex = currentBranchIndex,
@@ -461,6 +471,12 @@ fun ChatScreen(
                                     isSearchResult = index in searchResults,
                                     isCurrentSearchResult = currentSearchIndex >= 0 && searchResults.getOrNull(currentSearchIndex) == index,
                                     isSpeaking = speakingMessageId == message.id,
+                                    showActionBar = selectedMessageId == message.id,
+                                    isPinned = pinnedMessages.any { it.id == message.id },
+                                    onTap = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedMessageId = if (selectedMessageId == message.id) null else message.id
+                                    },
                                     onRegenerate = { viewModel.regenerate(message.id) },
                                     onEdit = { editingMessage = message },
                                     onDelete = { deletingMessageId = message.id },
@@ -470,6 +486,10 @@ fun ChatScreen(
                                     onSpeak = { viewModel.speakMessage(message) },
                                     onStopSpeak = { viewModel.stopSpeaking() },
                                     onPinToggle = { viewModel.togglePinMessage(message.id) },
+                                    onCopy = {
+                                        viewModel.copyMessage(context, message.id)
+                                        Toast.makeText(context, context.getString(R.string.copy_message_toast), Toast.LENGTH_SHORT).show()
+                                    },
                                     quotedMessage = quotedMsg,
                                     quotedMessageName = quotedName,
                                     onQuoteClick = scrollToMessage
@@ -529,13 +549,13 @@ fun ChatScreen(
                     }
                 }
 
-                val haptic = LocalHapticFeedback.current
                 InputBar(
                     value = inputText,
                     onValueChange = { inputText = it },
                     onSend = {
                         if (inputText.isNotBlank()) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            selectedMessageId = null
                             viewModel.sendMessage(inputText)
                             inputText = ""
                         }

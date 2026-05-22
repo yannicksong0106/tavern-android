@@ -147,6 +147,18 @@ private fun VersionCard(entry: VersionEntry) {
 
 private fun getDevLogEntries(): List<VersionEntry> = listOf(
     VersionEntry(
+        version = "v1.2.2",
+        date = "2026-05-22",
+        summary = "交互体验全面优化",
+        details = listOf(
+            "消息操作栏：点击消息弹出复制/编辑/朗读/置顶/删除按钮",
+            "头像裁剪：编辑角色时支持圆形裁剪头像",
+            "群聊优化：根据健谈度概率回复，消息间隔更自然",
+            "Material You 动态主题已验证完善"
+        ),
+        lifeLog = null
+    ),
+    VersionEntry(
         version = "v1.2.1",
         date = "2026-05-22",
         summary = "稳定性修复 + 代码清理 + 测试全覆盖",

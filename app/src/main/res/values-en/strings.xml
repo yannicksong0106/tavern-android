@@ -332,6 +332,9 @@
     <string name="clear_cache_desc">Clear temporary files and cached data</string>
     <string name="cache_cleared">Cache cleared</string>
 
+    <!-- Message Action Bar -->
+    <string name="copy_message_toast">Message copied</string>
+
     <!-- TTS -->
     <!-- Quote Reply -->
 

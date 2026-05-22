@@ -5,6 +5,12 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -25,9 +31,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +87,9 @@ fun MessageBubble(
     isSearchResult: Boolean = false,
     isCurrentSearchResult: Boolean = false,
     isSpeaking: Boolean = false,
+    showActionBar: Boolean = false,
+    isPinned: Boolean = false,
+    onTap: () -> Unit = {},
     onRegenerate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -86,6 +99,7 @@ fun MessageBubble(
     onSpeak: () -> Unit = {},
     onStopSpeak: () -> Unit = {},
     onPinToggle: () -> Unit = {},
+    onCopy: () -> Unit = {},
     quotedMessage: MessageEntity? = null,
     quotedMessageName: String? = null,
     onQuoteClick: ((Long) -> Unit)? = null
@@ -171,11 +185,14 @@ fun MessageBubble(
             }
         }
 
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+    ) {
     Row(
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom,
         modifier = Modifier
-            .fillMaxWidth()
             .offset { IntOffset(offsetX.value.roundToInt(), 0) }
             .pointerInput(message.id) {
                 detectHorizontalDragGestures(
@@ -257,6 +274,7 @@ fun MessageBubble(
                     )
                     .background(color = bubbleColor)
                     .animateContentSize()
+                    .clickable { onTap() }
                     .padding(12.dp)
             ) {
                 if (!isUser && showName) {
@@ -388,6 +406,106 @@ fun MessageBubble(
         }
     }
     }
+
+    // 消息操作栏
+    AnimatedVisibility(
+        visible = showActionBar,
+        enter = fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.8f),
+        exit = fadeOut(tween(100)) + scaleOut(tween(100), targetScale = 0.8f)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 复制
+            IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.ContentCopy,
+                    contentDescription = stringResource(R.string.copy),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            ActionBarDivider()
+
+            // 编辑 / 重新生成
+            if (isUser) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.edit),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                IconButton(onClick = onRegenerate, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.regenerate),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            ActionBarDivider()
+
+            // 朗读 / 停止朗读
+            IconButton(
+                onClick = if (isSpeaking) onStopSpeak else onSpeak,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = stringResource(if (isSpeaking) R.string.tts_stop else R.string.tts_speak),
+                    tint = if (isSpeaking) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // 置顶（仅 AI 消息）
+            if (!isUser) {
+                ActionBarDivider()
+                IconButton(onClick = onPinToggle, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = stringResource(if (isPinned) R.string.unpin_message else R.string.pin_message),
+                        tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            ActionBarDivider()
+
+            // 删除
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+    }
+}
+
+@Composable
+private fun ActionBarDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(16.dp)
+            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+    )
 }
 
 private fun formatTimestamp(context: android.content.Context, timestamp: Long): String {

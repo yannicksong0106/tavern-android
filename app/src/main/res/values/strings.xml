@@ -344,6 +344,9 @@
     <string name="clear_cache_desc">清除临时文件和缓存数据</string>
     <string name="cache_cleared">缓存已清除</string>
 
+    <!-- 消息操作栏 / Message Action Bar -->
+    <string name="copy_message_toast">消息已复制</string>
+
     <!-- TTS 语音朗读 -->
     <!-- 引用回复 / Quote Reply -->
 

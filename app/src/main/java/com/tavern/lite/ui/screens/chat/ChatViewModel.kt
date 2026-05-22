@@ -1,5 +1,8 @@
 package com.tavern.lite.ui.screens.chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -165,16 +168,30 @@ class ChatViewModel @Inject constructor(
                 if (characters.isEmpty()) return@launch
                 val config = apiConfigStore.configFlow.first()
 
-                val results = sendMessageUseCase.sendGroupMessage(chatId, characters, content, config)
+                // 根据健谈度过滤：不是每个角色每次都回复
+                val respondingChars = characters.filter { char ->
+                    val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
+                    val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
+                    Math.random() < responseChance
+                }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
+
+                val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
                 for ((charId, result) in results) {
                     if (wasCancelled) break
                     _respondingCharacter.value = characters.find { it.id == charId }
                     if (result.assistantMsgId != null) {
                         splitIntoMultipleMessages(result.assistantMsgId)
                     }
-                    // 角色间延迟
-                    if (charId != characters.last().id && !wasCancelled) {
-                        delay(500 + (Math.random() * 500).toLong())
+                    // 角色间延迟：基于消息长度的自然延迟
+                    if (charId != results.last().first && !wasCancelled) {
+                        val msgLen = result.fullResponse.length
+                        val baseDelay = when {
+                            msgLen < 30 -> 600L
+                            msgLen < 80 -> 1000L
+                            msgLen < 150 -> 1500L
+                            else -> 2000L
+                        }
+                        delay(baseDelay + (Math.random() * 800).toLong())
                     }
                 }
             } catch (e: Exception) {
@@ -569,6 +586,12 @@ class ChatViewModel @Inject constructor(
 
     fun stopSpeaking() {
         ttsHelper.stop()
+    }
+
+    fun copyMessage(context: Context, messageId: Long) {
+        val msg = messages.value.find { it.id == messageId } ?: return
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("message", msg.content))
     }
 
     override fun onCleared() {
