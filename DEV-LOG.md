@@ -19,6 +19,12 @@
 
 **版本**: v1.2.3 (versionCode=15)
 
+**补充**: `SendMessageUseCase` 单元测试 (25 个测试用例)
+- 覆盖: sendSingleMessage / continueGeneration / regenerate / sendProactiveMessage / sendGroupMessage / sendDirectMessage / attachReasoningContent
+- 使用 MockK (io.mockk) 替代 Mockito，解决 Kotlin 默认参数桥接与 Mockito matcher 的兼容性问题
+- 新增依赖: `mockk:1.13.13`
+- build.gradle 新增 `testOptions { unitTests.isReturnDefaultValues = true }` 以支持 `android.util.Log` 在单元测试中的调用
+
 ---
 
 ## 2026-05-23 — v1.5 质量加固版
