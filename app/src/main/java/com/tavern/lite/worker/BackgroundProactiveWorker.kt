@@ -94,6 +94,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
                 responseBuffer += chunk
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackgroundProactive", "Single chat stream failed", e)
             return
         }
@@ -137,6 +138,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
                 fullResponse += chunk
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackgroundProactive", "Group chat stream failed", e)
             return
         }

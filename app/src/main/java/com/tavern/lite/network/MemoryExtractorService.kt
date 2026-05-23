@@ -287,7 +287,8 @@ $conversation
                 .getJSONObject(0)
                 .getJSONObject("message")
                 .getString("content")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             null
         } finally {
             response.close()
@@ -325,7 +326,8 @@ $conversation
                 .map { content.getJSONObject(it) }
                 .firstOrNull { it.getString("type") == "text" }
             textBlock?.getString("text")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             null
         } finally {
             response.close()
@@ -376,7 +378,8 @@ $conversation
             val content = candidates.getJSONObject(0).getJSONObject("content")
             val parts = content.getJSONArray("parts")
             parts.getJSONObject(0).getString("text")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             null
         } finally {
             response.close()

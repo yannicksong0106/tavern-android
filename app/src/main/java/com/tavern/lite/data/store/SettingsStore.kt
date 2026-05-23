@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.model.BubbleStyleConfig
+import com.tavern.lite.security.CryptoHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -37,7 +38,8 @@ data class TtsSettings(
 @Singleton
 class SettingsStore @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val json: Json
+    private val json: Json,
+    private val cryptoHelper: CryptoHelper
 ) {
     companion object {
         private val BUBBLE_STYLE_KEY = stringPreferencesKey("bubble_style_json")
@@ -87,9 +89,10 @@ class SettingsStore @Inject constructor(
     }
 
     val ttsSettingsFlow: Flow<TtsSettings> = context.settingsDataStore.data.map { prefs ->
-        val jsonStr = prefs[TTS_SETTINGS_KEY]
-        if (jsonStr != null) {
+        val stored = prefs[TTS_SETTINGS_KEY]
+        if (stored != null) {
             try {
+                val jsonStr = cryptoHelper.tryDecrypt(stored) ?: stored
                 json.decodeFromString<TtsSettings>(jsonStr)
             } catch (e: Exception) {
                 Log.w("SettingsStore", "TTS 设置损坏，回退默认值", e)
@@ -101,8 +104,10 @@ class SettingsStore @Inject constructor(
     }.distinctUntilChanged()
 
     suspend fun saveTtsSettings(settings: TtsSettings) {
+        val plainJson = json.encodeToString(settings)
+        val encrypted = cryptoHelper.encrypt(plainJson)
         context.settingsDataStore.edit { prefs ->
-            prefs[TTS_SETTINGS_KEY] = json.encodeToString(settings)
+            prefs[TTS_SETTINGS_KEY] = encrypted
         }
     }
 }

@@ -129,6 +129,7 @@ class ChatApiService @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
@@ -208,6 +209,7 @@ class ChatApiService @Inject constructor(
                         "message_stop" -> break
                     }
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
@@ -303,6 +305,7 @@ class ChatApiService @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
@@ -365,6 +368,7 @@ private suspend fun <T> retryWithBackoff(
                 }
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             lastException = e
         }
         if (attempt < maxRetries - 1) {

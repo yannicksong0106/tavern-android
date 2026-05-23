@@ -1,5 +1,28 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.2.4 第四轮深度分析修复
+
+**第四轮深度分析报告修复 (5 项)**:
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| B1 | `retryWithBackoff` 吞 CancellationException | HIGH | catch 块加 `if (e is CancellationException) throw e`，含 SSE 内层 3 处 |
+| B2 | `BackgroundProactiveWorker` 内层 catch 吞 CancellationException | MEDIUM | processSingleChat / processGroupChat 流式收集 catch 块加 rethrow |
+| B3 | `MemoryExtractorService` 三个 HTTP 方法吞 CancellationException | MEDIUM | callOpenAI / callClaude / callGemini 的 catch 块加 rethrow |
+| S1 | TTS API Key 明文存储 | MEDIUM | `SettingsStore` 接入 `CryptoHelper`，save 时加密、load 时 tryDecrypt |
+| P1 | ProGuard 遗漏 data.store 包 | LOW | proguard-rules.pro 增加 `-keepclassmembers class com.tavern.lite.data.store.** { *; }` |
+
+**修复范围**:
+- `ChatApiService.kt` — `retryWithBackoff` 1 处 + SSE 解析 3 处 catch 块
+- `BackgroundProactiveWorker.kt` — 2 处内层 catch 块（单聊/群聊流式收集）
+- `MemoryExtractorService.kt` — 3 处 HTTP 方法 catch 块
+- `SettingsStore.kt` — 注入 CryptoHelper，TTS 设置加密存储
+- `proguard-rules.pro` — 新增 data.store 包 keep 规则
+
+**版本**: v1.2.4 (versionCode=16)
+
+---
+
 ## 2026-05-23 — v1.2.3 异常处理加固
 
 **第三轮深度分析报告修复 (3 项)**:
