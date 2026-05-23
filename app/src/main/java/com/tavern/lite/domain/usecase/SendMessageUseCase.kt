@@ -1,5 +1,6 @@
 package com.tavern.lite.domain.usecase
 
+import android.util.Log
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
@@ -248,6 +249,16 @@ class SendMessageUseCase @Inject constructor(
                 responseBuffer.append(chunk)
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w("SendMessageUseCase", "continueGeneration failed", e)
+            val errorMsg = when (e) {
+                is java.net.UnknownHostException,
+                is java.net.SocketTimeoutException,
+                is java.net.SocketException -> "[网络连接失败，请检查网络设置]"
+                is java.io.IOException -> "[网络连接异常: ${e.message?.take(50) ?: "未知错误"}]"
+                else -> "[生成失败: ${e.message?.take(80) ?: "未知错误"}]"
+            }
+            chatRepository.appendToMessage(lastAssistantMsgId, errorMsg)
             return null
         }
         lastAssistantReasoningContent = chatApiService.lastReasoningContent
@@ -312,6 +323,17 @@ class SendMessageUseCase @Inject constructor(
                 responseBuffer.append(chunk)
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w("SendMessageUseCase", "regenerate failed", e)
+            val errorMsg = when (e) {
+                is java.net.UnknownHostException,
+                is java.net.SocketTimeoutException,
+                is java.net.SocketException -> "[网络连接失败，请检查网络设置]"
+                is java.io.IOException -> "[网络连接异常: ${e.message?.take(50) ?: "未知错误"}]"
+                else -> "[生成失败: ${e.message?.take(80) ?: "未知错误"}]"
+            }
+            chatRepository.addSwipe(messageId, errorMsg)
+            chatRepository.updateMessageContent(messageId, errorMsg)
             return null
         }
         lastAssistantReasoningContent = chatApiService.lastReasoningContent
@@ -399,6 +421,7 @@ class SendMessageUseCase @Inject constructor(
                 responseBuffer.append(chunk)
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             // 网络错误或流解析失败：保存错误提示作为 assistant 回复，避免用户消息孤立
             val errorMsg = when (e) {
                 is java.net.UnknownHostException,

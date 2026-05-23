@@ -89,8 +89,13 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         )
 
         var responseBuffer = ""
-        chatApiService.streamChat(promptMessages, config).collect { chunk ->
-            responseBuffer += chunk
+        try {
+            chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                responseBuffer += chunk
+            }
+        } catch (e: Exception) {
+            Log.w("BackgroundProactive", "Single chat stream failed", e)
+            return
         }
 
         if (responseBuffer.isBlank()) return
@@ -127,8 +132,13 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         )
 
         var fullResponse = ""
-        chatApiService.streamChat(promptMessages, config).collect { chunk ->
-            fullResponse += chunk
+        try {
+            chatApiService.streamChat(promptMessages, config).collect { chunk ->
+                fullResponse += chunk
+            }
+        } catch (e: Exception) {
+            Log.w("BackgroundProactive", "Group chat stream failed", e)
+            return
         }
 
         val cleanContent = fullResponse.cleanCharacterPrefix(selected.name)

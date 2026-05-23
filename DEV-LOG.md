@@ -1,5 +1,26 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.2.3 异常处理加固
+
+**第三轮深度分析报告修复 (3 项)**:
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| B1 | `continueGeneration`/`regenerate` 吞异常 | HIGH | catch 块加 `Log.w` + 保存错误消息到聊天，用户可见错误提示 |
+| B2 | `BackgroundProactiveWorker` bare collect | MEDIUM | `processSingleChat`/`processGroupChat` 内部加 try-catch + `Log.w` |
+| B3 | `LaunchedEffect` key 不稳定 | LOW | 验证无需修复 — `StateFlow` 自带 `distinctUntilChanged` 语义 |
+| P2 | `catch(Exception)` 吞 `CancellationException` | MEDIUM | 关键路径 10 处 catch 块加 `if (e is CancellationException) throw e` |
+
+**修复范围**:
+- `SendMessageUseCase.kt` — 3 个 catch 块（executeAndSave / continueGeneration / regenerate）
+- `ChatViewModel.kt` — 7 个 catch 块（所有 viewModelScope.launch 内的错误处理）
+- `BackgroundProactiveWorker.kt` — 2 个 catch 块（processSingleChat / processGroupChat 流式收集）
+- `MemoryExtractorService.kt` — 1 个 catch 块（callLLM 主入口）
+
+**版本**: v1.2.3 (versionCode=15)
+
+---
+
 ## 2026-05-23 — v1.5 质量加固版
 
 **8 项质量改进**:

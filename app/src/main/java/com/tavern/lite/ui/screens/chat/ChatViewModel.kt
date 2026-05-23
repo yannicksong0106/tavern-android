@@ -21,6 +21,7 @@ import com.tavern.lite.util.SwipeUtils
 import com.tavern.lite.util.TtsHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -169,6 +170,7 @@ class ChatViewModel @Inject constructor(
                     scheduleProactiveDialogue()
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -214,6 +216,7 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -241,6 +244,7 @@ class ChatViewModel @Inject constructor(
                     splitIntoMultipleMessages(result.assistantMsgId)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -314,6 +318,7 @@ class ChatViewModel @Inject constructor(
                     splitIntoMultipleMessages(result.assistantMsgId)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -356,6 +361,7 @@ class ChatViewModel @Inject constructor(
                     splitIntoMultipleMessages(result.assistantMsgId)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -382,6 +388,7 @@ class ChatViewModel @Inject constructor(
                     chatId, characterId, character, lastMsg.id, lastMsg.content, config
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false
@@ -411,6 +418,7 @@ class ChatViewModel @Inject constructor(
                     chatId, characterId, character, messageId, userMsg.content, config
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _toastMessage.emit("API 错误: ${e.message}")
             } finally {
                 _isGenerating.value = false

@@ -252,6 +252,7 @@ $conversation
                 )
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w(TAG, "LLM call failed: ${e.message}")
             null
         }
