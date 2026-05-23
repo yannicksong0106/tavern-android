@@ -216,7 +216,7 @@ fun BackgroundPickerSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                items(presetBackgrounds) { preset ->
+                items(presetBackgrounds, key = { it.id }) { preset ->
                     PresetBackgroundItem(
                         preset = preset,
                         onClick = {

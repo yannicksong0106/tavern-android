@@ -1,5 +1,6 @@
 package com.tavern.lite.ui.screens.chat.components
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -120,7 +121,7 @@ fun MessageBubble(
         else try {
             val arr = org.json.JSONArray(message.swipeContent)
             (0 until arr.length()).map { arr.getString(it) }
-        } catch (_: Exception) { emptyList() }
+        } catch (e: Exception) { Log.w("MessageBubble", "Failed to parse swipeContent: ${e.message}", e); emptyList() }
     }
     val swipeCount = if (swipeList.isEmpty()) 1 else swipeList.size
     val hasSwipes = swipeCount > 1

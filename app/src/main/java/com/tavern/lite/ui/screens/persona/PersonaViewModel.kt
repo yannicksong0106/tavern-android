@@ -7,6 +7,7 @@ import com.tavern.lite.data.repository.PersonaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,6 +18,7 @@ class PersonaViewModel @Inject constructor(
 ) : ViewModel() {
 
     val personas: StateFlow<List<PersonaEntity>> = personaRepository.getAllPersonas()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun createPersona(name: String, biography: String, avatarPath: String? = null) {

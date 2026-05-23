@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import android.util.Log
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.model.CharacterCard
@@ -48,7 +49,8 @@ class CharacterRepository @Inject constructor(
     fun toCharacterCard(entity: CharacterEntity): CharacterCard {
         val tags: List<String> = try {
             json.decodeFromString(entity.tags)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("CharacterRepository", "Failed to decode tags: ${e.message}", e)
             emptyList()
         }
         return CharacterCard(

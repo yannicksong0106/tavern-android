@@ -1,6 +1,7 @@
 package com.tavern.lite.util
 
 import android.content.Context
+import android.util.Log
 import com.tavern.lite.data.repository.ChatRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.json.Json
@@ -105,8 +106,8 @@ class ChatImporter @Inject constructor(
                 val msg = json.parseToJsonElement(line.trim()).jsonObject
                 val result = importSillyTavernMessage(chatId, msg)
                 if (result) count++
-            } catch (_: Exception) {
-                // 跳过无法解析的行
+            } catch (e: Exception) {
+                Log.w("ChatImporter", "Failed to parse jsonl line: ${e.message}", e)
             }
         }
 

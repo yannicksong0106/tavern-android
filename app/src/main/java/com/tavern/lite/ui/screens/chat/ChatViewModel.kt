@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -82,9 +83,11 @@ class ChatViewModel @Inject constructor(
     val groupCharacterChattiness: StateFlow<Map<Long, Int>> = _groupCharacterChattiness.asStateFlow()
 
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BubbleStyleConfig())
 
     val messages: StateFlow<List<MessageEntity>> = chatRepository.getMessagesForChat(chatId)
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // O(1) message lookup by ID — updated when messages change
@@ -475,6 +478,7 @@ class ChatViewModel @Inject constructor(
     }
 
     val pinnedMessages: StateFlow<List<MessageEntity>> = chatRepository.getPinnedMessages(chatId)
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // 分支操作

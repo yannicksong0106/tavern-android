@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import android.util.Log
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.entity.ScriptEntity
 import kotlinx.coroutines.flow.Flow
@@ -72,8 +73,9 @@ class ScriptRepository @Inject constructor(
                     text.replace(script.findPattern, script.replacePattern, ignoreCase = true)
                 }
             }
-        } catch (_: Exception) {
-            text // 正则表达式无效时跳过
+        } catch (e: Exception) {
+            Log.w("ScriptRepository", "Script regex failed: ${e.message}", e)
+            text
         }
     }
 }

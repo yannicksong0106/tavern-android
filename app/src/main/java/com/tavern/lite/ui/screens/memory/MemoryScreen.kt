@@ -342,7 +342,7 @@ private fun CharacterSelectorRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(characters) { character ->
+        items(characters, key = { it.id }) { character ->
             val isSelected = character.id == selectedId
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

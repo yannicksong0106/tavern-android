@@ -1,5 +1,46 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.2.5 第五轮深度分析修复
+
+**第五轮深度分析报告修复 (3 项)**:
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| B3 | Coil AsyncImage 缺少 `key` 参数 | HIGH | `BackgroundPickerSheet` presetBackgrounds grid + `MemoryScreen` CharacterSelectorRow 补 `key` |
+| MEDIUM | 10 处 catch 块吞异常无日志 | MEDIUM | 全部改为 `catch (e: Exception) { Log.w(...); fallback }` |
+| B2 | StateFlow 缺少 `distinctUntilChanged` | HIGH | 12 个 ViewModel 的 `.stateIn()` 流前补 `.distinctUntilChanged()` |
+
+**修复范围**:
+- `BackgroundPickerSheet.kt` — `items(presetBackgrounds)` 补 `key = { it.id }`
+- `MemoryScreen.kt` — `items(characters)` 补 `key = { it.id }`
+- `LorebookExporter.kt` — 2 处 catch 补 Log.w
+- `CharacterRepository.kt` — 1 处 catch 补 Log.w
+- `ScriptRepository.kt` — 1 处 catch 补 Log.w
+- `WorldBookRepository.kt` — 2 处 catch 补 Log.w
+- `MessageBubble.kt` — 1 处 catch 补 Log.w
+- `WorldBookEditScreen.kt` — 3 处 catch 补 Log.w
+- `SwipeUtils.kt` — 1 处 catch 补 Log.w
+- `HomeViewModel.kt` — 1 处 catch 补 Log.w
+- `ChatImporter.kt` — 1 处 catch 补 Log.w
+- `ChatViewModel.kt` — 5 个 stateIn 流补 distinctUntilChanged（bubbleStyle/messages/pinnedMessages，TTS 的 2 个已是 StateFlow 跳过）
+- `HomeViewModel.kt` — 2 个 stateIn 流补 distinctUntilChanged
+- `SettingsViewModel.kt` — 5 个 stateIn 流补 distinctUntilChanged
+- `MemoryViewModel.kt` — 6 个 stateIn 流补 distinctUntilChanged
+- `ChatListViewModel.kt` — 2 个 stateIn 流补 distinctUntilChanged
+- `CharacterEditViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `WorldBookListViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `WorldBookEditViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `ScriptViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `GroupChatCreateViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `PersonaViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+- `PresetViewModel.kt` — 1 个 stateIn 流补 distinctUntilChanged
+
+**说明**: B1（SendMessageUseCase 静默返回 null）实际已在 v1.2.3 修复，catch 块已有 CancellationException rethrow + Log.w + 错误消息写入聊天。`.asStateFlow()` 返回的 StateFlow 本身已有内置去重，无需额外加 `distinctUntilChanged()`；仅对 `.stateIn()` 从上游 Flow 创建的流添加。
+
+**版本**: v1.2.5 (versionCode=17)
+
+---
+
 ## 2026-05-23 — v1.2.4 第四轮深度分析修复
 
 **第四轮深度分析报告修复 (5 项)**:

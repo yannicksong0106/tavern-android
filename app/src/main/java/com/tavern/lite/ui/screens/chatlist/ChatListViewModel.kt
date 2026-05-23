@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,11 +43,13 @@ class ChatListViewModel @Inject constructor(
     // Optimized: single query with JOIN instead of N+1 queries
     val chatsWithLastMessage: StateFlow<List<ChatWithLastMessage>> =
         chatRepository.getChatsWithLastMessage(characterId)
+            .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Derived chats list for compatibility
     val chats: StateFlow<List<ChatEntity>> = chatsWithLastMessage
         .map { list -> list.map { it.toChatEntity() } }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _exportResult = MutableSharedFlow<String>()

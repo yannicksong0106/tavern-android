@@ -1,5 +1,6 @@
 package com.tavern.lite.util
 
+import android.util.Log
 import org.json.JSONArray
 
 object SwipeUtils {
@@ -9,7 +10,8 @@ object SwipeUtils {
         return try {
             val arr = JSONArray(json)
             (0 until arr.length()).map { arr.getString(it) }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("SwipeUtils", "Failed to parse swipe JSON: ${e.message}", e)
             emptyList()
         }
     }

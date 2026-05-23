@@ -1,5 +1,6 @@
 package com.tavern.lite.ui.screens.worldbook
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -207,7 +208,8 @@ private fun EntryCard(
 ) {
     val keys: List<String> = try {
         Json.decodeFromString(entry.keys)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w("WorldBookEditScreen", "Failed to decode entry keys: ${e.message}", e)
         emptyList()
     }
 
@@ -316,7 +318,8 @@ private fun EntryEditDialog(
     var keysText by remember {
         val keys: List<String> = try {
             entry?.keys?.let { Json.decodeFromString(it) } ?: emptyList()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("WorldBookEditScreen", "Failed to decode keys: ${e.message}", e)
             emptyList()
         }
         mutableStateOf(keys.joinToString(", "))
@@ -324,7 +327,8 @@ private fun EntryEditDialog(
     var keysSecondaryText by remember {
         val keys: List<String> = try {
             entry?.keysSecondary?.let { Json.decodeFromString(it) } ?: emptyList()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("WorldBookEditScreen", "Failed to decode secondaryKeys: ${e.message}", e)
             emptyList()
         }
         mutableStateOf(keys.joinToString(", "))

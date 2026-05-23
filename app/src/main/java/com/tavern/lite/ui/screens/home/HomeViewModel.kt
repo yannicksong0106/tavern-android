@@ -1,6 +1,7 @@
 package com.tavern.lite.ui.screens.home
 
 import android.content.Context
+import android.util.Log
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,9 +47,11 @@ class HomeViewModel @Inject constructor(
             if (query.isBlank()) characterRepository.getAllCharacters()
             else characterRepository.searchCharacters(query)
         }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val groupChats: StateFlow<List<ChatEntity>> = chatRepository.getAllGroupChats()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onSearchQueryChanged(query: String) {
@@ -127,7 +131,7 @@ class HomeViewModel @Inject constructor(
                             0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
                         ))
                     }
-                } catch (_: Exception) { false }
+                } catch (e: Exception) { Log.w("HomeViewModel", "PNG magic check failed: ${e.message}", e); false }
 
                 val result = if (isPng || isPngByMagic) {
                     importer.importFromPng(tempFile)

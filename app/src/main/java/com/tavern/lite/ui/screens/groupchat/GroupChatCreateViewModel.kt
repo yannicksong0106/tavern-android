@@ -8,6 +8,7 @@ import com.tavern.lite.data.repository.GroupChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,6 +20,7 @@ class GroupChatCreateViewModel @Inject constructor(
 ) : ViewModel() {
 
     val characters: StateFlow<List<CharacterEntity>> = characterRepository.getAllCharacters()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun createGroupChat(

@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import android.util.Log
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
@@ -20,12 +21,14 @@ class WorldBookRepository @Inject constructor(
         return keyCache.getOrPut(entry.id) {
             val primary = try {
                 json.decodeFromString<List<String>>(entry.keys).map { it.lowercase() }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("WorldBookRepository", "Failed to decode keys for entry ${entry.id}: ${e.message}", e)
                 emptyList()
             }
             val secondary = try {
                 json.decodeFromString<List<String>>(entry.keysSecondary).map { it.lowercase() }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("WorldBookRepository", "Failed to decode secondaryKeys for entry ${entry.id}: ${e.message}", e)
                 emptyList()
             }
             primary to secondary

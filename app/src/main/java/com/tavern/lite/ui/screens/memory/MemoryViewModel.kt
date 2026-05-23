@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -43,6 +44,7 @@ class MemoryViewModel @Inject constructor(
 
     // --- Character selector ---
     val characters: StateFlow<List<CharacterEntity>> = characterDao.getAllCharacters()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _selectedCharacterId = MutableStateFlow(initialCharacterId)
@@ -54,7 +56,8 @@ class MemoryViewModel @Inject constructor(
         else memoryAtomDao.getCategoryCounts(id)
     }.map { list ->
         list.associate { it.category to it.count }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     // --- Currently selected tab ---
     private val _selectedCategory = MutableStateFlow<MemoryCategory?>(null) // null = "All"
@@ -71,7 +74,8 @@ class MemoryViewModel @Inject constructor(
                 memoryAtomDao.getAtomsByCategoryFlow(charId, category.key)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Search ---
     private val _searchQuery = MutableStateFlow("")
@@ -90,6 +94,7 @@ class MemoryViewModel @Inject constructor(
                 else memoryAtomDao.searchAtomsFlow(charId, query)
             }
         }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Sort mode ---
@@ -101,7 +106,8 @@ class MemoryViewModel @Inject constructor(
     val lastExtractionTime: StateFlow<Long?> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(null)
         else memoryAtomDao.getLastExtractionTime(id)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // --- Real-time update pulse indicator ---
     private val _showPulse = MutableStateFlow(false)
@@ -111,7 +117,8 @@ class MemoryViewModel @Inject constructor(
     val totalMemoryCount: StateFlow<Int> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(0)
         else memoryAtomDao.getAtomsForCharacter(id).map { it.size }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // --- Edit dialog state ---
     private val _editingAtom = MutableStateFlow<MemoryAtomEntity?>(null)

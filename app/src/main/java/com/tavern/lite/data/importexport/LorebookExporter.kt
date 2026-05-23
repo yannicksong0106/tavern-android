@@ -4,6 +4,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import com.tavern.lite.data.model.WorldBook
 import com.tavern.lite.data.model.WorldBookEntryData
+import android.util.Log
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -25,12 +26,14 @@ class LorebookExporter @Inject constructor(
         entries.forEachIndexed { index, entry ->
             val keys: List<String> = try {
                 json.decodeFromString(entry.keys)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("LorebookExporter", "Failed to decode keys: ${e.message}", e)
                 emptyList()
             }
             val secondaryKeys: List<String> = try {
                 json.decodeFromString(entry.keysSecondary)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("LorebookExporter", "Failed to decode secondaryKeys: ${e.message}", e)
                 emptyList()
             }
 

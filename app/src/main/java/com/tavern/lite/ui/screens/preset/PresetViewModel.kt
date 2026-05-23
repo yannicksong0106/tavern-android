@@ -7,6 +7,7 @@ import com.tavern.lite.data.repository.PresetRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,6 +18,7 @@ class PresetViewModel @Inject constructor(
 ) : ViewModel() {
 
     val presets: StateFlow<List<PresetEntity>> = presetRepository.getAllPresets()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun insertPreset(preset: PresetEntity) {

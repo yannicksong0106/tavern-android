@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -55,18 +56,23 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val config: StateFlow<ApiConfig> = apiConfigStore.configFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ApiConfig())
 
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BubbleStyleConfig())
 
     val language: StateFlow<String> = settingsStore.languageFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
 
     val backgroundProactive: StateFlow<Boolean> = settingsStore.backgroundProactiveFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val ttsSettings: StateFlow<TtsSettings> = settingsStore.ttsSettingsFlow
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TtsSettings())
 
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)

@@ -8,6 +8,7 @@ import com.tavern.lite.data.repository.ScriptRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,6 +23,7 @@ class ScriptViewModel @Inject constructor(
 
     val scripts: StateFlow<List<ScriptEntity>> =
         scriptRepository.getScriptsForCharacter(characterId)
+            .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun addScript(name: String, comment: String, scriptType: Int, findPattern: String, replacePattern: String, isRegex: Boolean, caseSensitive: Boolean) {

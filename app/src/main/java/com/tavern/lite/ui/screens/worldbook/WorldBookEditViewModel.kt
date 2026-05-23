@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -31,6 +32,7 @@ class WorldBookEditViewModel @Inject constructor(
     val worldBook: StateFlow<WorldBookEntity?> = _worldBook.asStateFlow()
 
     val entries: StateFlow<List<WorldBookEntryEntity>> = worldBookRepository.getEntries(worldBookId)
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
