@@ -7,11 +7,12 @@ import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
+import java.util.Collections
 
 object PromptBuilder {
 
     // 静态 prompt 缓存：key = "characterId_userName_descHash"，避免每条消息重复构建
-    private val staticPromptCache = LinkedHashMap<String, String>(8, 0.75f, true)
+    private val staticPromptCache = Collections.synchronizedMap(LinkedHashMap<String, String>(8, 0.75f, true))
     private const val MAX_CACHE_SIZE = 16
 
     private fun getStaticPromptCacheKey(character: CharacterEntity, userName: String): String {

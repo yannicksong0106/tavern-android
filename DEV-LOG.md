@@ -1,5 +1,61 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.3 稳定性修复版
+
+**代码审查验证 + Bug 修复 (5 项)**:
+
+### 审查报告验证结论
+
+对项目综合审查报告逐项验证，结论如下：
+
+| # | 报告结论 | 验证结果 | 说明 |
+|---|---------|---------|------|
+| 1 | DB 迁移链断裂 | 部分有效 | 迁移链 1→8, 8→9, ..., 17→18 完整。v2-v7 是开发中间版本从未正式发布，风险低。加 fallbackToDestructiveMigrationFrom 兜底 |
+| 2 | 空 catch 吞异常 | 有效 | ChatApiService.kt 3 处 `catch (_: Exception) {}` 静默丢弃 SSE 解析错误 |
+| 3 | Prompt 缓存线程不安全 | 低风险 | LinkedHashMap 非线程安全，但实际调用在 IO 线程并发概率极低，顺手修 |
+| 4 | 协程泄漏 | **无效（误判）** | 报告称 init 块协程未被追踪取消是错的。viewModelScope.launch 的协程在 onCleared() 时自动取消，这是 ViewModel 标准行为 |
+| 5 | BackgroundProactiveWorker 静默失败 | 有效 | catch 返回 Result.success() 吞掉所有异常，WorkManager 不重试 |
+| 6 | chattiness 未限幅 | 有效 | UI 层 Slider 已限制 0-100，但 ViewModel/Worker 层缺 coerceIn |
+
+### Bug 修复
+
+1. **PromptBuilder 线程安全** — `LinkedHashMap` → `Collections.synchronizedMap(LinkedHashMap(...))`
+2. **ChatApiService 空 catch** — 3 处 catch 块加 `Log.w(TAG, "SSE parse error", e)` 记录异常
+3. **BackgroundProactiveWorker 错误处理** — 区分可重试(网络错误→Result.retry())和不可重试(其他→Result.success()+日志)
+4. **DB 迁移兜底** — 添加 `fallbackToDestructiveMigrationFrom(2,3,4,5,6,7)`
+5. **chattiness 限幅** — BackgroundProactiveWorker 中 `chattiness.coerceIn(0, 100)`
+
+### 角色图片闪退修复（同日早些时候）
+
+- **根因**: Theme.TavernAndroid 继承 android:Theme.Material.Light.NoActionBar，CropImage 库需要 AppCompat 主题
+- **修复**: themes.xml 新增 Theme.TavernAndroid.CropImage (AppCompat)，manifest 中覆盖 CropImageActivity 主题，CharacterEditScreen crop launcher 加 try-catch fallback
+
+### 构建状态
+- `assembleDebug` — BUILD SUCCESSFUL
+- `test` — 178 tests, 全部通过
+
+---
+
+## 2026-05-23 — 全面性能优化
+
+**今日完成 (6 项优化)**:
+1. **ChatViewModel 内存泄漏修复** — 所有 streamingJob 的 finally 块添加 `streamingJob = null`，修复 `regenerate()` 竞态（未 cancel 前一个 job、未赋值 streamingJob），`continueGeneration()` 添加 wasCancelled 重置
+2. **ChatViewModel O(1) 消息查找** — 新增 `_messageMap` StateFlow，6 处 `messages.value.find { it.id == ... }` 线性扫描改为 `findMessage()` O(1) 查找
+3. **ChatScreen LazyColumn 优化** — items 添加 `contentType` 参数提升回收效率；预计算 `messageIdToIndex` 映射，`scrollToMessage` 从 O(n) 降到 O(1)；群聊角色查找从 `groupCharacters.find` 改为 `groupCharacterMap` O(1)；自动滚动 LaunchedEffect 添加 `isAtBottom` 依赖减少不必要触发
+4. **PromptBuilder 静态缓存** — 新增 `staticPromptCache`（LRU, max 16），相同角色+用户名的静态 prompt 直接命中缓存，避免每条消息重复构建；`formatMemoryAtoms` 从多次 `filter` 改为单次 `groupBy` 遍历；提取 `MEMORY_CONTENT_LIMIT` / `TEMP_CONTENT_LIMIT` 等常量
+5. **MemoryConsolidator 常量预编译** — `stopWords` / `emotionWords` / `habitWords` / `preferenceWords` 从方法内移到 `companion object`，避免每次调用重建集合；`consolidate()` 的 6 次 `resolveConflicts` 调用改为 `CONSOLIDATION_CATEGORIES` 循环；新增 `transactionOverride` 支持测试注入
+6. **MessageBubble 形状缓存** — `RoundedCornerShape` 从重复计算改为 `remember` 缓存，`.border()` 和 `.clip()` 共用同一实例
+
+**Bug 修复**: `MemoryConsolidatorTest` 编译错误 — 构造器缺少 `database` 参数，新增 mockito 依赖 + `transactionOverride` 测试模式
+
+**测试结果**: 168 tests pass / 0 fail，`assembleDebug` 构建成功
+
+**代码变更**: 8 个文件修改（ChatViewModel, ChatScreen, PromptBuilder, MemoryConsolidator, MessageBubble, MemoryConsolidatorTest, libs.versions.toml, build.gradle.kts），383 行新增 / 196 行删除
+
+**版本**: v1.2.2 (versionCode=14) — 优化版，commit e99fa18
+
+---
+
 ## 2026-05-20 — v1.2.0 正式发布
 
 **今日完成 (6 项)**:

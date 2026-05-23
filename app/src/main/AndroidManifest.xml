@@ -25,6 +25,12 @@
             </intent-filter>
         </activity>
 
+        <!-- CropImageActivity 主题覆盖：库默认继承 application 主题，但需要 AppCompat -->
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Theme.TavernAndroid.CropImage"
+            tools:replace="android:theme" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

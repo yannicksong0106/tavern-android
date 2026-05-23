@@ -47,8 +47,12 @@ object AppModule {
             TavernDatabase.MIGRATION_11_12,
             TavernDatabase.MIGRATION_12_13,
             TavernDatabase.MIGRATION_13_14,
-            TavernDatabase.MIGRATION_14_15
-        ).build()
+            TavernDatabase.MIGRATION_14_15,
+            TavernDatabase.MIGRATION_15_16,
+            TavernDatabase.MIGRATION_16_17,
+            TavernDatabase.MIGRATION_17_18
+        ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
+         .build()
     }
 
     @Provides

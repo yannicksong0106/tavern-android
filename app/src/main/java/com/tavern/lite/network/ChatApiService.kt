@@ -1,5 +1,6 @@
 package com.tavern.lite.network
 
+import android.util.Log
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
 import kotlinx.coroutines.Dispatchers
@@ -122,8 +123,8 @@ class ChatApiService @Inject constructor(
                             emit(content)
                         }
                     }
-                } catch (_: Exception) {
-                    // Skip malformed chunks
+                } catch (e: Exception) {
+                    Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
         } finally {
@@ -201,8 +202,8 @@ class ChatApiService @Inject constructor(
                         }
                         "message_stop" -> break
                     }
-                } catch (_: Exception) {
-                    // Skip malformed chunks
+                } catch (e: Exception) {
+                    Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
         } finally {
@@ -296,8 +297,8 @@ class ChatApiService @Inject constructor(
                             }
                         }
                     }
-                } catch (_: Exception) {
-                    // Skip malformed chunks
+                } catch (e: Exception) {
+                    Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
         } finally {
@@ -344,9 +345,20 @@ private suspend fun <T> retryWithBackoff(
         try {
             return block()
         } catch (e: ApiException) {
-            // 4xx 客户端错误不重试
-            if (e.code in 400..499) throw e
-            lastException = e
+            when (e.code) {
+                429, 502, 503, 504 -> {
+                    // 可重试的状态码：限流、网关错误、服务不可用
+                    lastException = e
+                }
+                in 400..499 -> {
+                    // 其他 4xx 客户端错误不重试
+                    throw e
+                }
+                else -> {
+                    // 5xx 服务端错误可重试
+                    lastException = e
+                }
+            }
         } catch (e: Exception) {
             lastException = e
         }

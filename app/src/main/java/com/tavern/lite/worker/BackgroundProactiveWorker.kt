@@ -1,6 +1,8 @@
 package com.tavern.lite.worker
 
 import android.content.Context
+import android.util.Log
+import java.io.IOException
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -54,20 +56,23 @@ class BackgroundProactiveWorker @AssistedInject constructor(
                 processSingleChat(chat.id, chat.characterId)
             }
             Result.success()
-        } catch (_: Exception) {
-            // 静默失败，不打扰用户
-            Result.success()
+        } catch (e: Exception) {
+            Log.w("BackgroundProactive", "Proactive message failed", e)
+            when (e) {
+                is IOException -> Result.retry()
+                else -> Result.success()
+            }
         }
     }
 
     private suspend fun processSingleChat(chatId: Long, characterId: Long) {
         val character = characterDao.getCharacterById(characterId) ?: return
-        val chattiness = character.chattiness
+        val chattiness = character.chattiness.coerceIn(0, 100)
         if (chattiness <= 0) return
 
         // 按健谈度概率决定是否发言
         val probability = chattiness / 100.0
-        if (Math.random() > probability) return
+        if (random.nextDouble() > probability) return
 
         val config = apiConfigStore.configFlow.first()
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
@@ -137,7 +142,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         val totalWeight = characters.sumOf { it.chattiness }
         if (totalWeight <= 0) return characters.random()
 
-        var random = Math.random() * totalWeight
+        var random = random.nextDouble() * totalWeight
         for (char in characters) {
             random -= char.chattiness
             if (random <= 0) return char
@@ -155,5 +160,9 @@ class BackgroundProactiveWorker @AssistedInject constructor(
             i++
         }
         return afterPrefix.substring(i).trim()
+    }
+
+    companion object {
+        private val random = kotlin.random.Random.Default
     }
 }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +63,15 @@ fun CharacterEditScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val worldBooks by viewModel.worldBooks.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(error) {
+        error?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
     var showBackgroundPicker by remember { mutableStateOf(false) }
     var showWorldBookPicker by remember { mutableStateOf(false) }
 
@@ -107,18 +117,23 @@ fun CharacterEditScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            cropImage.launch(
-                com.canhub.cropper.CropImageContractOptions(
-                    uri = uri,
-                    cropImageOptions = com.canhub.cropper.CropImageOptions().apply {
-                        cropShape = com.canhub.cropper.CropImageView.CropShape.OVAL
-                        fixAspectRatio = true
-                        aspectRatioX = 1
-                        aspectRatioY = 1
-                        outputCompressFormat = android.graphics.Bitmap.CompressFormat.PNG
-                    }
+            try {
+                cropImage.launch(
+                    com.canhub.cropper.CropImageContractOptions(
+                        uri = uri,
+                        cropImageOptions = com.canhub.cropper.CropImageOptions().apply {
+                            cropShape = com.canhub.cropper.CropImageView.CropShape.OVAL
+                            fixAspectRatio = true
+                            aspectRatioX = 1
+                            aspectRatioY = 1
+                            outputCompressFormat = android.graphics.Bitmap.CompressFormat.PNG
+                        }
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                // CropImage 启动失败时直接使用原图
+                viewModel.updateAvatar(uri)
+            }
         }
     }
 
