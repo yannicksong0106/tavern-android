@@ -1,6 +1,7 @@
 package com.tavern.lite.ui.screens.character
 
 import android.content.Context
+import android.util.Log
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -142,6 +143,7 @@ class CharacterEditViewModel @Inject constructor(
                 }
                 _state.value = _state.value.copy(avatarPath = avatarPath)
             } catch (e: Exception) {
+                Log.w("CharacterEditVM", "头像保存失败", e)
                 _error.value = "头像保存失败: ${e.message}"
             }
         }
@@ -169,6 +171,7 @@ class CharacterEditViewModel @Inject constructor(
                 }
                 _state.value = _state.value.copy(backgroundPath = bgPath)
             } catch (e: Exception) {
+                Log.w("CharacterEditVM", "背景保存失败", e)
                 _error.value = "背景保存失败: ${e.message}"
             }
         }

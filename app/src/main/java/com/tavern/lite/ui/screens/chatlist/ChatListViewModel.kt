@@ -1,5 +1,6 @@
 package com.tavern.lite.ui.screens.chatlist
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -96,6 +97,7 @@ class ChatListViewModel @Inject constructor(
                     onFailure = { _exportResult.emit("导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                Log.w("ChatListViewModel", "导出聊天失败", e)
                 _exportResult.emit("导出失败: ${e.message}")
             }
         }
@@ -113,6 +115,7 @@ class ChatListViewModel @Inject constructor(
                     onFailure = { _exportResult.emit("导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                Log.w("ChatListViewModel", "批量导出失败", e)
                 _exportResult.emit("导出失败: ${e.message}")
             }
         }

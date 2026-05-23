@@ -1,5 +1,45 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-24 — v1.2.6 DB v19 索引 + 剩余 catch 块补日志 + 常量提取
+
+**Task #13: DB v19 索引** (延续 v1.5 质量加固):
+
+| 索引 | 表 | 列 | 用途 |
+|------|----|----|------|
+| `index_chats_updated_at` | chats | updated_at | getRecentChats ORDER BY updated_at DESC |
+| `index_memory_atoms_sort` | memory_atoms | character_id, superseded, importance DESC, last_accessed DESC | getTopAtoms 排序 |
+| `index_world_book_entries_active` | world_book_entries | world_book_id, disabled | getActiveEntries WHERE disabled=0 |
+
+**Task #14: 剩余 catch 块补日志 (11 处)**:
+
+| 文件 | catch 位置 | 说明 |
+|------|-----------|------|
+| BackupManager.kt | exportBackup | 备份失败 Log.w |
+| BackupManager.kt | restoreBackup | 恢复失败 Log.w |
+| MemoryExtractorService.kt | callOpenAI | 解析失败 Log.w |
+| MemoryExtractorService.kt | callClaude | 解析失败 Log.w |
+| MemoryExtractorService.kt | callGemini | 解析失败 Log.w |
+| SillyTavernImporter.kt | importFromPng | PNG 导入失败 Log.w |
+| SillyTavernImporter.kt | importFromJson | JSON 导入失败 Log.w |
+| SillyTavernImporter.kt | exportToJson | JSON 导出失败 Log.w |
+| SillyTavernImporter.kt | exportToPng | PNG 导出失败 Log.w |
+| ChatExporter.kt | exportChat | 导出聊天失败 Log.w |
+| ChatExporter.kt | exportAllChats | 批量导出失败 Log.w |
+| ChatListViewModel.kt | exportChat | 导出聊天失败 Log.w |
+| ChatListViewModel.kt | exportAllChats | 批量导出失败 Log.w |
+| CharacterEditViewModel.kt | updateAvatar | 头像保存失败 Log.w |
+| CharacterEditViewModel.kt | updateBackground | 背景保存失败 Log.w |
+| SendMessageUseCase.kt | personasafe | 获取 persona 失败 Log.w |
+
+**常量提取**:
+- `ChatScreen.kt` — `delay(500)` → `PROACTIVE_TRIGGER_DELAY_MS` 常量
+
+**测试结果**: BUILD SUCCESSFUL，全部测试通过
+
+**版本**: v1.2.6 (versionCode=18)
+
+---
+
 ## 2026-05-23 — v1.2.5 第五轮深度分析修复
 
 **第五轮深度分析报告修复 (3 项)**:

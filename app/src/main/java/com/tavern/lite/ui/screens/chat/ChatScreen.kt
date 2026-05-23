@@ -81,6 +81,8 @@ import com.tavern.lite.ui.screens.chat.components.MessageBubble
 import kotlinx.coroutines.launch
 import java.io.File
 
+private const val PROACTIVE_TRIGGER_DELAY_MS = 500L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -220,7 +222,7 @@ fun ChatScreen(
     }
 
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(500)
+        kotlinx.coroutines.delay(PROACTIVE_TRIGGER_DELAY_MS)
         viewModel.triggerProactiveIfNeeded()
     }
 

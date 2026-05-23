@@ -1,6 +1,7 @@
 package com.tavern.lite.util
 
 import android.content.Context
+import android.util.Log
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
@@ -191,6 +192,7 @@ class BackupManager @Inject constructor(
 
             Result.success(file)
         } catch (e: Exception) {
+            Log.w("BackupManager", "备份失败", e)
             Result.failure(e)
         }
     }
@@ -356,6 +358,7 @@ class BackupManager @Inject constructor(
                 )
             )
         } catch (e: Exception) {
+            Log.w("BackupManager", "恢复失败", e)
             Result.failure(e)
         }
     }

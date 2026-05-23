@@ -1,6 +1,7 @@
 package com.tavern.lite.util
 
 import android.content.Context
+import android.util.Log
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.MessageEntity
@@ -69,6 +70,7 @@ class ChatExporter @Inject constructor(
         outputFile.writeText(content, Charsets.UTF_8)
         Result.success(outputFile)
     } catch (e: Exception) {
+        Log.w("ChatExporter", "导出聊天失败", e)
         Result.failure(e)
     }
 
@@ -115,6 +117,7 @@ class ChatExporter @Inject constructor(
 
         Result.success(zipFile)
     } catch (e: Exception) {
+        Log.w("ChatExporter", "批量导出失败", e)
         Result.failure(e)
     }
 

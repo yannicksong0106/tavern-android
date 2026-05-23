@@ -289,6 +289,7 @@ $conversation
                 .getString("content")
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w(TAG, "callOpenAI 解析失败", e)
             null
         } finally {
             response.close()
@@ -328,6 +329,7 @@ $conversation
             textBlock?.getString("text")
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w(TAG, "callClaude 解析失败", e)
             null
         } finally {
             response.close()
@@ -380,6 +382,7 @@ $conversation
             parts.getJSONObject(0).getString("text")
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w(TAG, "callGemini 解析失败", e)
             null
         } finally {
             response.close()

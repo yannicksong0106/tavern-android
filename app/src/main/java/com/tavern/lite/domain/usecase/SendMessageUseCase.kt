@@ -476,5 +476,7 @@ class SendMessageUseCase @Inject constructor(
     }
 
     private suspend fun personasafe(characterId: Long) =
-        try { personaRepository.getEffectivePersona(characterId) } catch (_: Exception) { null }
+        try { personaRepository.getEffectivePersona(characterId) } catch (e: Exception) {
+            Log.w("SendMessageUseCase", "获取 persona 失败", e); null
+        }
 }
