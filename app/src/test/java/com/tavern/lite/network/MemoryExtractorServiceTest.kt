@@ -30,7 +30,7 @@ class MemoryExtractorServiceTest {
     fun `extractQuickFacts extracts name from Chinese text`() {
         val facts = service.extractQuickFacts(1, "我叫小明，今年20岁", 1, 1)
         assertTrue(facts.any { it.content.contains("小明") })
-        assertTrue(facts.any { it.category == "user_info" })
+        assertTrue(facts.any { it.category == "fact" })
     }
 
     @Test
@@ -54,7 +54,7 @@ class MemoryExtractorServiceTest {
     @Test
     fun `extractQuickFacts extracts commitment`() {
         val facts = service.extractQuickFacts(1, "我答应明天来看你。", 1, 1)
-        assertTrue(facts.any { it.category == "commitment" })
+        assertTrue(facts.any { it.category == "event" })
     }
 
     @Test

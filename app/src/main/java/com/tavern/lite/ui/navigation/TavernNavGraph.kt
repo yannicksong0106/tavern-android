@@ -20,8 +20,13 @@ import com.tavern.lite.ui.screens.memory.MemoryScreen
 import com.tavern.lite.ui.screens.persona.PersonaScreen
 import com.tavern.lite.ui.screens.preset.PresetScreen
 import com.tavern.lite.ui.screens.script.ScriptScreen
+import com.tavern.lite.ui.screens.settings.ApiConfigScreen
+import com.tavern.lite.ui.screens.settings.ChatStyleScreen
+import com.tavern.lite.ui.screens.settings.DataManagementScreen
 import com.tavern.lite.ui.screens.settings.DevLogScreen
+import com.tavern.lite.ui.screens.settings.GenerationParamsScreen
 import com.tavern.lite.ui.screens.settings.SettingsScreen
+import com.tavern.lite.ui.screens.settings.TtsSettingsScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookEditScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookListScreen
 
@@ -39,6 +44,12 @@ object Routes {
     const val GROUP_CHAT_CREATE = "group_chat_create"
     const val PRESET = "preset"
     const val DEV_LOG = "dev_log"
+    const val MEMORY_LIBRARY = "memory_library"
+    const val SETTINGS_API_CONFIG = "settings_api_config"
+    const val SETTINGS_GENERATION_PARAMS = "settings_generation_params"
+    const val SETTINGS_CHAT_STYLE = "settings_chat_style"
+    const val SETTINGS_TTS = "settings_tts"
+    const val SETTINGS_DATA_MANAGEMENT = "settings_data_management"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
     fun chat(characterId: Long, chatId: Long) = "chat/$characterId/$chatId"
@@ -152,7 +163,13 @@ fun TavernNavGraph() {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onPersonaClick = { navController.navigate(Routes.PERSONA) },
-                onDevLogClick = { navController.navigate(Routes.DEV_LOG) }
+                onDevLogClick = { navController.navigate(Routes.DEV_LOG) },
+                onMemoryLibraryClick = { navController.navigate(Routes.MEMORY_LIBRARY) },
+                onApiConfigClick = { navController.navigate(Routes.SETTINGS_API_CONFIG) },
+                onGenerationParamsClick = { navController.navigate(Routes.SETTINGS_GENERATION_PARAMS) },
+                onChatStyleClick = { navController.navigate(Routes.SETTINGS_CHAT_STYLE) },
+                onTtsClick = { navController.navigate(Routes.SETTINGS_TTS) },
+                onDataManagementClick = { navController.navigate(Routes.SETTINGS_DATA_MANAGEMENT) }
             )
         }
 
@@ -227,6 +244,33 @@ fun TavernNavGraph() {
             DevLogScreen(
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable(Routes.MEMORY_LIBRARY) {
+            MemoryScreen(
+                characterId = null,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SETTINGS_API_CONFIG) {
+            ApiConfigScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SETTINGS_GENERATION_PARAMS) {
+            GenerationParamsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SETTINGS_CHAT_STYLE) {
+            ChatStyleScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SETTINGS_TTS) {
+            TtsSettingsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SETTINGS_DATA_MANAGEMENT) {
+            DataManagementScreen(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -2,6 +2,7 @@ package com.tavern.lite.data.repository
 
 import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.entity.MemoryEntity
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -132,4 +133,12 @@ private class FakeMemoryDao : MemoryDao {
     override suspend fun touchMemory(id: Long, now: Long) {}
     override suspend fun touchMemories(ids: List<Long>, now: Long) { touchedIds = ids }
     override suspend fun getAllMemories(): List<MemoryEntity> = inserted.toList()
+    override suspend fun searchMemoriesRaw(query: SupportSQLiteQuery): List<MemoryEntity> {
+        // For testing, scan all searchResults entries and return matches
+        val results = mutableMapOf<Long, MemoryEntity>()
+        for (list in searchResults.values) {
+            list.forEach { results[it.id] = it }
+        }
+        return results.values.toList()
+    }
 }

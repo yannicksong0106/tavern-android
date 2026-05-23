@@ -224,6 +224,34 @@
     <string name="source_manual">手动添加</string>
     <string name="access_count">访问 %d 次</string>
 
+    <!-- 记忆库 / Memory Library -->
+    <string name="memory_library">记忆库</string>
+    <string name="memory_library_desc">查看和管理角色的记忆</string>
+    <string name="memory_category_all">全部</string>
+    <string name="memory_category_fact">事实</string>
+    <string name="memory_category_emotion">情感</string>
+    <string name="memory_category_preference">偏好</string>
+    <string name="memory_category_event">事件</string>
+    <string name="memory_category_habit">习惯</string>
+    <string name="memory_category_character">角色核心</string>
+    <string name="memory_category_temporary">临时记忆</string>
+    <string name="core_memories">核心记忆</string>
+    <string name="temporary_memories">临时记忆</string>
+    <string name="last_extracted">最近提取: %s</string>
+    <string name="memory_count">%d 条记忆</string>
+    <string name="expires_in">将在 %s 后过期</string>
+    <string name="select_character">选择角色</string>
+    <string name="sort_by_importance">按重要度排序</string>
+    <string name="sort_by_recency">按时间排序</string>
+    <string name="sort_by_access">按访问频率排序</string>
+    <string name="search_memories">搜索记忆</string>
+    <string name="memory_recalled">记忆召回: %d 条</string>
+    <string name="just_now">刚刚</string>
+    <string name="minutes_ago">%d 分钟前</string>
+    <string name="hours_ago">%d 小时前</string>
+    <string name="days_ago">%d 天前</string>
+    <string name="expires_hours">%d 小时</string>
+
     <!-- 用户角色 / Persona -->
     <string name="persona_title">用户角色</string>
     <string name="new_persona">新建用户角色</string>

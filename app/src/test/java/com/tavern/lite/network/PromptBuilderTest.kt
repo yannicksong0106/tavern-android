@@ -112,7 +112,7 @@ class PromptBuilderTest {
     }
 
     @Test
-    fun `build includes world book entries in system prompt`() {
+    fun `build includes world book entries in dynamic context`() {
         val character = makeCharacter()
         val entries = listOf(
             WorldBookEntryEntity(
@@ -130,13 +130,15 @@ class PromptBuilderTest {
             worldBookEntries = entries
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("[Dragon Lore]"))
-        assertTrue(systemMsg.content.contains("Dragons are ancient creatures."))
+        // World book is now in dynamic context (second system message), not the first
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("[Dragon Lore]"))
+        assertTrue(dynamicMsg.content.contains("Dragons are ancient creatures."))
     }
 
     @Test
-    fun `build includes memories in system prompt`() {
+    fun `build includes legacy memories in dynamic context`() {
         val character = makeCharacter()
         val memories = listOf(
             MemoryEntity(
@@ -156,9 +158,10 @@ class PromptBuilderTest {
             memories = memories
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("[Memory]"))
-        assertTrue(systemMsg.content.contains("- User prefers dark humor"))
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("[Memory]"))
+        assertTrue(dynamicMsg.content.contains("- User prefers dark humor"))
     }
 
     @Test
@@ -230,7 +233,7 @@ class PromptBuilderTest {
             chatHistory = emptyList()
         )
 
-        // System prompt with style guideline + user message
+        // Static system prompt + user message
         assertEquals(2, messages.size)
         assertEquals("system", messages[0].role)
         assertTrue(messages[0].content.contains("回复风格"))
@@ -238,7 +241,7 @@ class PromptBuilderTest {
     }
 
     @Test
-    fun `build includes memory atoms grouped by category`() {
+    fun `build includes memory atoms in dynamic context`() {
         val character = makeCharacter(name = "Alice")
         val atoms = listOf(
             MemoryAtomEntity(
@@ -252,7 +255,7 @@ class PromptBuilderTest {
             MemoryAtomEntity(
                 id = 2, characterId = 1,
                 content = "User is a student",
-                category = "user_info",
+                category = "fact",
                 importance = 7, source = "llm",
                 createdAt = System.currentTimeMillis(),
                 lastAccessed = System.currentTimeMillis()
@@ -265,10 +268,12 @@ class PromptBuilderTest {
             memoryAtoms = atoms
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("Alice has blue eyes"))
-        assertTrue(systemMsg.content.contains("User is a student"))
-        assertTrue(systemMsg.content.contains("核心人设"))
+        // Memory atoms are in dynamic context (second system message)
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("Alice has blue eyes"))
+        assertTrue(dynamicMsg.content.contains("User is a student"))
+        assertTrue(dynamicMsg.content.contains("核心人设"))
     }
 
     @Test
@@ -286,7 +291,7 @@ class PromptBuilderTest {
             MemoryAtomEntity(
                 id = 2, characterId = 1,
                 content = "User likes pizza",
-                category = "user_info",
+                category = "fact",
                 importance = 5, source = "llm",
                 createdAt = System.currentTimeMillis(),
                 lastAccessed = System.currentTimeMillis()
@@ -299,10 +304,11 @@ class PromptBuilderTest {
             memoryAtoms = atoms
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        // Character consistency should appear before user info
-        val charIdx = systemMsg.content.indexOf("Bob is a knight")
-        val userIdx = systemMsg.content.indexOf("User likes pizza")
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        // Character consistency should appear before user fact
+        val charIdx = dynamicMsg.content.indexOf("Bob is a knight")
+        val userIdx = dynamicMsg.content.indexOf("User likes pizza")
         assertTrue(charIdx < userIdx)
     }
 
@@ -313,7 +319,7 @@ class PromptBuilderTest {
             MemoryAtomEntity(
                 id = 1, characterId = 1,
                 content = "New memory from atoms",
-                category = "user_info",
+                category = "fact",
                 importance = 5, source = "llm",
                 createdAt = System.currentTimeMillis(),
                 lastAccessed = System.currentTimeMillis()
@@ -336,9 +342,10 @@ class PromptBuilderTest {
             memoryAtoms = atoms
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("New memory from atoms"))
-        assertFalse(systemMsg.content.contains("Old legacy memory"))
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("New memory from atoms"))
+        assertFalse(dynamicMsg.content.contains("Old legacy memory"))
     }
 
     @Test
@@ -361,18 +368,19 @@ class PromptBuilderTest {
             memoryAtoms = emptyList()
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("Legacy memory content"))
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("Legacy memory content"))
     }
 
     @Test
-    fun `build includes commitment atoms`() {
+    fun `build includes event atoms`() {
         val character = makeCharacter(name = "Charlie")
         val atoms = listOf(
             MemoryAtomEntity(
                 id = 1, characterId = 1,
                 content = "Charlie promised to protect the village",
-                category = "commitment",
+                category = "event",
                 importance = 9, source = "regex",
                 createdAt = System.currentTimeMillis(),
                 lastAccessed = System.currentTimeMillis()
@@ -385,8 +393,9 @@ class PromptBuilderTest {
             memoryAtoms = atoms
         )
 
-        val systemMsg = messages.first { it.role == "system" }
-        assertTrue(systemMsg.content.contains("承诺"))
-        assertTrue(systemMsg.content.contains("Charlie promised to protect the village"))
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("重要事件"))
+        assertTrue(dynamicMsg.content.contains("Charlie promised to protect the village"))
     }
 }

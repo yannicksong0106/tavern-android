@@ -1,6 +1,7 @@
 package com.tavern.lite.network
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.Preferences
@@ -35,7 +36,8 @@ class ApiConfigStore @Inject constructor(
                 // 尝试解密（新格式：加密的 JSON）
                 val jsonStr = cryptoHelper.tryDecrypt(stored) ?: stored
                 json.decodeFromString<ApiConfig>(jsonStr)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("ApiConfigStore", "配置损坏，回退默认值", e)
                 ApiConfig()
             }
         } else {

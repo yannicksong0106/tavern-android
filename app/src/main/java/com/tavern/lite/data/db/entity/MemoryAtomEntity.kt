@@ -16,13 +16,20 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("character_id"), Index("category"), Index("character_id", "category")]
+    indices = [
+        Index("character_id"),
+        Index("category"),
+        Index("character_id", "category"),
+        Index("character_id", "superseded"),
+        Index("character_id", "superseded", "category"),
+        Index("character_id", "superseded", "source")
+    ]
 )
 data class MemoryAtomEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
     val content: String,
-    val category: String,         // user_info, character_consistency, event, relationship, commitment
+    val category: String,         // fact, emotion, preference, event, habit, character_consistency, temporary
     val importance: Int = 5,      // 1-10
     val source: String = "llm",   // llm, regex, manual
     @ColumnInfo(name = "source_chat_id") val sourceChatId: Long? = null,

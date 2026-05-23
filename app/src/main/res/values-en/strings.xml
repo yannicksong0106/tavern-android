@@ -224,6 +224,34 @@
     <string name="source_manual">Manual</string>
     <string name="access_count">Accessed %d times</string>
 
+    <!-- Memory Library -->
+    <string name="memory_library">Memory Library</string>
+    <string name="memory_library_desc">View and manage character memories</string>
+    <string name="memory_category_all">All</string>
+    <string name="memory_category_fact">Facts</string>
+    <string name="memory_category_emotion">Emotions</string>
+    <string name="memory_category_preference">Preferences</string>
+    <string name="memory_category_event">Events</string>
+    <string name="memory_category_habit">Habits</string>
+    <string name="memory_category_character">Character Core</string>
+    <string name="memory_category_temporary">Temporary</string>
+    <string name="core_memories">Core Memories</string>
+    <string name="temporary_memories">Temporary Memories</string>
+    <string name="last_extracted">Last extracted: %s</string>
+    <string name="memory_count">%d memories</string>
+    <string name="expires_in">Expires in %s</string>
+    <string name="select_character">Select Character</string>
+    <string name="sort_by_importance">Sort by importance</string>
+    <string name="sort_by_recency">Sort by time</string>
+    <string name="sort_by_access">Sort by access frequency</string>
+    <string name="search_memories">Search memories</string>
+    <string name="memory_recalled">Memory recalled: %d</string>
+    <string name="just_now">Just now</string>
+    <string name="minutes_ago">%d minutes ago</string>
+    <string name="hours_ago">%d hours ago</string>
+    <string name="days_ago">%d days ago</string>
+    <string name="expires_hours">%d hours</string>
+
     <!-- Persona -->
     <string name="persona_title">User Personas</string>
     <string name="new_persona">New Persona</string>

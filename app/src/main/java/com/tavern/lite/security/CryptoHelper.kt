@@ -3,6 +3,7 @@ package com.tavern.lite.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.util.Log
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -69,7 +70,8 @@ class CryptoHelper @Inject constructor() {
     fun tryDecrypt(cipherText: String): String? {
         return try {
             decrypt(cipherText)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("CryptoHelper", "解密失败，可能是未加密数据或密钥损坏", e)
             null
         }
     }

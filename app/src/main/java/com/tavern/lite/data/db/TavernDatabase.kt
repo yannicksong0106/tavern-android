@@ -45,7 +45,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         ChatCharacterEntity::class,
         PresetEntity::class,
     ],
-    version = 15,
+    version = 19,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -295,6 +295,44 @@ abstract class TavernDatabase : RoomDatabase() {
         val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_created ON messages(chat_id, is_active, created_at)")
+            }
+        }
+
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Remap legacy categories to new ones
+                db.execSQL("UPDATE memory_atoms SET category = 'fact' WHERE category = 'user_info'")
+                db.execSQL("UPDATE memory_atoms SET category = 'fact' WHERE category = 'relationship'")
+                db.execSQL("UPDATE memory_atoms SET category = 'event' WHERE category = 'commitment'")
+            }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加复合索引，优化记忆库查询
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded ON memory_atoms(character_id, superseded)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded_category ON memory_atoms(character_id, superseded, category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded_source ON memory_atoms(character_id, superseded, source)")
+            }
+        }
+
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 添加 pinned messages 查询索引
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_pinned ON messages(chat_id, is_active, is_pinned)")
+                // 添加群聊查询索引
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_is_group ON chats(is_group)")
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // chats.updated_at 索引：getRecentChats ORDER BY updated_at DESC
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_updated_at ON chats(updated_at)")
+                // memory_atoms 排序索引：getTopAtoms ORDER BY importance DESC, last_accessed DESC
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_sort ON memory_atoms(character_id, superseded, importance DESC, last_accessed DESC)")
+                // world_book_entries 复合索引：getActiveEntries WHERE disabled = 0
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_active ON world_book_entries(world_book_id, disabled)")
             }
         }
 

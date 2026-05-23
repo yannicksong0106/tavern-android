@@ -4,7 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Update
+import androidx.sqlite.db.SimpleSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import com.tavern.lite.data.db.entity.MemoryEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -51,4 +54,24 @@ interface MemoryDao {
 
     @Query("SELECT * FROM memories ORDER BY id ASC")
     suspend fun getAllMemories(): List<MemoryEntity>
+
+    /**
+     * Search memories matching ANY of the keywords (single query with OR conditions).
+     * Avoids N+1 queries when searching with multiple keywords.
+     */
+    @RawQuery
+    suspend fun searchMemoriesRaw(query: SupportSQLiteQuery): List<MemoryEntity>
+
+    suspend fun searchMemoriesMultiKeyword(
+        characterId: Long,
+        keywords: List<String>,
+        limit: Int
+    ): List<MemoryEntity> {
+        if (keywords.isEmpty()) return emptyList()
+        val orClauses = keywords.joinToString(" OR ") { "content LIKE '%' || ? || '%'" }
+        val args = keywords.toTypedArray()
+        val sql = "SELECT * FROM memories WHERE character_id = ? AND ($orClauses) ORDER BY importance DESC, last_accessed DESC LIMIT ?"
+        val query = SimpleSQLiteQuery(sql, arrayOf(characterId, *args, limit))
+        return searchMemoriesRaw(query)
+    }
 }

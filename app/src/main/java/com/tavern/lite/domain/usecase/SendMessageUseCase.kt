@@ -3,6 +3,7 @@ package com.tavern.lite.domain.usecase
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryRepository
@@ -12,6 +13,7 @@ import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.util.cleanCharacterPrefix
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -101,6 +103,12 @@ class SendMessageUseCase @Inject constructor(
         val characterMap = characters.associateBy { it.id }
         var chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
 
+        // Prepend the user message we just saved (it may not appear in getRecentMessages yet due to timing)
+        if (processedContent.isNotBlank() && chatHistory.none { it.role == "user" && it.content == processedContent }) {
+            val userMsg = MessageEntity(chatId = chatId, role = "user", content = processedContent)
+            chatHistory = listOf(userMsg) + chatHistory
+        }
+
         for (char in characters) {
             val persona = personasafe(char.id)
             val worldBookEntries = if (char.worldBookId != null) {
@@ -134,8 +142,13 @@ class SendMessageUseCase @Inject constructor(
                 results.add(char.id to result)
             }
 
-            // Reload history so next character sees this one's response
-            chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
+            // Append saved message to in-memory list instead of full DB reload (avoids N+1 queries)
+            if (result?.assistantMsgId != null) {
+                val savedMsg = chatRepository.getMessageById(result.assistantMsgId)
+                if (savedMsg != null) {
+                    chatHistory = listOf(savedMsg) + chatHistory
+                }
+            }
         }
 
         return results
@@ -230,8 +243,12 @@ class SendMessageUseCase @Inject constructor(
         )
 
         val responseBuffer = StringBuilder()
-        chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
-            responseBuffer.append(chunk)
+        try {
+            chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
+                responseBuffer.append(chunk)
+            }
+        } catch (e: Exception) {
+            return null
         }
         lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
@@ -290,8 +307,12 @@ class SendMessageUseCase @Inject constructor(
         )
 
         val responseBuffer = StringBuilder()
-        chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
-            responseBuffer.append(chunk)
+        try {
+            chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
+                responseBuffer.append(chunk)
+            }
+        } catch (e: Exception) {
+            return null
         }
         lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
@@ -373,8 +394,21 @@ class SendMessageUseCase @Inject constructor(
         processedUserContent: String,
     ): Result? {
         val responseBuffer = StringBuilder()
-        chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
-            responseBuffer.append(chunk)
+        try {
+            chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
+                responseBuffer.append(chunk)
+            }
+        } catch (e: Exception) {
+            // 网络错误或流解析失败：保存错误提示作为 assistant 回复，避免用户消息孤立
+            val errorMsg = when (e) {
+                is java.net.UnknownHostException,
+                is java.net.SocketTimeoutException,
+                is java.net.SocketException -> "[网络连接失败，请检查网络设置]"
+                is java.io.IOException -> "[网络连接异常: ${e.message?.take(50) ?: "未知错误"}]"
+                else -> "[生成失败: ${e.message?.take(80) ?: "未知错误"}]"
+            }
+            chatRepository.sendMessage(chatId, errorMsg, "assistant", characterId)
+            return null
         }
         lastAssistantReasoningContent = chatApiService.lastReasoningContent
 
@@ -382,7 +416,7 @@ class SendMessageUseCase @Inject constructor(
         if (fullResponse.isBlank()) return null
 
         // 清理角色名前缀（群聊常见）
-        val cleanContent = cleanCharacterPrefix(fullResponse, characterName)
+        val cleanContent = fullResponse.cleanCharacterPrefix(characterName)
 
         if (cleanContent.isBlank()) return null
 
@@ -400,21 +434,6 @@ class SendMessageUseCase @Inject constructor(
             fullResponse = cleanContent,
             processedUserContent = processedUserContent
         )
-    }
-
-    /**
-     * 清理角色名前缀，如 "[Alice]: 你好" → "你好"
-     */
-    internal fun cleanCharacterPrefix(response: String, charName: String): String {
-        val trimmed = response.trim()
-        val prefix = "[$charName]"
-        if (!trimmed.startsWith(prefix)) return trimmed
-        val afterPrefix = trimmed.substring(prefix.length)
-        var i = 0
-        while (i < afterPrefix.length && (afterPrefix[i] == ':' || afterPrefix[i] == '：' || afterPrefix[i] == ' ' || afterPrefix[i] == '\t')) {
-            i++
-        }
-        return afterPrefix.substring(i).trim()
     }
 
     /**

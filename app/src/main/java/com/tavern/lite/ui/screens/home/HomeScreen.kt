@@ -204,7 +204,7 @@ fun HomeScreen(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
-                    items(groupChats, key = { it.id }) { chat ->
+                    items(groupChats, key = { it.id }, contentType = { "group_chat" }) { chat ->
                         GroupChatCard(
                             chat = chat,
                             onClick = { onGroupChatItemClick(chat.id, chat.characterId) },
@@ -228,7 +228,7 @@ fun HomeScreen(
                             )
                         )
                     }
-                    items(characters, key = { it.id }) { character ->
+                    items(characters, key = { it.id }, contentType = { "character" }) { character ->
                         CharacterCard(
                             character = character,
                             onClick = { onCharacterClick(character.id) },

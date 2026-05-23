@@ -13,6 +13,24 @@ class WorldBookRepository @Inject constructor(
     private val worldBookDao: WorldBookDao,
     private val json: Json
 ) {
+    // Cache decoded+lowercased keys by entry ID to avoid repeated JSON parsing
+    private val keyCache = mutableMapOf<Long, Pair<List<String>, List<String>>>()
+
+    private fun getCachedKeys(entry: WorldBookEntryEntity): Pair<List<String>, List<String>> {
+        return keyCache.getOrPut(entry.id) {
+            val primary = try {
+                json.decodeFromString<List<String>>(entry.keys).map { it.lowercase() }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val secondary = try {
+                json.decodeFromString<List<String>>(entry.keysSecondary).map { it.lowercase() }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            primary to secondary
+        }
+    }
     fun getAllWorldBooks(): Flow<List<WorldBookEntity>> = worldBookDao.getAllWorldBooks()
 
     suspend fun getWorldBookById(id: Long): WorldBookEntity? = worldBookDao.getWorldBookById(id)
@@ -23,7 +41,10 @@ class WorldBookRepository @Inject constructor(
 
     suspend fun updateWorldBook(worldBook: WorldBookEntity) = worldBookDao.updateWorldBook(worldBook)
 
-    suspend fun deleteWorldBook(worldBook: WorldBookEntity) = worldBookDao.deleteWorldBook(worldBook)
+    suspend fun deleteWorldBook(worldBook: WorldBookEntity) {
+        keyCache.clear()
+        worldBookDao.deleteWorldBook(worldBook)
+    }
 
     fun getEntries(worldBookId: Long): Flow<List<WorldBookEntryEntity>> =
         worldBookDao.getAllEntries(worldBookId)
@@ -33,9 +54,15 @@ class WorldBookRepository @Inject constructor(
 
     suspend fun insertEntry(entry: WorldBookEntryEntity): Long = worldBookDao.insertEntry(entry)
 
-    suspend fun updateEntry(entry: WorldBookEntryEntity) = worldBookDao.updateEntry(entry)
+    suspend fun updateEntry(entry: WorldBookEntryEntity) {
+        keyCache.remove(entry.id)
+        worldBookDao.updateEntry(entry)
+    }
 
-    suspend fun deleteEntry(entry: WorldBookEntryEntity) = worldBookDao.deleteEntry(entry)
+    suspend fun deleteEntry(entry: WorldBookEntryEntity) {
+        keyCache.remove(entry.id)
+        worldBookDao.deleteEntry(entry)
+    }
 
     suspend fun matchEntries(worldBookId: Long, text: String): List<WorldBookEntryEntity> {
         val entries = worldBookDao.getMatchableEntries(worldBookId)
@@ -70,7 +97,7 @@ class WorldBookRepository @Inject constructor(
             entry.constant || matchEntry(entry, lowerText)
         }.filter { entry ->
             // 概率过滤
-            entry.probability >= 100 || (Math.random() * 100 < entry.probability)
+            entry.probability >= 100 || (random.nextDouble() * 100 < entry.probability)
         }
 
         matched.addAll(firstRound)
@@ -92,7 +119,7 @@ class WorldBookRepository @Inject constructor(
                 // preventRecursion 的条目不会被递归触发
                 !entry.preventRecursion &&
                 // 概率过滤
-                (entry.probability >= 100 || (Math.random() * 100 < entry.probability)) &&
+                (entry.probability >= 100 || (random.nextDouble() * 100 < entry.probability)) &&
                 // 关键词匹配
                 matchEntry(entry, matchedContent)
             }
@@ -108,21 +135,12 @@ class WorldBookRepository @Inject constructor(
     }
 
     private fun matchEntry(entry: WorldBookEntryEntity, lowerText: String): Boolean {
-        val primaryKeys: List<String> = try {
-            json.decodeFromString(entry.keys)
-        } catch (_: Exception) {
-            emptyList()
-        }
-        val secondaryKeys: List<String> = try {
-            json.decodeFromString(entry.keysSecondary)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        val (primaryKeys, secondaryKeys) = getCachedKeys(entry)
 
         if (primaryKeys.isEmpty() && secondaryKeys.isEmpty()) return false
 
-        val primaryMatches = primaryKeys.map { key -> lowerText.contains(key.lowercase()) }
-        val secondaryMatches = secondaryKeys.map { key -> lowerText.contains(key.lowercase()) }
+        val primaryMatches = primaryKeys.map { key -> lowerText.contains(key) }
+        val secondaryMatches = secondaryKeys.map { key -> lowerText.contains(key) }
 
         return if (entry.selective && secondaryKeys.isNotEmpty()) {
             // Selective mode: 使用 primary + secondary keys + logic
@@ -139,5 +157,9 @@ class WorldBookRepository @Inject constructor(
             // 非 selective：任一 primary key 匹配即可
             primaryMatches.any { it }
         }
+    }
+
+    companion object {
+        private val random = kotlin.random.Random.Default
     }
 }

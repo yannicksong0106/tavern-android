@@ -1,5 +1,28 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.5 质量加固版
+
+**8 项质量改进**:
+
+| # | 改进项 | 文件 | 说明 |
+|---|--------|------|------|
+| 1 | PromptBuilder 竞态修复 | `PromptBuilder.kt` | `synchronizedMap` + `synchronized` 块内 `getOrPut`，消除 TOCTOU 竞态 |
+| 2 | 配置损坏日志 | `ApiConfigStore.kt`, `SettingsStore.kt` | catch 块加 `Log.w`，记录配置解析失败 |
+| 3 | 群聊 chattiness 限幅 | `BackgroundProactiveWorker.kt` | `chattiness.coerceIn(0, 100)` 防止越界 |
+| 4 | cleanCharacterPrefix 去重 | `StringUtils.kt`(新), `SendMessageUseCase.kt`, `BackgroundProactiveWorker.kt` | 提取为扩展函数，消除 2 处重复实现 |
+| 5 | CryptoHelper 异常分类 | `CryptoHelper.kt` | `tryDecrypt` 失败加 `Log.w` |
+| 6 | SSE 超时调整 | `AppModule.kt` | OkHttp readTimeout 120s → 300s，兼容 reasoning 模型长时间无输出 |
+| 7 | DB v19 索引补全 | `TavernDatabase.kt`, `AppModule.kt` | 3 个高频查询索引：`chats.updated_at`、`memory_atoms` 排序、`world_book_entries` 活跃过滤 |
+| 8 | 常量提取 + catch 审计 | — | 全项目无空 catch，delay 值上下文相关无需提取 |
+
+**DB 迁移**: v18 → v19，`MIGRATION_18_19` 添加 3 个索引，已在 `AppModule.kt` 注册。
+
+### 构建状态
+- `assembleDebug` — BUILD SUCCESSFUL
+- `test` — 178 tests, 全部通过
+
+---
+
 ## 2026-05-23 — v1.4 API 扩展版
 
 **OpenRouter 接入 (4 个文件)**:

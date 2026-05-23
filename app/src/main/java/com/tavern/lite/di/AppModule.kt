@@ -50,7 +50,8 @@ object AppModule {
             TavernDatabase.MIGRATION_14_15,
             TavernDatabase.MIGRATION_15_16,
             TavernDatabase.MIGRATION_16_17,
-            TavernDatabase.MIGRATION_17_18
+            TavernDatabase.MIGRATION_17_18,
+            TavernDatabase.MIGRATION_18_19
         ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
          .build()
     }
@@ -93,7 +94,7 @@ object AppModule {
     fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS) // 长时间流式需要更长超时
+            .readTimeout(300, TimeUnit.SECONDS) // reasoning 模型 (DeepSeek-R1 等) 可能长时间无输出
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }

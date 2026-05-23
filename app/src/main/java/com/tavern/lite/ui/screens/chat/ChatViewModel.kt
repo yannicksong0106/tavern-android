@@ -88,9 +88,15 @@ class ChatViewModel @Inject constructor(
 
     // O(1) message lookup by ID — updated when messages change
     private val _messageMap = MutableStateFlow<Map<Long, MessageEntity>>(emptyMap())
+    private var searchCacheVersion = 0
+    private val _searchCache = mutableMapOf<Pair<String, Int>, List<Int>>()
     init {
         viewModelScope.launch {
-            messages.collect { list -> _messageMap.value = list.associateBy { it.id } }
+            messages.collect { list ->
+                _messageMap.value = list.associateBy { it.id }
+                searchCacheVersion++
+                _searchCache.clear()
+            }
         }
     }
 
@@ -185,7 +191,7 @@ class ChatViewModel @Inject constructor(
                 val respondingChars = characters.filter { char ->
                     val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
                     val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
-                    kotlin.random.Random.nextDouble() < responseChance
+                    random.nextDouble() < responseChance
                 }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
 
                 val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
@@ -204,7 +210,7 @@ class ChatViewModel @Inject constructor(
                             msgLen < 150 -> 1500L
                             else -> 2000L
                         }
-                        delay(baseDelay + kotlin.random.Random.nextLong(800))
+                        delay(baseDelay + random.nextLong(800))
                     }
                 }
             } catch (e: Exception) {
@@ -260,7 +266,7 @@ class ChatViewModel @Inject constructor(
         val content = msg.content.trim()
         if (content.isBlank()) return
 
-        val paragraphs = content.split(Regex("\n{2,}"))
+        val paragraphs = content.split(PARAGRAPH_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
@@ -272,7 +278,7 @@ class ChatViewModel @Inject constructor(
         for (i in 1 until paragraphs.size) {
             val len = paragraphs[i].length
             val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-            val jitter = kotlin.random.Random.nextLong(-200, 200)
+            val jitter = random.nextLong(-200, 200)
             delay(baseDelay + jitter)
             chatRepository.sendMessage(chatId, paragraphs[i], "assistant", msgCharacterId)
         }
@@ -573,8 +579,11 @@ class ChatViewModel @Inject constructor(
             return
         }
         val lowerQuery = query.lowercase()
-        val results = messages.value.mapIndexedNotNull { index, msg ->
-            if (msg.content.lowercase().contains(lowerQuery)) index else null
+        val cacheKey = lowerQuery to searchCacheVersion
+        val results = _searchCache.getOrPut(cacheKey) {
+            messages.value.mapIndexedNotNull { index, msg ->
+                if (msg.content.lowercase().contains(lowerQuery)) index else null
+            }
         }
         _searchResults.value = results
         _currentSearchIndex.value = if (results.isNotEmpty()) 0 else -1
@@ -624,5 +633,10 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
         streamingJob?.cancel()
         ttsHelper.stop()
+    }
+
+    companion object {
+        private val random = kotlin.random.Random.Default
+        private val PARAGRAPH_SPLIT_REGEX: Regex = Regex("\n{2,}")
     }
 }

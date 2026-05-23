@@ -10,6 +10,8 @@ import javax.inject.Singleton
 class ScriptRepository @Inject constructor(
     private val scriptDao: ScriptDao
 ) {
+    // Cache compiled regex patterns to avoid recompilation on every call
+    private val regexCache = mutableMapOf<String, Regex>()
     fun getScriptsForCharacter(characterId: Long): Flow<List<ScriptEntity>> =
         scriptDao.getScriptsForCharacter(characterId)
 
@@ -18,11 +20,20 @@ class ScriptRepository @Inject constructor(
 
     suspend fun insertScript(script: ScriptEntity): Long = scriptDao.insertScript(script)
 
-    suspend fun updateScript(script: ScriptEntity) = scriptDao.updateScript(script)
+    suspend fun updateScript(script: ScriptEntity) {
+        regexCache.clear()
+        scriptDao.updateScript(script)
+    }
 
-    suspend fun deleteScript(script: ScriptEntity) = scriptDao.deleteScript(script)
+    suspend fun deleteScript(script: ScriptEntity) {
+        regexCache.remove("${script.findPattern}:${script.caseSensitive}")
+        scriptDao.deleteScript(script)
+    }
 
-    suspend fun deleteAllForCharacter(characterId: Long) = scriptDao.deleteAllForCharacter(characterId)
+    suspend fun deleteAllForCharacter(characterId: Long) {
+        regexCache.clear()
+        scriptDao.deleteAllForCharacter(characterId)
+    }
 
     /**
      * 对消息文本执行脚本替换。
@@ -48,8 +59,12 @@ class ScriptRepository @Inject constructor(
 
         return try {
             if (script.isRegex) {
-                val options = if (script.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
-                Regex(script.findPattern, options).replace(text, script.replacePattern)
+                val cacheKey = "${script.findPattern}:${script.caseSensitive}"
+                val regex = regexCache.getOrPut(cacheKey) {
+                    val options = if (script.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
+                    Regex(script.findPattern, options)
+                }
+                regex.replace(text, script.replacePattern)
             } else {
                 if (script.caseSensitive) {
                     text.replace(script.findPattern, script.replacePattern)

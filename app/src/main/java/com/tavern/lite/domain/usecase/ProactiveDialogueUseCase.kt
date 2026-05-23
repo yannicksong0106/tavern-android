@@ -1,6 +1,7 @@
 package com.tavern.lite.domain.usecase
 
 import com.tavern.lite.data.db.entity.CharacterEntity
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -8,7 +9,7 @@ import javax.inject.Singleton
 class ProactiveDialogueUseCase @Inject constructor() {
 
     // 主动对话冷却机制：characterId -> last proactive timestamp
-    private val lastProactiveTime = mutableMapOf<Long, Long>()
+    private val lastProactiveTime = ConcurrentHashMap<Long, Long>()
 
     /**
      * 判断是否应该触发单聊主动对话
@@ -17,8 +18,8 @@ class ProactiveDialogueUseCase @Inject constructor() {
     fun shouldScheduleProactive(chattiness: Int): Long? {
         if (chattiness <= 0) return null
         val probability = chattiness / 100.0
-        if (Math.random() > probability) return null
-        return 2000L + (Math.random() * 2000).toLong()
+        if (random.nextDouble() > probability) return null
+        return 2000L + (random.nextDouble() * 2000).toLong()
     }
 
     /**
@@ -31,8 +32,8 @@ class ProactiveDialogueUseCase @Inject constructor() {
         if (maxChattiness <= 0) return null
 
         val probability = 0.3 + (maxChattiness / 100.0) * 0.2 // 30%-50%
-        if (Math.random() > probability) return null
-        return 1000L + (Math.random() * 2000).toLong()
+        if (random.nextDouble() > probability) return null
+        return 1000L + (random.nextDouble() * 2000).toLong()
     }
 
     /**
@@ -50,12 +51,12 @@ class ProactiveDialogueUseCase @Inject constructor() {
         if (available.isEmpty()) return null
 
         val totalWeight = available.sumOf { it.chattiness }
-        if (totalWeight <= 0) return available.random()
+        if (totalWeight <= 0) return available.random(random)
 
-        var random = Math.random() * totalWeight
+        var remaining = random.nextDouble() * totalWeight
         for (char in available) {
-            random -= char.chattiness
-            if (random <= 0) {
+            remaining -= char.chattiness
+            if (remaining <= 0) {
                 lastProactiveTime[char.id] = now
                 return char
             }
@@ -93,5 +94,6 @@ class ProactiveDialogueUseCase @Inject constructor() {
     companion object {
         // 预编译的 @ 提及正则
         private val AT_MENTION_PATTERN = Regex("@(\\S+?)(?:\\s|$)")
+        private val random = kotlin.random.Random.Default
     }
 }

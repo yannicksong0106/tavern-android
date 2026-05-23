@@ -10,12 +10,15 @@ import javax.inject.Singleton
 class MemoryRepository @Inject constructor(
     private val memoryDao: MemoryDao
 ) {
+    companion object {
+        private val KEYWORD_SPLIT_REGEX = Regex("[\\s,，。！？.!?、；;：:\"\"''\\-]+")
+    }
     fun getMemoriesForCharacter(characterId: Long): Flow<List<MemoryEntity>> =
         memoryDao.getMemoriesForCharacter(characterId)
 
     suspend fun getRelevantMemories(characterId: Long, userMessage: String, limit: Int = 5): List<MemoryEntity> {
         // 提取关键词（取最长的 3 个词）
-        val keywords = userMessage.split(Regex("[\\s,，。！？.!?、；;：:\"\"''\\-]+"))
+        val keywords = userMessage.split(KEYWORD_SPLIT_REGEX)
             .filter { it.length >= 2 }
             .sortedByDescending { it.length }
             .take(3)
@@ -24,10 +27,10 @@ class MemoryRepository @Inject constructor(
             return memoryDao.getTopMemories(characterId, limit)
         }
 
-        val results = mutableMapOf<Long, MemoryEntity>()
-        for (keyword in keywords) {
-            memoryDao.searchMemories(characterId, keyword, limit).forEach { results[it.id] = it }
-        }
+        // Single query with OR conditions for all keywords (avoids N+1 queries)
+        val results = memoryDao.searchMemoriesMultiKeyword(characterId, keywords, limit)
+            .associateBy { it.id }
+            .toMutableMap()
 
         // 如果关键词匹配不够，补充 top memories
         if (results.size < limit) {

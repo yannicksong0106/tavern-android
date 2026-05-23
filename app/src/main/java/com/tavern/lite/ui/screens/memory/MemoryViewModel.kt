@@ -3,84 +3,217 @@ package com.tavern.lite.ui.screens.memory
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
+import com.tavern.lite.data.db.dao.MemoryDao
+import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
-import com.tavern.lite.data.db.entity.MemoryEntity
+import com.tavern.lite.data.model.MemoryCategory
+import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class MemoryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val memoryRepository: MemoryRepository,
-    private val memoryAtomDao: MemoryAtomDao
+    private val memoryAtomDao: MemoryAtomDao,
+    private val memoryDao: MemoryDao,
+    private val characterDao: CharacterDao,
+    private val memoryConsolidator: MemoryConsolidator
 ) : ViewModel() {
 
-    private val characterId: Long = savedStateHandle.get<Long>("characterId") ?: 0
+    private val initialCharacterId: Long = savedStateHandle.get<Long>("characterId") ?: 0
 
-    val memories: StateFlow<List<MemoryEntity>> = memoryRepository
-        .getMemoriesForCharacter(characterId)
+    // --- Character selector ---
+    val characters: StateFlow<List<CharacterEntity>> = characterDao.getAllCharacters()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val memoryAtoms: StateFlow<List<MemoryAtomEntity>> = memoryAtomDao
-        .getAtomsForCharacter(characterId)
+    private val _selectedCharacterId = MutableStateFlow(initialCharacterId)
+    val selectedCharacterId: StateFlow<Long> = _selectedCharacterId.asStateFlow()
+
+    // --- Category counts (for tab badges) ---
+    val categoryCounts: StateFlow<Map<String, Int>> = _selectedCharacterId.flatMapLatest { id ->
+        if (id == 0L) flowOf(emptyList())
+        else memoryAtomDao.getCategoryCounts(id)
+    }.map { list ->
+        list.associate { it.category to it.count }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // --- Currently selected tab ---
+    private val _selectedCategory = MutableStateFlow<MemoryCategory?>(null) // null = "All"
+    val selectedCategory: StateFlow<MemoryCategory?> = _selectedCategory.asStateFlow()
+
+    // --- Memory atoms (filtered by selected category or all) ---
+    val atoms: StateFlow<List<MemoryAtomEntity>> = _selectedCharacterId.flatMapLatest { charId ->
+        if (charId == 0L) return@flatMapLatest flowOf(emptyList())
+
+        _selectedCategory.flatMapLatest { category ->
+            if (category == null) {
+                memoryAtomDao.getAtomsForCharacter(charId)
+            } else {
+                memoryAtomDao.getAtomsByCategoryFlow(charId, category.key)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- Search ---
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchActive = MutableStateFlow(false)
+    val searchActive: StateFlow<Boolean> = _searchActive.asStateFlow()
+
+    val searchResults: StateFlow<List<MemoryAtomEntity>> = _searchQuery
+        .debounce(300)
+        .flatMapLatest { query ->
+            if (query.isBlank()) flowOf(emptyList())
+            else {
+                val charId = _selectedCharacterId.value
+                if (charId == 0L) flowOf(emptyList())
+                else memoryAtomDao.searchAtomsFlow(charId, query)
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun addMemory(content: String, importance: Int) {
-        if (content.isBlank()) return
+    // --- Sort mode ---
+    enum class SortMode { IMPORTANCE, RECENCY, ACCESS_COUNT }
+    private val _sortMode = MutableStateFlow(SortMode.IMPORTANCE)
+    val sortMode: StateFlow<SortMode> = _sortMode.asStateFlow()
+
+    // --- Last extraction time ---
+    val lastExtractionTime: StateFlow<Long?> = _selectedCharacterId.flatMapLatest { id ->
+        if (id == 0L) flowOf(null)
+        else memoryAtomDao.getLastExtractionTime(id)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // --- Real-time update pulse indicator ---
+    private val _showPulse = MutableStateFlow(false)
+    val showPulse: StateFlow<Boolean> = _showPulse.asStateFlow()
+
+    // --- Total memory count ---
+    val totalMemoryCount: StateFlow<Int> = _selectedCharacterId.flatMapLatest { id ->
+        if (id == 0L) flowOf(0)
+        else memoryAtomDao.getAtomsForCharacter(id).map { it.size }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // --- Edit dialog state ---
+    private val _editingAtom = MutableStateFlow<MemoryAtomEntity?>(null)
+    val editingAtom: StateFlow<MemoryAtomEntity?> = _editingAtom.asStateFlow()
+
+    init {
+        // Auto-select first character if none selected
         viewModelScope.launch {
-            memoryRepository.addMemory(characterId, content, importance)
+            characters.collect { list ->
+                if (_selectedCharacterId.value == 0L && list.isNotEmpty()) {
+                    _selectedCharacterId.value = list.first().id
+                }
+            }
+        }
+
+        // Observe new memory additions for pulse animation
+        viewModelScope.launch {
+            var previousSize = 0
+            _selectedCharacterId.flatMapLatest { id ->
+                if (id == 0L) flowOf(emptyList())
+                else memoryAtomDao.getAtomsForCharacter(id)
+            }.collect { newList ->
+                if (newList.size > previousSize && previousSize > 0) {
+                    _showPulse.value = true
+                    delay(2000)
+                    _showPulse.value = false
+                }
+                previousSize = newList.size
+            }
+        }
+
+        // Purge expired temporary memories on load
+        viewModelScope.launch {
+            memoryAtomDao.purgeExpired()
         }
     }
 
-    fun addAtom(content: String, category: String, importance: Int) {
+    fun selectCharacter(id: Long) {
+        _selectedCharacterId.value = id
+        _selectedCategory.value = null
+        _searchQuery.value = ""
+        _searchActive.value = false
+    }
+
+    fun selectCategory(category: MemoryCategory?) {
+        _selectedCategory.value = category
+    }
+
+    fun updateSearch(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun setSearchActive(active: Boolean) {
+        _searchActive.value = active
+        if (!active) _searchQuery.value = ""
+    }
+
+    fun setSortMode(mode: SortMode) {
+        _sortMode.value = mode
+    }
+
+    fun startEdit(atom: MemoryAtomEntity) {
+        _editingAtom.value = atom
+    }
+
+    fun clearEdit() {
+        _editingAtom.value = null
+    }
+
+    fun addAtom(content: String, category: MemoryCategory, importance: Int) {
         if (content.isBlank()) return
         viewModelScope.launch {
+            val expiresAt = if (category == MemoryCategory.TEMPORARY) {
+                System.currentTimeMillis() + 4 * 3600_000L
+            } else null
             memoryAtomDao.insert(
                 MemoryAtomEntity(
-                    characterId = characterId,
+                    characterId = _selectedCharacterId.value,
                     content = content,
-                    category = category,
+                    category = category.key,
                     importance = importance,
-                    source = "manual"
+                    source = "manual",
+                    createdAt = System.currentTimeMillis(),
+                    lastAccessed = System.currentTimeMillis(),
+                    expiresAt = expiresAt
                 )
             )
         }
     }
 
-    fun updateMemory(memory: MemoryEntity) {
-        viewModelScope.launch {
-            memoryRepository.updateMemory(memory)
-        }
-    }
-
-    fun supersedeAtom(id: Long) {
-        viewModelScope.launch {
-            memoryAtomDao.supersede(id)
-        }
-    }
-
-    fun deleteMemory(id: Long) {
-        viewModelScope.launch {
-            memoryRepository.deleteMemory(id)
-        }
+    fun updateAtom(atom: MemoryAtomEntity) {
+        viewModelScope.launch { memoryAtomDao.update(atom) }
     }
 
     fun deleteAtom(id: Long) {
-        viewModelScope.launch {
-            memoryAtomDao.deleteById(id)
-        }
+        viewModelScope.launch { memoryAtomDao.deleteById(id) }
     }
 
     fun deleteAll() {
         viewModelScope.launch {
-            memoryRepository.deleteAllForCharacter(characterId)
-            memoryAtomDao.deleteAllForCharacter(characterId)
+            memoryAtomDao.deleteAllForCharacter(_selectedCharacterId.value)
+            memoryDao.deleteAllForCharacter(_selectedCharacterId.value)
         }
     }
 }

@@ -2,6 +2,7 @@ package com.tavern.lite.worker
 
 import android.content.Context
 import android.util.Log
+import com.tavern.lite.util.cleanCharacterPrefix
 import java.io.IOException
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -94,7 +95,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
 
         if (responseBuffer.isBlank()) return
 
-        val cleanContent = cleanCharacterPrefix(responseBuffer, character.name)
+        val cleanContent = responseBuffer.cleanCharacterPrefix(character.name)
         if (cleanContent.isNotBlank()) {
             val processedReply = scriptRepository.applyScripts(characterId, cleanContent, 1)
             val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
@@ -130,7 +131,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
             fullResponse += chunk
         }
 
-        val cleanContent = cleanCharacterPrefix(fullResponse, selected.name)
+        val cleanContent = fullResponse.cleanCharacterPrefix(selected.name)
         if (cleanContent.isNotBlank()) {
             val processedReply = scriptRepository.applyScripts(selected.id, cleanContent, 1)
             val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
@@ -139,27 +140,15 @@ class BackgroundProactiveWorker @AssistedInject constructor(
     }
 
     private fun selectCharacterByChattiness(characters: List<CharacterEntity>): CharacterEntity? {
-        val totalWeight = characters.sumOf { it.chattiness }
+        val totalWeight = characters.sumOf { it.chattiness.coerceIn(0, 100) }
         if (totalWeight <= 0) return characters.random()
 
         var random = random.nextDouble() * totalWeight
         for (char in characters) {
-            random -= char.chattiness
+            random -= char.chattiness.coerceIn(0, 100)
             if (random <= 0) return char
         }
         return characters.last()
-    }
-
-    private fun cleanCharacterPrefix(response: String, charName: String): String {
-        val trimmed = response.trim()
-        val prefix = "[$charName]"
-        if (!trimmed.startsWith(prefix)) return trimmed
-        val afterPrefix = trimmed.substring(prefix.length)
-        var i = 0
-        while (i < afterPrefix.length && (afterPrefix[i] == ':' || afterPrefix[i] == '\uFF1A' || afterPrefix[i] == ' ' || afterPrefix[i] == '\t')) {
-            i++
-        }
-        return afterPrefix.substring(i).trim()
     }
 
     companion object {

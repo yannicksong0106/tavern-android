@@ -1,6 +1,7 @@
 package com.tavern.lite.data.store
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -10,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.model.BubbleStyleConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -46,7 +48,7 @@ class SettingsStore @Inject constructor(
 
     val languageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
         prefs[LANGUAGE_KEY] ?: "system"
-    }
+    }.distinctUntilChanged()
 
     suspend fun saveLanguage(language: String) {
         context.settingsDataStore.edit { prefs ->
@@ -56,7 +58,7 @@ class SettingsStore @Inject constructor(
 
     val backgroundProactiveFlow: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
         prefs[BACKGROUND_PROACTIVE_KEY] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun saveBackgroundProactive(enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
@@ -69,13 +71,14 @@ class SettingsStore @Inject constructor(
         if (jsonStr != null) {
             try {
                 json.decodeFromString<BubbleStyleConfig>(jsonStr)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("SettingsStore", "气泡样式配置损坏，回退默认值", e)
                 BubbleStyleConfig()
             }
         } else {
             BubbleStyleConfig()
         }
-    }
+    }.distinctUntilChanged()
 
     suspend fun saveBubbleStyle(config: BubbleStyleConfig) {
         context.settingsDataStore.edit { prefs ->
@@ -88,13 +91,14 @@ class SettingsStore @Inject constructor(
         if (jsonStr != null) {
             try {
                 json.decodeFromString<TtsSettings>(jsonStr)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("SettingsStore", "TTS 设置损坏，回退默认值", e)
                 TtsSettings()
             }
         } else {
             TtsSettings()
         }
-    }
+    }.distinctUntilChanged()
 
     suspend fun saveTtsSettings(settings: TtsSettings) {
         context.settingsDataStore.edit { prefs ->

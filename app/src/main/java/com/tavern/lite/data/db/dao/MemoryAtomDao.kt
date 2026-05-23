@@ -1,5 +1,6 @@
 package com.tavern.lite.data.db.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -7,6 +8,11 @@ import androidx.room.Query
 import androidx.room.Update
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import kotlinx.coroutines.flow.Flow
+
+data class CategoryCount(
+    @ColumnInfo(name = "category") val category: String,
+    @ColumnInfo(name = "count") val count: Int
+)
 
 @Dao
 interface MemoryAtomDao {
@@ -55,7 +61,7 @@ interface MemoryAtomDao {
     @Query("""
         SELECT * FROM memory_atoms
         WHERE character_id = :characterId AND superseded = 0
-        AND (category = 'commitment' OR importance >= 8)
+        AND (category = 'event' OR importance >= 8)
         ORDER BY importance DESC
     """)
     suspend fun getHighPriorityAtoms(characterId: Long): List<MemoryAtomEntity>
@@ -111,4 +117,46 @@ interface MemoryAtomDao {
 
     @Query("SELECT * FROM memory_atoms ORDER BY id ASC")
     suspend fun getAllMemoryAtoms(): List<MemoryAtomEntity>
+
+    // --- New queries for visual memory library ---
+
+    @Query("""
+        SELECT category, COUNT(*) as count FROM memory_atoms
+        WHERE character_id = :characterId AND superseded = 0
+        GROUP BY category
+    """)
+    fun getCategoryCounts(characterId: Long): Flow<List<CategoryCount>>
+
+    @Query("""
+        SELECT * FROM memory_atoms
+        WHERE character_id = :characterId AND superseded = 0 AND category = :category
+        ORDER BY importance DESC, last_accessed DESC
+    """)
+    fun getAtomsByCategoryFlow(characterId: Long, category: String): Flow<List<MemoryAtomEntity>>
+
+    @Query("""
+        SELECT * FROM memory_atoms
+        WHERE character_id = :characterId AND superseded = 0
+        AND content LIKE '%' || :query || '%'
+        ORDER BY importance DESC, last_accessed DESC
+    """)
+    fun searchAtomsFlow(characterId: Long, query: String): Flow<List<MemoryAtomEntity>>
+
+    @Query("""
+        SELECT MAX(created_at) FROM memory_atoms
+        WHERE character_id = :characterId AND superseded = 0 AND source != 'manual'
+    """)
+    fun getLastExtractionTime(characterId: Long): Flow<Long?>
+
+    @Query("""
+        DELETE FROM memory_atoms
+        WHERE expires_at IS NOT NULL AND expires_at < :now AND superseded = 0
+    """)
+    suspend fun purgeExpired(now: Long = System.currentTimeMillis())
+
+    @Query("""
+        SELECT COUNT(*) FROM memory_atoms
+        WHERE character_id = :characterId AND superseded = 0 AND source != 'manual'
+    """)
+    fun getExtractedCount(characterId: Long): Flow<Int>
 }

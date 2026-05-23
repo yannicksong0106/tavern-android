@@ -17,6 +17,7 @@ import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -262,11 +263,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun refreshStorageSizes() {
-        _storageSizes.value = Triple(
-            getDatabaseSize(),
-            getCacheSize(),
-            getBackupSize()
-        )
+        viewModelScope.launch(Dispatchers.IO) {
+            _storageSizes.value = Triple(
+                getDatabaseSize(),
+                getCacheSize(),
+                getBackupSize()
+            )
+        }
     }
 
     private fun calculateDirSize(dir: File): Long {

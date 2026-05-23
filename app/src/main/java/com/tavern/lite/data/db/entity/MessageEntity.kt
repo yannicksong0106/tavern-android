@@ -20,7 +20,8 @@ import androidx.room.PrimaryKey
         Index("chat_id"),
         Index("parent_id"),
         Index("character_id"),
-        Index(value = ["chat_id", "is_active", "created_at"], name = "index_messages_chat_active_created")
+        Index(value = ["chat_id", "is_active", "created_at"], name = "index_messages_chat_active_created"),
+        Index(value = ["chat_id", "is_active", "is_pinned"], name = "index_messages_chat_active_pinned")
     ]
 )
 data class MessageEntity(

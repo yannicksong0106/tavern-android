@@ -23,12 +23,14 @@ object PromptBuilder {
 
     private fun getCachedStaticPrompt(character: CharacterEntity, userName: String): String {
         val key = getStaticPromptCacheKey(character, userName)
-        return staticPromptCache.getOrPut(key) {
-            if (staticPromptCache.size >= MAX_CACHE_SIZE) {
-                val eldest = staticPromptCache.keys.first()
-                staticPromptCache.remove(eldest)
+        return synchronized(staticPromptCache) {
+            staticPromptCache.getOrPut(key) {
+                if (staticPromptCache.size >= MAX_CACHE_SIZE) {
+                    val eldest = staticPromptCache.keys.first()
+                    staticPromptCache.remove(eldest)
+                }
+                buildStaticSystemPrompt(character, userName)
             }
-            buildStaticSystemPrompt(character, userName)
         }
     }
 

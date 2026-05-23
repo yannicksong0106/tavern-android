@@ -12,12 +12,14 @@ import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -56,6 +58,9 @@ class CharacterEditViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CharacterEditState())
     val state: StateFlow<CharacterEditState> = _state.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     val worldBooks: StateFlow<List<WorldBookEntity>> = worldBookRepository.getAllWorldBooks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -116,23 +121,26 @@ class CharacterEditViewModel @Inject constructor(
     fun updateAvatar(uri: Uri) {
         viewModelScope.launch {
             try {
-                // Delete old avatar file if it exists
-                val oldPath = _state.value.avatarPath
-                if (oldPath != null) {
-                    File(oldPath).delete()
-                }
-
-                val avatarDir = File(context.filesDir, "avatars")
-                avatarDir.mkdirs()
-                val avatarFile = File(avatarDir, "avatar_${System.currentTimeMillis()}.png")
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    avatarFile.outputStream().use { output ->
-                        input.copyTo(output)
+                val avatarPath = withContext(Dispatchers.IO) {
+                    // Delete old avatar file if it exists
+                    val oldPath = _state.value.avatarPath
+                    if (oldPath != null) {
+                        File(oldPath).delete()
                     }
+
+                    val avatarDir = File(context.filesDir, "avatars")
+                    avatarDir.mkdirs()
+                    val avatarFile = File(avatarDir, "avatar_${System.currentTimeMillis()}.png")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        avatarFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    avatarFile.absolutePath
                 }
-                _state.value = _state.value.copy(avatarPath = avatarFile.absolutePath)
-            } catch (_: Exception) {
-                // ignore
+                _state.value = _state.value.copy(avatarPath = avatarPath)
+            } catch (e: Exception) {
+                _error.value = "头像保存失败: ${e.message}"
             }
         }
     }
@@ -140,29 +148,36 @@ class CharacterEditViewModel @Inject constructor(
     fun updateBackground(uri: Uri) {
         viewModelScope.launch {
             try {
-                // Delete old background file if it's a custom image (not a preset)
-                val oldPath = _state.value.backgroundPath
-                if (oldPath != null && !oldPath.startsWith("preset:")) {
-                    File(oldPath).delete()
-                }
-
-                val bgDir = File(context.filesDir, "backgrounds")
-                bgDir.mkdirs()
-                val bgFile = File(bgDir, "bg_${System.currentTimeMillis()}.png")
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    bgFile.outputStream().use { output ->
-                        input.copyTo(output)
+                val bgPath = withContext(Dispatchers.IO) {
+                    // Delete old background file if it's a custom image (not a preset)
+                    val oldPath = _state.value.backgroundPath
+                    if (oldPath != null && !oldPath.startsWith("preset:")) {
+                        File(oldPath).delete()
                     }
+
+                    val bgDir = File(context.filesDir, "backgrounds")
+                    bgDir.mkdirs()
+                    val bgFile = File(bgDir, "bg_${System.currentTimeMillis()}.png")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        bgFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    bgFile.absolutePath
                 }
-                _state.value = _state.value.copy(backgroundPath = bgFile.absolutePath)
-            } catch (_: Exception) {
-                // ignore
+                _state.value = _state.value.copy(backgroundPath = bgPath)
+            } catch (e: Exception) {
+                _error.value = "背景保存失败: ${e.message}"
             }
         }
     }
 
     fun clearBackground() {
         _state.value = _state.value.copy(backgroundPath = null)
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 
     fun setWorldBook(worldBookId: Long, worldBookName: String) {

@@ -24,6 +24,8 @@ import com.tavern.lite.data.model.WorldBookBackup
 import com.tavern.lite.data.model.WorldBookEntryBackup
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -52,113 +54,135 @@ class BackupManager @Inject constructor(
 
     suspend fun backup(): Result<File> = withContext(Dispatchers.IO) {
         try {
-            val characters = characterDao.getAllCharactersSync().map {
-                CharacterBackup(
-                    id = it.id, name = it.name, description = it.description,
-                    personality = it.personality, firstMessage = it.firstMes,
-                    mesExample = it.mesExample, avatarPath = it.avatarPath,
-                    systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
-                    tags = it.tags, worldBookId = it.worldBookId, backgroundPath = it.backgroundPath,
-                    creator = it.creator, version = it.version, spec = it.spec,
-                    chattiness = it.chattiness, createdAt = it.createdAt, updatedAt = it.updatedAt
-                )
+            // Run all DB queries in parallel for faster backup
+            val charactersDeferred = async {
+                characterDao.getAllCharactersSync().map {
+                    CharacterBackup(
+                        id = it.id, name = it.name, description = it.description,
+                        personality = it.personality, firstMessage = it.firstMes,
+                        mesExample = it.mesExample, avatarPath = it.avatarPath,
+                        systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
+                        tags = it.tags, worldBookId = it.worldBookId, backgroundPath = it.backgroundPath,
+                        creator = it.creator, version = it.version, spec = it.spec,
+                        chattiness = it.chattiness, createdAt = it.createdAt, updatedAt = it.updatedAt
+                    )
+                }
             }
 
-            val chats = chatDao.getAllChatsSync().map {
-                ChatBackup(
-                    id = it.id, characterId = it.characterId, name = it.name,
-                    backgroundPath = it.backgroundPath, isGroup = it.isGroup,
-                    groupChattiness = it.groupChattiness, createdAt = it.createdAt,
-                    updatedAt = it.updatedAt
-                )
+            val chatsDeferred = async {
+                chatDao.getAllChatsSync().map {
+                    ChatBackup(
+                        id = it.id, characterId = it.characterId, name = it.name,
+                        backgroundPath = it.backgroundPath, isGroup = it.isGroup,
+                        groupChattiness = it.groupChattiness, createdAt = it.createdAt,
+                        updatedAt = it.updatedAt
+                    )
+                }
             }
 
-            val messages = messageDao.getAllMessages().map {
-                MessageBackup(
-                    id = it.id, chatId = it.chatId, role = it.role, content = it.content,
-                    characterId = it.characterId, parentId = it.parentId, branchId = it.branchId,
-                    isActive = it.isActive, createdAt = it.createdAt,
-                    swipeContent = it.swipeContent, swipeIndex = it.swipeIndex
-                )
+            val messagesDeferred = async {
+                messageDao.getAllMessages().map {
+                    MessageBackup(
+                        id = it.id, chatId = it.chatId, role = it.role, content = it.content,
+                        characterId = it.characterId, parentId = it.parentId, branchId = it.branchId,
+                        isActive = it.isActive, createdAt = it.createdAt,
+                        swipeContent = it.swipeContent, swipeIndex = it.swipeIndex
+                    )
+                }
             }
 
-            val memories = memoryDao.getAllMemories().map {
-                MemoryBackup(
-                    id = it.id, characterId = it.characterId, content = it.content,
-                    importance = it.importance, source = it.source, createdAt = it.createdAt,
-                    lastAccessed = it.lastAccessed, accessCount = it.accessCount
-                )
+            val memoriesDeferred = async {
+                memoryDao.getAllMemories().map {
+                    MemoryBackup(
+                        id = it.id, characterId = it.characterId, content = it.content,
+                        importance = it.importance, source = it.source, createdAt = it.createdAt,
+                        lastAccessed = it.lastAccessed, accessCount = it.accessCount
+                    )
+                }
             }
 
-            val memoryAtoms = memoryAtomDao.getAllMemoryAtoms().map {
-                MemoryAtomBackup(
-                    id = it.id, characterId = it.characterId, content = it.content,
-                    category = it.category, importance = it.importance, source = it.source,
-                    sourceChatId = it.sourceChatId, sourceMessageId = it.sourceMessageId,
-                    superseded = it.superseded, createdAt = it.createdAt,
-                    lastAccessed = it.lastAccessed, accessCount = it.accessCount,
-                    expiresAt = it.expiresAt
-                )
+            val memoryAtomsDeferred = async {
+                memoryAtomDao.getAllMemoryAtoms().map {
+                    MemoryAtomBackup(
+                        id = it.id, characterId = it.characterId, content = it.content,
+                        category = it.category, importance = it.importance, source = it.source,
+                        sourceChatId = it.sourceChatId, sourceMessageId = it.sourceMessageId,
+                        superseded = it.superseded, createdAt = it.createdAt,
+                        lastAccessed = it.lastAccessed, accessCount = it.accessCount,
+                        expiresAt = it.expiresAt
+                    )
+                }
             }
 
-            val worldBooks = worldBookDao.getAllWorldBooksSync().map {
-                WorldBookBackup(
-                    id = it.id, name = it.name, description = it.description,
-                    createdAt = it.createdAt, updatedAt = it.updatedAt
-                )
+            val worldBooksDeferred = async {
+                worldBookDao.getAllWorldBooksSync().map {
+                    WorldBookBackup(
+                        id = it.id, name = it.name, description = it.description,
+                        createdAt = it.createdAt, updatedAt = it.updatedAt
+                    )
+                }
             }
 
-            val worldBookEntries = worldBookDao.getAllEntriesSync().map {
-                WorldBookEntryBackup(
-                    id = it.id, worldBookId = it.worldBookId, uid = it.uid,
-                    comment = it.comment, keys = it.keys, keysSecondary = it.keysSecondary,
-                    content = it.content, constant = it.constant, position = it.position,
-                    orderVal = it.orderVal, probability = it.probability, depth = it.depth,
-                    disabled = it.disabled, selective = it.selective,
-                    selectiveLogic = it.selectiveLogic, excludeRecursion = it.excludeRecursion,
-                    preventRecursion = it.preventRecursion, group = it.group,
-                    groupOverride = it.groupOverride, groupWeight = it.groupWeight
-                )
+            val worldBookEntriesDeferred = async {
+                worldBookDao.getAllEntriesSync().map {
+                    WorldBookEntryBackup(
+                        id = it.id, worldBookId = it.worldBookId, uid = it.uid,
+                        comment = it.comment, keys = it.keys, keysSecondary = it.keysSecondary,
+                        content = it.content, constant = it.constant, position = it.position,
+                        orderVal = it.orderVal, probability = it.probability, depth = it.depth,
+                        disabled = it.disabled, selective = it.selective,
+                        selectiveLogic = it.selectiveLogic, excludeRecursion = it.excludeRecursion,
+                        preventRecursion = it.preventRecursion, group = it.group,
+                        groupOverride = it.groupOverride, groupWeight = it.groupWeight
+                    )
+                }
             }
 
-            val scripts = scriptDao.getAllScripts().map {
-                ScriptBackup(
-                    id = it.id, characterId = it.characterId, name = it.name,
-                    comment = it.comment, scriptType = it.scriptType,
-                    findPattern = it.findPattern, replacePattern = it.replacePattern,
-                    isRegex = it.isRegex, caseSensitive = it.caseSensitive,
-                    enabled = it.enabled, sortOrder = it.sortOrder
-                )
+            val scriptsDeferred = async {
+                scriptDao.getAllScripts().map {
+                    ScriptBackup(
+                        id = it.id, characterId = it.characterId, name = it.name,
+                        comment = it.comment, scriptType = it.scriptType,
+                        findPattern = it.findPattern, replacePattern = it.replacePattern,
+                        isRegex = it.isRegex, caseSensitive = it.caseSensitive,
+                        enabled = it.enabled, sortOrder = it.sortOrder
+                    )
+                }
             }
 
-            val personas = personaDao.getAllPersonasSync().map {
-                PersonaBackup(
-                    id = it.id, name = it.name, biography = it.biography,
-                    avatarPath = it.avatarPath, isDefault = it.isDefault,
-                    createdAt = it.createdAt
-                )
+            val personasDeferred = async {
+                personaDao.getAllPersonasSync().map {
+                    PersonaBackup(
+                        id = it.id, name = it.name, biography = it.biography,
+                        avatarPath = it.avatarPath, isDefault = it.isDefault,
+                        createdAt = it.createdAt
+                    )
+                }
             }
 
-            val presets = presetDao.getAllPresetsSync().map {
-                PresetBackup(
-                    id = it.id, name = it.name, description = it.description,
-                    systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
-                    authorNote = it.authorNote, isDefault = it.isDefault,
-                    createdAt = it.createdAt, updatedAt = it.updatedAt
-                )
+            val presetsDeferred = async {
+                presetDao.getAllPresetsSync().map {
+                    PresetBackup(
+                        id = it.id, name = it.name, description = it.description,
+                        systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
+                        authorNote = it.authorNote, isDefault = it.isDefault,
+                        createdAt = it.createdAt, updatedAt = it.updatedAt
+                    )
+                }
             }
 
+            // Await all queries and build backup data
             val backupData = BackupData(
-                characters = characters,
-                chats = chats,
-                messages = messages,
-                memories = memories,
-                memoryAtoms = memoryAtoms,
-                worldBooks = worldBooks,
-                worldBookEntries = worldBookEntries,
-                scripts = scripts,
-                personas = personas,
-                presets = presets
+                characters = charactersDeferred.await(),
+                chats = chatsDeferred.await(),
+                messages = messagesDeferred.await(),
+                memories = memoriesDeferred.await(),
+                memoryAtoms = memoryAtomsDeferred.await(),
+                worldBooks = worldBooksDeferred.await(),
+                worldBookEntries = worldBookEntriesDeferred.await(),
+                scripts = scriptsDeferred.await(),
+                personas = personasDeferred.await(),
+                presets = presetsDeferred.await()
             )
 
             val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
