@@ -47,6 +47,11 @@ class ChatApiService @Inject constructor(
                 config
             ))
             is ApiProvider.Gemini -> emitAll(streamGemini(messages, provider, config))
+            is ApiProvider.OpenRouter -> emitAll(streamOpenAI(
+                messages,
+                ApiProvider.OpenAI(baseUrl = "https://openrouter.ai/api/v1", apiKey = provider.apiKey, model = provider.model),
+                config
+            ))
             is ApiProvider.Custom -> emitAll(streamOpenAI(messages, provider.let {
                 ApiProvider.OpenAI(baseUrl = it.baseUrl, apiKey = it.apiKey, model = it.model)
             }, config))

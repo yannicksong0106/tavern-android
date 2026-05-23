@@ -1,5 +1,27 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-23 — v1.4 API 扩展版
+
+**OpenRouter 接入 (4 个文件)**:
+
+OpenRouter 是最流行的 LLM 聚合 API，一个 Key 覆盖 100+ 模型（OpenAI、Claude、Llama、Gemini 等），使用 OpenAI 兼容协议。
+
+| 文件 | 变更 |
+|------|------|
+| `data/model/ApiConfig.kt` | 新增 `ApiProvider.OpenRouter` 子类（apiKey + model，默认 openai/gpt-4o） |
+| `network/ChatApiService.kt` | streamChat 新增 OpenRouter 路由 → streamOpenAI（baseUrl=openrouter.ai/api/v1） |
+| `network/MemoryExtractorService.kt` | callLLM 新增 OpenRouter 路由 → callOpenAINonStreaming |
+| `ui/screens/settings/ApiConfigScreen.kt` | Provider 下拉列表新增 OpenRouter，隐藏 base URL（固定值） |
+| `ui/screens/settings/SettingsScreen.kt` | Provider 摘要显示新增 OpenRouter |
+
+**说明**: KoboldCpp 已由现有 KoboldAI provider 覆盖（同一 API），通用 OpenAI 兼容端点已由 Custom provider 覆盖，无需额外开发。
+
+### 构建状态
+- `assembleDebug` — BUILD SUCCESSFUL
+- `test` — 178 tests, 全部通过
+
+---
+
 ## 2026-05-23 — v1.3 稳定性修复版
 
 **代码审查验证 + Bug 修复 (5 项)**:

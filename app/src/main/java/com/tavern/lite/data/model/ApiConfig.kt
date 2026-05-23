@@ -54,6 +54,14 @@ sealed class ApiProvider {
     }
 
     @Serializable
+    data class OpenRouter(
+        val apiKey: String = "",
+        val model: String = "openai/gpt-4o"
+    ) : ApiProvider() {
+        override val displayName = "OpenRouter"
+    }
+
+    @Serializable
     data class Gemini(
         val apiKey: String = "",
         val model: String = "gemini-2.0-flash"

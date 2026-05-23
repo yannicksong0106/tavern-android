@@ -1,5 +1,6 @@
 package com.tavern.lite.network
 
+import android.util.Log
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
@@ -23,6 +24,7 @@ class MemoryExtractorService @Inject constructor(
 ) {
 
     companion object {
+        private const val TAG = "MemoryExtractor"
         private const val EXTRACTION_INTERVAL = 10
         private const val MAX_MESSAGES_FOR_EXTRACTION = 30
 
@@ -44,7 +46,7 @@ class MemoryExtractorService @Inject constructor(
             Regex("我(?:很|非常|特别|最)?讨厌([^，。！？,!?]{1,30})"),
             Regex("我不喜欢([^，。！？,!?]{1,30})"),
         )
-        private val COMMITMENT_PATTERNS = listOf(
+        private val EVENT_PATTERNS = listOf(
             Regex("(?:我(?:会|一定|必须)|我(?:答应|承诺))([^。！!]{1,50})"),
             Regex("(?:永远|一直|始终)([^。！!]{1,30})"),
         )
@@ -76,7 +78,7 @@ class MemoryExtractorService @Inject constructor(
                     MemoryAtomEntity(
                         characterId = characterId,
                         content = "用户的名字是${name.trim()}",
-                        category = "user_info",
+                        category = "fact",
                         importance = 8,
                         source = "regex",
                         sourceChatId = chatId,
@@ -94,7 +96,7 @@ class MemoryExtractorService @Inject constructor(
                     MemoryAtomEntity(
                         characterId = characterId,
                         content = "用户${age}岁",
-                        category = "user_info",
+                        category = "fact",
                         importance = 7,
                         source = "regex",
                         sourceChatId = chatId,
@@ -112,7 +114,7 @@ class MemoryExtractorService @Inject constructor(
                     MemoryAtomEntity(
                         characterId = characterId,
                         content = "用户喜欢${thing.trim()}",
-                        category = "user_info",
+                        category = "preference",
                         importance = 6,
                         source = "regex",
                         sourceChatId = chatId,
@@ -129,7 +131,7 @@ class MemoryExtractorService @Inject constructor(
                     MemoryAtomEntity(
                         characterId = characterId,
                         content = "用户讨厌${thing.trim()}",
-                        category = "user_info",
+                        category = "preference",
                         importance = 6,
                         source = "regex",
                         sourceChatId = chatId,
@@ -141,13 +143,13 @@ class MemoryExtractorService @Inject constructor(
             }
         }
 
-        for (pattern in COMMITMENT_PATTERNS) {
+        for (pattern in EVENT_PATTERNS) {
             pattern.find(userMessage)?.value?.let { commitment ->
                 facts.add(
                     MemoryAtomEntity(
                         characterId = characterId,
                         content = "承诺: ${commitment.trim()}",
-                        category = "commitment",
+                        category = "event",
                         importance = 8,
                         source = "regex",
                         sourceChatId = chatId,
@@ -194,21 +196,25 @@ class MemoryExtractorService @Inject constructor(
 $conversation
 
 请提取以下类别的事实（JSON 数组格式）:
-- user_info: 用户的个人信息（年龄/职业/爱好/偏好等）
+- fact: 客观事实（用户的姓名、年龄、职业、所在地等客观信息）
+- emotion: 情感状态（用户的情绪、感受、对事物的态度）
+- preference: 偏好（用户喜欢/不喜欢的事物、审美偏好、习惯偏好）
+- event: 事件与约定（发生的事情、承诺、约定、决定）
+- habit: 习惯（行为模式、日常习惯、固定做法）
 - character_consistency: ${characterName}的性格特征、外貌、背景故事、说过的重要承诺（必须保持一致的信息）
-- event: 重要事件（约定/决定/转折点）
-- relationship: 人物关系变化
-- commitment: 任何一方做出的承诺或约定
+- temporary: 临时信息（当前上下文中的短期信息，会在几轮对话后过期）
 
 输出格式（严格 JSON，不要其他文字）:
-[{"content":"事实描述","category":"类别","importance":1-10}]
+[{"content":"事实描述","category":"类别","importance":1-10,"expires_hours":0}]
 
 规则:
 1. 每个事实简洁明了，不超过50字
 2. character_consistency 类型最重要（importance 8-10），因为角色人设不能崩
-3. 重复或微不足道的信息不要提取
-4. 如果对话中没有值得记忆的信息，返回空数组 []
-5. importance: 1=可忽略, 5=一般, 10=关键"""
+3. temporary 类型的 expires_hours 设置为 2-6 小时
+4. 其他类型的 expires_hours 设为 0（永不过期）
+5. 重复或微不足道的信息不要提取
+6. 如果对话中没有值得记忆的信息，返回空数组 []
+7. importance: 1=可忽略, 5=一般, 10=关键"""
     }
 
     private fun callLLM(prompt: String, config: ApiConfig): String? {
@@ -234,13 +240,19 @@ $conversation
                     config
                 )
                 is ApiProvider.Gemini -> callGeminiNonStreaming(messages, provider, config)
+                is ApiProvider.OpenRouter -> callOpenAINonStreaming(
+                    messages,
+                    ApiProvider.OpenAI(baseUrl = "https://openrouter.ai/api/v1", apiKey = provider.apiKey, model = provider.model),
+                    config
+                )
                 is ApiProvider.Custom -> callOpenAINonStreaming(
                     messages,
                     ApiProvider.OpenAI(baseUrl = provider.baseUrl, apiKey = provider.apiKey, model = provider.model),
                     config
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "LLM call failed: ${e.message}")
             null
         }
     }
@@ -380,9 +392,26 @@ $conversation
 
         try {
             // Try to find JSON array in response
-            val jsonStart = responseText.indexOf('[')
+            // Look for the last complete JSON array to avoid matching brackets in conversation text
             val jsonEnd = responseText.lastIndexOf(']')
-            if (jsonStart < 0 || jsonEnd < 0) return emptyList()
+            if (jsonEnd < 0) return emptyList()
+
+            // Find the matching opening bracket by counting from the end
+            var depth = 0
+            var jsonStart = -1
+            for (i in jsonEnd downTo 0) {
+                when (responseText[i]) {
+                    ']' -> depth++
+                    '[' -> {
+                        depth--
+                        if (depth == 0) {
+                            jsonStart = i
+                            break
+                        }
+                    }
+                }
+            }
+            if (jsonStart < 0) return emptyList()
 
             val jsonStr = responseText.substring(jsonStart, jsonEnd + 1)
             val arr = JSONArray(jsonStr)
@@ -390,8 +419,11 @@ $conversation
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 val content = obj.optString("content", "").trim()
-                val category = obj.optString("category", "user_info").trim()
+                val category = obj.optString("category", "fact").trim()
                 val importance = obj.optInt("importance", 5).coerceIn(1, 10)
+
+                val expiresHours = obj.optInt("expires_hours", 0)
+                val expiresAt = if (expiresHours > 0) now + expiresHours * 3600_000L else null
 
                 if (content.isNotBlank() && isValidCategory(category)) {
                     facts.add(
@@ -403,13 +435,14 @@ $conversation
                             source = "llm",
                             sourceChatId = chatId,
                             createdAt = now,
-                            lastAccessed = now
+                            lastAccessed = now,
+                            expiresAt = expiresAt
                         )
                     )
                 }
             }
-        } catch (_: Exception) {
-            // Parse failed, return empty
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse extracted memory facts: ${e.message}, response length: ${responseText.length}")
         }
 
         return facts
@@ -417,7 +450,8 @@ $conversation
 
     private fun isValidCategory(category: String): Boolean {
         return category in listOf(
-            "user_info", "character_consistency", "event", "relationship", "commitment"
+            "fact", "emotion", "preference", "event", "habit",
+            "character_consistency", "temporary"
         )
     }
 }
