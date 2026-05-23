@@ -53,6 +53,7 @@ object AppModule {
             TavernDatabase.MIGRATION_17_18,
             TavernDatabase.MIGRATION_18_19
         ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
+         .fallbackToDestructiveMigration()
          .build()
     }
 
