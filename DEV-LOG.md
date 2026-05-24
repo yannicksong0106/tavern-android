@@ -34,6 +34,22 @@
 **常量提取**:
 - `ChatScreen.kt` — `delay(500)` → `PROACTIVE_TRIGGER_DELAY_MS` 常量
 
+**迁移兜底 (commits 71fe814, d1470e2, b673e3a)**:
+
+旧版本升级安装可能因数据库版本不匹配导致闪退。修复方案：
+
+1. `fallbackToDestructiveMigration()` — Room 迁移失败时自动删除重建数据库，防止 crash
+2. 移除 `openHelper.readableDatabase` 强制触发 — 该调用阻塞主线程导致 ANR
+
+**调试发现**:
+
+在小米 12S Pro (HyperOS 3.0.3.0) 上测试时，Debug APK 启动即"闪退"。通过 `adb logcat` 分析发现：
+- 根因是 Debug APK 的 `waitForDebugger` 阻塞主线程
+- MIUI Scout 检测为 `APP_SCOUT_HANG` (ANR)，误报为闪退
+- Release APK 无此问题，正常启动运行
+
+**结论**: Debug APK 不要在真机上测试启动流程，Release APK 才是正确的测试对象。
+
 **测试结果**: BUILD SUCCESSFUL，全部测试通过
 
 **版本**: v1.2.6 (versionCode=18)

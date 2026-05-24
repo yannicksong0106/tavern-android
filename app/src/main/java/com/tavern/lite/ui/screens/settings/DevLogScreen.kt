@@ -147,6 +147,62 @@ private fun VersionCard(entry: VersionEntry) {
 
 private fun getDevLogEntries(): List<VersionEntry> = listOf(
     VersionEntry(
+        version = "v1.2.7",
+        date = "2026-05-24",
+        summary = "升级稳定性保障 + 迁移兜底",
+        details = listOf(
+            "数据库迁移失败时自动删除重建，防止升级安装闪退",
+            "新增 3 个数据库索引：chats.updated_at、memory_atoms 排序、world_book_entries 活跃状态",
+            "16 处 catch 块补 Log.w 日志输出",
+            "提取 PROACTIVE_TRIGGER_DELAY_MS 常量"
+        ),
+        lifeLog = "让我猜猜是谁还没喝过1分钱的瑞幸😎 是我"
+    ),
+    VersionEntry(
+        version = "v1.2.6",
+        date = "2026-05-24",
+        summary = "DB v19 索引 + 剩余 catch 块补日志",
+        details = listOf(
+            "chats.updated_at、memory_atoms 排序、world_book_entries 活跃状态索引",
+            "BackupManager、MemoryExtractorService、SillyTavernImporter 等 16 处 catch 补日志",
+            "ChatScreen 常量提取"
+        ),
+        lifeLog = null
+    ),
+    VersionEntry(
+        version = "v1.2.5",
+        date = "2026-05-23",
+        summary = "第五轮深度分析修复",
+        details = listOf(
+            "Coil AsyncImage 补 key 参数防止重组闪烁",
+            "12 个 ViewModel 的 stateIn 流补 distinctUntilChanged 去重",
+            "10 处 catch 块补 Log.w 日志"
+        ),
+        lifeLog = null
+    ),
+    VersionEntry(
+        version = "v1.2.4",
+        date = "2026-05-23",
+        summary = "第四轮深度分析修复 — CancellationException + TTS 加密",
+        details = listOf(
+            "retryWithBackoff、SSE 解析等关键路径保护 CancellationException 不被吞",
+            "TTS API Key 接入 CryptoHelper 加密存储",
+            "ProGuard 补 data.store 包 keep 规则"
+        ),
+        lifeLog = null
+    ),
+    VersionEntry(
+        version = "v1.2.3",
+        date = "2026-05-23",
+        summary = "异常处理加固 + SendMessageUseCase 单测",
+        details = listOf(
+            "continueGeneration/regenerate 异常不再静默吞掉，错误消息可见",
+            "BackgroundProactiveWorker 流式收集加 try-catch",
+            "SendMessageUseCase 单元测试 25 个用例"
+        ),
+        lifeLog = null
+    ),
+    VersionEntry(
         version = "v1.2.2",
         date = "2026-05-22",
         summary = "交互体验全面优化",
