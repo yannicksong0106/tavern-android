@@ -35,19 +35,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): TavernDatabase {
-        return try {
-            buildDatabase(context).also { db ->
-                // Force open the database to trigger migration; if it fails, catch below
-                db.openHelper.readableDatabase
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("AppModule", "数据库打开/迁移失败，删除重建", e)
-            context.deleteDatabase("tavern_db")
-            buildDatabase(context)
-        }
-    }
-
-    private fun buildDatabase(context: Context): TavernDatabase {
         return Room.databaseBuilder(
             context,
             TavernDatabase::class.java,
