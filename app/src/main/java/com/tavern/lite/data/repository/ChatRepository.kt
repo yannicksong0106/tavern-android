@@ -1,7 +1,9 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
+import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import com.tavern.lite.data.db.entity.MessageEntity
@@ -13,7 +15,8 @@ import javax.inject.Singleton
 @Singleton
 class ChatRepository @Inject constructor(
     private val chatDao: ChatDao,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val branchDao: BranchDao
 ) {
     fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>> =
         chatDao.getChatsForCharacter(characterId)
@@ -117,5 +120,42 @@ class ChatRepository @Inject constructor(
         val msg = messageDao.getMessageById(messageId) ?: return 0
         val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
         return if (swipes.isEmpty()) 1 else swipes.size
+    }
+
+    // 分支元数据操作
+    fun getBranchesForChat(chatId: Long): Flow<List<BranchEntity>> = branchDao.getBranchesForChat(chatId)
+
+    suspend fun getBranchesForChatSync(chatId: Long): List<BranchEntity> = branchDao.getBranchesForChatSync(chatId)
+
+    suspend fun getDefaultBranch(chatId: Long): BranchEntity? = branchDao.getDefaultBranch(chatId)
+
+    suspend fun getBranchById(id: Long): BranchEntity? = branchDao.getBranchById(id)
+
+    suspend fun createBranch(chatId: Long, name: String, isDefault: Boolean = false): Long {
+        return branchDao.insert(BranchEntity(chatId = chatId, name = name, isDefault = isDefault))
+    }
+
+    suspend fun updateBranch(branch: BranchEntity) = branchDao.update(branch)
+
+    suspend fun deleteBranch(branch: BranchEntity) = branchDao.delete(branch)
+
+    /**
+     * 从指定消息创建分支：复制该消息及其之前的所有活跃消息到新分支
+     */
+    suspend fun createBranchFromMessage(chatId: Long, messageId: Long, branchName: String): Long {
+        val branchId = createBranch(chatId, branchName)
+        val messages = messageDao.getRecentMessages(chatId, 10000)
+        val targetIndex = messages.indexOfFirst { it.id == messageId }
+        if (targetIndex < 0) return branchId
+
+        val messagesToCopy = messages.take(targetIndex + 1).filter { it.isActive }
+        for (msg in messagesToCopy) {
+            messageDao.insert(msg.copy(
+                id = 0, // auto-generate new ID
+                branchId = branchId,
+                isActive = true
+            ))
+        }
+        return branchId
     }
 }

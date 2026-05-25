@@ -94,8 +94,9 @@ fun ChatScreen(
     val character by viewModel.character.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
-    val branches by viewModel.branches.collectAsStateWithLifecycle()
-    val currentBranchIndex by viewModel.currentBranchIndex.collectAsStateWithLifecycle()
+    val branchEntities by viewModel.branchEntities.collectAsStateWithLifecycle()
+    val currentBranchId by viewModel.currentBranchId.collectAsStateWithLifecycle()
+    val showBookmarksOnly by viewModel.showBookmarksOnly.collectAsStateWithLifecycle()
     val backgroundPath by viewModel.backgroundPath.collectAsStateWithLifecycle()
     val bubbleStyle by viewModel.bubbleStyle.collectAsStateWithLifecycle()
     val isGroupChat by viewModel.isGroupChat.collectAsStateWithLifecycle()
@@ -419,12 +420,18 @@ fun ChatScreen(
 
             Column(modifier = Modifier.fillMaxSize().imePadding()) {
                 val haptic = LocalHapticFeedback.current
-                if (branches.size > 1) {
+                if (branchEntities.size > 1) {
                     BranchNavigationBar(
-                        currentIndex = currentBranchIndex,
-                        totalBranches = branches.size,
-                        onPrevious = { viewModel.switchBranch(currentBranchIndex - 1) },
-                        onNext = { viewModel.switchBranch(currentBranchIndex + 1) }
+                        currentIndex = branchEntities.indexOfFirst { it.id == currentBranchId }.coerceAtLeast(0),
+                        totalBranches = branchEntities.size,
+                        onPrevious = {
+                            val idx = branchEntities.indexOfFirst { it.id == currentBranchId }
+                            if (idx > 0) viewModel.switchBranch(branchEntities[idx - 1].id)
+                        },
+                        onNext = {
+                            val idx = branchEntities.indexOfFirst { it.id == currentBranchId }
+                            if (idx < branchEntities.size - 1) viewModel.switchBranch(branchEntities[idx + 1].id)
+                        }
                     )
                 }
 

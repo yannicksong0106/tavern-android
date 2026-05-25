@@ -57,6 +57,10 @@ android {
     }
 }
 
+configurations.all {
+    exclude(group = "org.jetbrains", module = "annotations-java5")
+}
+
 dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
@@ -109,6 +113,7 @@ dependencies {
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.strikethrough)
     implementation(libs.markwon.html)
+    implementation(libs.markwon.ext.latex)
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)

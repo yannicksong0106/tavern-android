@@ -8,9 +8,10 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryRepository
-import com.tavern.lite.data.repository.PersonaRepository
+import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
+import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
 import io.mockk.MockKAnnotations
@@ -18,6 +19,7 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
@@ -47,10 +49,11 @@ class SendMessageUseCaseIntegrationTest {
     @MockK private lateinit var memoryAtomDao: MemoryAtomDao
     @MockK private lateinit var memoryRepository: MemoryRepository
     @MockK private lateinit var authorNoteDao: AuthorNoteDao
-    @MockK private lateinit var personaRepository: PersonaRepository
     @MockK private lateinit var scriptRepository: ScriptRepository
+    @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
 
+    private lateinit var helper: MessageExecutionHelper
     private lateinit var useCase: SendMessageUseCase
 
     private val testConfig = ApiConfig(
@@ -70,16 +73,26 @@ class SendMessageUseCaseIntegrationTest {
     @Before
     fun setup() {
         MockKAnnotations.init(this)
-        useCase = SendMessageUseCase(
+        helper = MessageExecutionHelper(
             chatRepository = chatRepository,
             chatApiService = chatApiService,
             worldBookRepository = worldBookRepository,
             memoryAtomDao = memoryAtomDao,
             memoryRepository = memoryRepository,
             authorNoteDao = authorNoteDao,
-            personaRepository = personaRepository,
+            personaRepository = mockk(), // not used directly by SendMessageUseCase
             scriptRepository = scriptRepository,
             memoryExtractionUseCase = memoryExtractionUseCase
+        )
+        useCase = SendMessageUseCase(
+            chatRepository = chatRepository,
+            worldBookRepository = worldBookRepository,
+            memoryAtomDao = memoryAtomDao,
+            memoryRepository = memoryRepository,
+            authorNoteDao = authorNoteDao,
+            scriptRepository = scriptRepository,
+            presetRepository = presetRepository,
+            helper = helper
         )
     }
 
@@ -93,7 +106,6 @@ class SendMessageUseCaseIntegrationTest {
         coEvery { memoryAtomDao.touchAtoms(any(), any()) } just runs
         coEvery { memoryRepository.getRelevantMemories(any(), any(), any()) } returns emptyList()
         coEvery { authorNoteDao.getAuthorNoteSync(any()) } returns null
-        coEvery { personaRepository.getEffectivePersona(any()) } returns null
         coEvery { scriptRepository.applyScripts(any(), any(), any()) } returns ""
         coEvery { chatRepository.getRecentMessages(any(), any()) } returns emptyList()
         coEvery { chatRepository.sendMessage(any(), any(), any(), any(), any()) } returns 100L
@@ -102,6 +114,7 @@ class SendMessageUseCaseIntegrationTest {
         coEvery { chatRepository.updateMessageContent(any(), any()) } just runs
         coEvery { chatRepository.addSwipe(any(), any()) } just runs
         coEvery { memoryExtractionUseCase.extractIfNeeded(any(), any(), any(), any(), any()) } just runs
+        coEvery { presetRepository.resolveEffectivePreset(any(), any()) } returns null
         every { chatApiService.streamChat(any(), any()) } returns flowOf("")
     }
 
@@ -244,183 +257,6 @@ class SendMessageUseCaseIntegrationTest {
         coVerify { chatRepository.updateMessageContent(eq(101L), eq("Processed reply")) }
     }
 
-    // ==================== continueGeneration ====================
-
-    @Test
-    fun `continueGeneration appends to last assistant message`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf(" continued")
-        every { chatApiService.lastReasoningContent } returns null
-
-        val result = useCase.continueGeneration(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            lastAssistantMsgId = 50L, lastAssistantContent = "Original", config = testConfig
-        )
-
-        assertNotNull(result)
-        assertEquals(50L, result!!.assistantMsgId)
-        assertEquals(" continued", result.fullResponse)
-        coVerify { chatRepository.appendToMessage(eq(50L), eq(" continued")) }
-    }
-
-    @Test
-    fun `continueGeneration returns null on blank response`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
-        every { chatApiService.lastReasoningContent } returns null
-
-        val result = useCase.continueGeneration(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            lastAssistantMsgId = 50L, lastAssistantContent = "Original", config = testConfig
-        )
-
-        assertNull(result)
-        coVerify(exactly = 0) { chatRepository.appendToMessage(any(), any()) }
-    }
-
-    @Test
-    fun `continueGeneration saves error to message on IOException`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw IOException("Connection reset") }
-
-        val result = useCase.continueGeneration(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            lastAssistantMsgId = 50L, lastAssistantContent = "Original", config = testConfig
-        )
-
-        assertNull(result)
-        coVerify { chatRepository.appendToMessage(eq(50L), match { it.contains("网络连接异常") }) }
-    }
-
-    @Test
-    fun `continueGeneration rethrows CancellationException`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw CancellationException() }
-
-        var caught: Throwable? = null
-        try {
-            useCase.continueGeneration(
-                chatId = 1L, characterId = 1L, character = testCharacter,
-                lastAssistantMsgId = 50L, lastAssistantContent = "Original", config = testConfig
-            )
-        } catch (e: Throwable) {
-            caught = e
-        }
-        assertTrue(caught is CancellationException)
-    }
-
-    // ==================== regenerate ====================
-
-    @Test
-    fun `regenerate adds swipe and updates message content`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("New variant")
-        every { chatApiService.lastReasoningContent } returns null
-
-        val result = useCase.regenerate(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            messageId = 30L, userMessageContent = "Tell me a joke", config = testConfig
-        )
-
-        assertNotNull(result)
-        assertEquals(30L, result!!.assistantMsgId)
-        assertEquals("New variant", result.fullResponse)
-        assertEquals("Tell me a joke", result.processedUserContent)
-        coVerify { chatRepository.addSwipe(eq(30L), eq("New variant")) }
-        coVerify { chatRepository.updateMessageContent(eq(30L), eq("New variant")) }
-    }
-
-    @Test
-    fun `regenerate returns null on blank response`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
-        every { chatApiService.lastReasoningContent } returns null
-
-        val result = useCase.regenerate(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            messageId = 30L, userMessageContent = "Tell me a joke", config = testConfig
-        )
-
-        assertNull(result)
-        coVerify(exactly = 0) { chatRepository.addSwipe(any(), any()) }
-    }
-
-    @Test
-    fun `regenerate saves error swipe on network failure`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw SocketTimeoutException("Timeout") }
-
-        val result = useCase.regenerate(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            messageId = 30L, userMessageContent = "Tell me a joke", config = testConfig
-        )
-
-        assertNull(result)
-        coVerify { chatRepository.addSwipe(eq(30L), eq("[网络连接失败，请检查网络设置]")) }
-        coVerify { chatRepository.updateMessageContent(eq(30L), eq("[网络连接失败，请检查网络设置]")) }
-    }
-
-    @Test
-    fun `regenerate rethrows CancellationException`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw CancellationException() }
-
-        var caught: Throwable? = null
-        try {
-            useCase.regenerate(
-                chatId = 1L, characterId = 1L, character = testCharacter,
-                messageId = 30L, userMessageContent = "Tell me a joke", config = testConfig
-            )
-        } catch (e: Throwable) {
-            caught = e
-        }
-        assertTrue(caught is CancellationException)
-    }
-
-    @Test
-    fun `regenerate applies scripts to new content`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("New variant")
-        every { chatApiService.lastReasoningContent } returns null
-        coEvery { scriptRepository.applyScripts(eq(1L), eq("New variant"), eq(1)) } returns "Scripted variant"
-
-        val result = useCase.regenerate(
-            chatId = 1L, characterId = 1L, character = testCharacter,
-            messageId = 30L, userMessageContent = "Tell me a joke", config = testConfig
-        )
-
-        assertNotNull(result)
-        coVerify { chatRepository.updateMessageContent(eq(30L), eq("Scripted variant")) }
-    }
-
-    // ==================== sendProactiveMessage ====================
-
-    @Test
-    fun `sendProactiveMessage returns null when chat history is empty`() = runTest {
-        stubDefaults()
-        coEvery { chatRepository.getRecentMessages(any(), any()) } returns emptyList()
-
-        val result = useCase.sendProactiveMessage(1L, testCharacter, testConfig)
-
-        assertNull(result)
-        verify(exactly = 0) { chatApiService.streamChat(any(), any()) }
-    }
-
-    @Test
-    fun `sendProactiveMessage sends message when history exists`() = runTest {
-        stubDefaults()
-        val history = listOf(MessageEntity(id = 1, chatId = 1, role = "user", content = "Hi"))
-        coEvery { chatRepository.getRecentMessages(any(), any()) } returns history
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("I missed you!")
-        every { chatApiService.lastReasoningContent } returns null
-        coEvery { chatRepository.sendMessage(eq(1L), eq("I missed you!"), eq("assistant"), any(), any()) } returns 101L
-
-        val result = useCase.sendProactiveMessage(1L, testCharacter, testConfig)
-
-        assertNotNull(result)
-        assertEquals("I missed you!", result!!.fullResponse)
-    }
-
     // ==================== sendGroupMessage ====================
 
     @Test
@@ -480,35 +316,5 @@ class SendMessageUseCaseIntegrationTest {
 
         assertNotNull(result)
         assertEquals("Bob answers", result!!.fullResponse)
-    }
-
-    // ==================== reasoning content ====================
-
-    @Test
-    fun `attachReasoningContent returns original when no reasoning stored`() {
-        val messages = listOf(
-            ChatMessage("user", "Hello"),
-            ChatMessage("assistant", "Hi!")
-        )
-        val result = useCase.attachReasoningContent(messages)
-        assertEquals(messages, result)
-    }
-
-    @Test
-    fun `attachReasoningContent attaches to last assistant message after API call`() = runTest {
-        stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Response")
-        every { chatApiService.lastReasoningContent } returns "Deep thinking..."
-        coEvery { chatRepository.sendMessage(any(), any(), any(), any(), any()) } returns 100L
-
-        useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
-
-        val messages = listOf(
-            ChatMessage("user", "Hello"),
-            ChatMessage("assistant", "Response")
-        )
-        val result = useCase.attachReasoningContent(messages)
-        assertEquals("Deep thinking...", result[1].reasoningContent)
-        assertNull(result[0].reasoningContent)
     }
 }

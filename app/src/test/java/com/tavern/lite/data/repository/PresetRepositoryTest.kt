@@ -1,7 +1,11 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.dao.CharacterDao
+import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.entity.PresetEntity
+import com.tavern.lite.data.store.SettingsStore
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -19,7 +23,12 @@ class PresetRepositoryTest {
     @Before
     fun setup() {
         fakeDao = FakePresetDao()
-        repository = PresetRepository(fakeDao)
+        repository = PresetRepository(
+            presetDao = fakeDao,
+            characterDao = mockk(relaxed = true),
+            chatDao = mockk(relaxed = true),
+            settingsStore = mockk(relaxed = true)
+        )
     }
 
     @Test
@@ -103,4 +112,6 @@ private class FakePresetDao : PresetDao {
     override suspend fun clearDefaultPresets() { clearedDefaults = true }
     override suspend fun setDefaultPreset(id: Long) { defaultedId = id }
     override suspend fun getAllPresetsSync(): List<PresetEntity> = inserted.toList()
+    override fun getPresetsByScope(scope: String): Flow<List<PresetEntity>> = flowOf(inserted.filter { it.scope == scope })
+    override suspend fun getPresetsByScopeSync(scope: String): List<PresetEntity> = inserted.filter { it.scope == scope }
 }

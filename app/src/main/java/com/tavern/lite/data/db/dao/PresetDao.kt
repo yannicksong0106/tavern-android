@@ -37,4 +37,10 @@ interface PresetDao {
 
     @Query("SELECT * FROM presets ORDER BY id ASC")
     suspend fun getAllPresetsSync(): List<PresetEntity>
+
+    @Query("SELECT * FROM presets WHERE scope = :scope ORDER BY is_default DESC, name ASC")
+    fun getPresetsByScope(scope: String): Flow<List<PresetEntity>>
+
+    @Query("SELECT * FROM presets WHERE scope = :scope ORDER BY is_default DESC, name ASC")
+    suspend fun getPresetsByScopeSync(scope: String): List<PresetEntity>
 }

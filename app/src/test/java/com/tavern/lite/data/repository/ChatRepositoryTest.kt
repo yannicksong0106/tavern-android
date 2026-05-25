@@ -1,7 +1,9 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
+import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import com.tavern.lite.data.db.entity.MessageEntity
@@ -25,7 +27,7 @@ class ChatRepositoryTest {
     fun setup() {
         fakeChatDao = FakeChatDao()
         fakeMessageDao = FakeMessageDao()
-        repository = ChatRepository(fakeChatDao, fakeMessageDao)
+        repository = ChatRepository(fakeChatDao, fakeMessageDao, FakeBranchDao())
     }
 
     @Test
@@ -192,4 +194,15 @@ private class FakeMessageDao : MessageDao {
     override suspend fun getAllMessages(): List<MessageEntity> = messages.values.toList()
     override suspend fun setPinned(messageId: Long, pinned: Boolean) { pinnedStates[messageId] = pinned }
     override fun getPinnedMessages(chatId: Long): Flow<List<MessageEntity>> = flowOf(emptyList())
+}
+
+private class FakeBranchDao : BranchDao {
+    override fun getBranchesForChat(chatId: Long): Flow<List<BranchEntity>> = flowOf(emptyList())
+    override suspend fun getBranchesForChatSync(chatId: Long): List<BranchEntity> = emptyList()
+    override suspend fun getDefaultBranch(chatId: Long): BranchEntity? = null
+    override suspend fun getBranchById(id: Long): BranchEntity? = null
+    override suspend fun insert(branch: BranchEntity): Long = 1L
+    override suspend fun update(branch: BranchEntity) {}
+    override suspend fun delete(branch: BranchEntity) {}
+    override suspend fun deleteAllForChat(chatId: Long) {}
 }

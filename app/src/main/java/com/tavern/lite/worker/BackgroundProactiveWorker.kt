@@ -2,7 +2,6 @@ package com.tavern.lite.worker
 
 import android.content.Context
 import android.util.Log
-import com.tavern.lite.util.cleanCharacterPrefix
 import java.io.IOException
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -11,14 +10,9 @@ import com.tavern.lite.data.db.dao.ChatCharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.entity.CharacterEntity
-import com.tavern.lite.data.repository.ChatRepository
-import com.tavern.lite.data.repository.PersonaRepository
-import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
-import com.tavern.lite.network.PromptBuilder
 import com.tavern.lite.ui.screens.chat.ChatViewModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -31,10 +25,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
     private val chatDao: ChatDao,
     private val characterDao: CharacterDao,
     private val chatCharacterDao: ChatCharacterDao,
-    private val chatRepository: ChatRepository,
-    private val personaRepository: PersonaRepository,
-    private val scriptRepository: ScriptRepository,
-    private val chatApiService: ChatApiService,
+    private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val apiConfigStore: ApiConfigStore,
     private val settingsStore: SettingsStore
 ) : CoroutineWorker(context, workerParams) {
@@ -54,10 +45,11 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         val chat = availableChats.random()
 
         return try {
+            val config = apiConfigStore.configFlow.first()
             if (chat.isGroup) {
-                processGroupChat(chat.id)
+                processGroupChat(chat.id, config)
             } else {
-                processSingleChat(chat.id, chat.characterId)
+                processSingleChat(chat.id, chat.characterId, config)
             }
             Result.success()
         } catch (e: Exception) {
@@ -69,7 +61,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         }
     }
 
-    private suspend fun processSingleChat(chatId: Long, characterId: Long) {
+    private suspend fun processSingleChat(chatId: Long, characterId: Long, config: com.tavern.lite.data.model.ApiConfig) {
         val character = characterDao.getCharacterById(characterId) ?: return
         val chattiness = character.chattiness.coerceIn(0, 100)
         if (chattiness <= 0) return
@@ -78,80 +70,17 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         val probability = chattiness / 100.0
         if (random.nextDouble() > probability) return
 
-        val config = apiConfigStore.configFlow.first()
-        val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
-        if (chatHistory.isEmpty()) return
-
-        val persona = personaRepository.getEffectivePersona(characterId)
-
-        val promptMessages = PromptBuilder.buildProactive(
-            character = character,
-            chatHistory = chatHistory.reversed(),
-            userName = config.userName,
-            persona = persona
-        )
-
-        var responseBuffer = ""
-        try {
-            chatApiService.streamChat(promptMessages, config).collect { chunk ->
-                responseBuffer += chunk
-            }
-        } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Log.w("BackgroundProactive", "Single chat stream failed", e)
-            return
-        }
-
-        if (responseBuffer.isBlank()) return
-
-        val cleanContent = responseBuffer.cleanCharacterPrefix(character.name)
-        if (cleanContent.isNotBlank()) {
-            val processedReply = scriptRepository.applyScripts(characterId, cleanContent, 1)
-            val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
-            chatRepository.sendMessage(chatId, finalContent, "assistant")
-        }
+        proactiveMessageUseCase.sendProactiveMessage(chatId, character, config)
     }
 
-    private suspend fun processGroupChat(chatId: Long) {
+    private suspend fun processGroupChat(chatId: Long, config: com.tavern.lite.data.model.ApiConfig) {
         val characters = chatCharacterDao.getCharacterEntitiesForChatSync(chatId)
         if (characters.isEmpty()) return
 
         // 按健谈度加权选择一个角色
         val selected = selectCharacterByChattiness(characters) ?: return
 
-        val config = apiConfigStore.configFlow.first()
-        val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
-        if (chatHistory.isEmpty()) return
-
-        val persona = personaRepository.getEffectivePersona(selected.id)
-        val characterMap = characters.associateBy { it.id }
-
-        val promptMessages = PromptBuilder.buildGroupProactive(
-            characters = characters,
-            respondingCharacter = selected,
-            chatHistory = chatHistory.reversed(),
-            characterMap = characterMap,
-            userName = config.userName,
-            persona = persona
-        )
-
-        var fullResponse = ""
-        try {
-            chatApiService.streamChat(promptMessages, config).collect { chunk ->
-                fullResponse += chunk
-            }
-        } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Log.w("BackgroundProactive", "Group chat stream failed", e)
-            return
-        }
-
-        val cleanContent = fullResponse.cleanCharacterPrefix(selected.name)
-        if (cleanContent.isNotBlank()) {
-            val processedReply = scriptRepository.applyScripts(selected.id, cleanContent, 1)
-            val finalContent = if (processedReply != cleanContent) processedReply else cleanContent
-            chatRepository.sendMessage(chatId, finalContent, "assistant", selected.id)
-        }
+        proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, selected, config)
     }
 
     private fun selectCharacterByChattiness(characters: List<CharacterEntity>): CharacterEntity? {

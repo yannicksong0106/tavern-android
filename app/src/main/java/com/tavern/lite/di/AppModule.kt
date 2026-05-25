@@ -22,6 +22,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.noties.markwon.Markwon
+import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.html.HtmlPlugin
 import kotlinx.serialization.json.Json
@@ -122,6 +123,7 @@ object AppModule {
         return Markwon.builder(context)
             .usePlugin(StrikethroughPlugin.create())
             .usePlugin(HtmlPlugin.create())
+            .usePlugin(JLatexMathPlugin.create(40f))
             .build()
     }
 

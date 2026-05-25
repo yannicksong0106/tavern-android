@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.model.BubbleStyleConfig
@@ -46,6 +47,7 @@ class SettingsStore @Inject constructor(
         private val LANGUAGE_KEY = stringPreferencesKey("language")
         private val BACKGROUND_PROACTIVE_KEY = booleanPreferencesKey("background_proactive_enabled")
         private val TTS_SETTINGS_KEY = stringPreferencesKey("tts_settings_json")
+        private val GLOBAL_PRESET_ID_KEY = longPreferencesKey("global_preset_id")
     }
 
     val languageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
@@ -108,6 +110,16 @@ class SettingsStore @Inject constructor(
         val encrypted = cryptoHelper.encrypt(plainJson)
         context.settingsDataStore.edit { prefs ->
             prefs[TTS_SETTINGS_KEY] = encrypted
+        }
+    }
+
+    val globalPresetIdFlow: Flow<Long> = context.settingsDataStore.data.map { prefs ->
+        prefs[GLOBAL_PRESET_ID_KEY] ?: 0L
+    }.distinctUntilChanged()
+
+    suspend fun saveGlobalPresetId(id: Long) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[GLOBAL_PRESET_ID_KEY] = id
         }
     }
 }

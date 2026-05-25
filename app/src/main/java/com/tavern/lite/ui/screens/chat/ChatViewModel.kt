@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
@@ -13,8 +14,10 @@ import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
+import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.util.SwipeUtils
@@ -50,6 +53,8 @@ class ChatViewModel @Inject constructor(
     private val apiConfigStore: ApiConfigStore,
     private val settingsStore: SettingsStore,
     private val sendMessageUseCase: SendMessageUseCase,
+    private val continueGenerationUseCase: ContinueGenerationUseCase,
+    private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
     private val ttsHelper: TtsHelper,
@@ -332,7 +337,7 @@ class ChatViewModel @Inject constructor(
                     val character = _character.value ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendProactiveMessage(chatId, character, config)
+                    val result = proactiveMessageUseCase.sendProactiveMessage(chatId, character, config)
                     if (result?.assistantMsgId != null) {
                         splitIntoMultipleMessages(result.assistantMsgId)
                     }
@@ -377,7 +382,7 @@ class ChatViewModel @Inject constructor(
                     val characters = _groupCharacters.value
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
+                    val result = proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
                     if (result?.assistantMsgId != null) {
                         splitIntoMultipleMessages(result.assistantMsgId)
                     }
@@ -407,7 +412,7 @@ class ChatViewModel @Inject constructor(
                     val character = _character.value ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    sendMessageUseCase.continueGeneration(
+                    continueGenerationUseCase.continueGeneration(
                         chatId, characterId, character, lastMsg.id, lastMsg.content, config
                     )
                 } catch (e: Exception) {
@@ -439,7 +444,7 @@ class ChatViewModel @Inject constructor(
                     val character = _character.value ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    sendMessageUseCase.regenerate(
+                    continueGenerationUseCase.regenerate(
                         chatId, characterId, character, messageId, userMsg.content, config
                     )
                 } catch (e: Exception) {
@@ -505,29 +510,55 @@ class ChatViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // 分支操作
-    private val _branches = MutableStateFlow<List<Long?>>(emptyList())
-    val branches: StateFlow<List<Long?>> = _branches.asStateFlow()
+    private val _branchEntities = MutableStateFlow<List<BranchEntity>>(emptyList())
+    val branchEntities: StateFlow<List<BranchEntity>> = _branchEntities.asStateFlow()
 
-    private val _currentBranchIndex = MutableStateFlow(0)
-    val currentBranchIndex: StateFlow<Int> = _currentBranchIndex.asStateFlow()
+    private val _currentBranchId = MutableStateFlow<Long?>(null)
+    val currentBranchId: StateFlow<Long?> = _currentBranchId.asStateFlow()
+
+    // 书签筛选
+    private val _showBookmarksOnly = MutableStateFlow(false)
+    val showBookmarksOnly: StateFlow<Boolean> = _showBookmarksOnly.asStateFlow()
 
     fun loadBranches() {
         viewModelScope.launch {
-            val branchIds = chatRepository.getBranchIds(chatId)
-            _branches.value = branchIds
-            _currentBranchIndex.value = branchIds.size - 1
+            val branches = chatRepository.getBranchesForChatSync(chatId)
+            _branchEntities.value = branches
+            val defaultBranch = branches.find { it.isDefault } ?: branches.lastOrNull()
+            _currentBranchId.value = defaultBranch?.id
         }
     }
 
-    fun switchBranch(index: Int) {
-        val branchIds = _branches.value
-        if (index < 0 || index >= branchIds.size) return
-        val branchId = branchIds[index] ?: return
-
+    fun switchBranch(branchId: Long) {
         viewModelScope.launch {
             chatRepository.switchBranch(chatId, branchId)
-            _currentBranchIndex.value = index
+            _currentBranchId.value = branchId
         }
+    }
+
+    fun createBranch(name: String) {
+        viewModelScope.launch {
+            chatRepository.createBranch(chatId, name)
+            loadBranches()
+        }
+    }
+
+    fun createBranchFromMessage(messageId: Long, name: String) {
+        viewModelScope.launch {
+            chatRepository.createBranchFromMessage(chatId, messageId, name)
+            loadBranches()
+        }
+    }
+
+    fun deleteBranch(branch: BranchEntity) {
+        viewModelScope.launch {
+            chatRepository.deleteBranch(branch)
+            loadBranches()
+        }
+    }
+
+    fun toggleBookmarkFilter() {
+        _showBookmarksOnly.value = !_showBookmarksOnly.value
     }
 
     fun setChatBackground(path: String?) {

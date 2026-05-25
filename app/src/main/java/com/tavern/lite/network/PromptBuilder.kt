@@ -6,6 +6,7 @@ import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
+import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import java.util.Collections
 
@@ -47,7 +48,8 @@ object PromptBuilder {
         memories: List<MemoryEntity> = emptyList(),
         memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         authorNote: AuthorNoteEntity? = null,
-        persona: PersonaEntity? = null
+        persona: PersonaEntity? = null,
+        preset: PresetEntity? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -56,8 +58,12 @@ object PromptBuilder {
 
         // 1. 静态系统 prompt（角色描述、性格、回复风格 — 几乎不变，利于 API 缓存前缀命中）
         val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
-        if (staticPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = staticPrompt))
+        // 预设 systemPrompt 置于最前（最高优先级上下文）
+        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
         }
 
         // 2. 示例对话
@@ -93,8 +99,17 @@ object PromptBuilder {
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
 
-        // 5.6 历史后指令（post_history_instructions）
-        val postHistory = character.postHistoryInstructions
+        // 5.5.1 预设 Author Note（追加到已有 author note 之后）
+        val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
+        if (presetAuthorNote != null) {
+            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, character.name)
+            val insertIndex = (messages.size - 1).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+        }
+
+        // 5.6 历史后指令（post_history_instructions）— 预设覆盖角色内置
+        val postHistory = preset?.postHistoryInstructions?.takeIf { it.isNotBlank() }
+            ?: character.postHistoryInstructions
         if (!postHistory.isNullOrBlank()) {
             messages.add(ChatMessage(
                 role = "system",
@@ -294,7 +309,8 @@ object PromptBuilder {
         memories: List<MemoryEntity> = emptyList(),
         memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         persona: PersonaEntity? = null,
-        authorNote: AuthorNoteEntity? = null
+        authorNote: AuthorNoteEntity? = null,
+        preset: PresetEntity? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -302,8 +318,11 @@ object PromptBuilder {
 
         // 1. 静态系统 prompt（群聊风格 + 角色描述 + 性格）
         val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
-        if (staticPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = staticPrompt))
+        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
         }
 
         // 2. Example dialog for responding character
@@ -344,6 +363,14 @@ object PromptBuilder {
         if (authorNote != null && authorNote.content.isNotBlank()) {
             val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name)
             val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+        }
+
+        // 5.5.1 预设 Author Note
+        val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
+        if (presetAuthorNote != null) {
+            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name)
+            val insertIndex = (messages.size - 1).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
 
@@ -407,15 +434,19 @@ object PromptBuilder {
         character: CharacterEntity,
         chatHistory: List<MessageEntity>,
         userName: String = "User",
-        persona: PersonaEntity? = null
+        persona: PersonaEntity? = null,
+        preset: PresetEntity? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
         // 静态系统 prompt
         val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
-        if (staticPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = staticPrompt))
+        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
         }
 
         // 主动对话指令
@@ -463,15 +494,19 @@ object PromptBuilder {
         chatHistory: List<MessageEntity>,
         characterMap: Map<Long, CharacterEntity>,
         userName: String = "User",
-        persona: PersonaEntity? = null
+        persona: PersonaEntity? = null,
+        preset: PresetEntity? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
 
         // 群聊静态系统 prompt
         val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
-        if (staticPrompt.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = staticPrompt))
+        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
         }
 
         // 主动发言指令
