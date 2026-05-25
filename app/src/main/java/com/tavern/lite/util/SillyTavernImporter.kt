@@ -82,8 +82,9 @@ class SillyTavernImporter @Inject constructor(
             val jsonStr = json.encodeToString(CharacterCard.serializer(), card)
 
             // 如果有头像，用头像作为基础 PNG；否则创建一个最小 PNG
-            val sourcePng = if (entity.avatarPath != null) {
-                File(entity.avatarPath!!)
+            val avatarPath = entity.avatarPath
+            val sourcePng = if (avatarPath != null) {
+                File(avatarPath)
             } else {
                 // 创建一个 1x1 透明 PNG 作为占位
                 val placeholder = File(context.cacheDir, "placeholder.png")

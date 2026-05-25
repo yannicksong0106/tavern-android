@@ -19,6 +19,7 @@ import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.ui.screens.chat.ChatViewModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -47,8 +48,10 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         val recentChats = chatDao.getRecentChats(10)
         if (recentChats.isEmpty()) return Result.success()
 
-        // 3. 随机选择一个聊天
-        val chat = recentChats.random()
+        // 3. 随机选择一个聊天（跳过用户正在前台操作的聊天）
+        val availableChats = recentChats.filter { !ChatViewModel.isChatActive(it.id) }
+        if (availableChats.isEmpty()) return Result.success()
+        val chat = availableChats.random()
 
         return try {
             if (chat.isGroup) {

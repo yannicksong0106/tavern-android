@@ -24,6 +24,8 @@ import io.noties.markwon.Markwon
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,6 +37,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -106,6 +110,10 @@ class ChatViewModel @Inject constructor(
 
     private fun findMessage(id: Long): MessageEntity? = _messageMap.value[id]
 
+    init {
+        activeChatIds[chatId] = true
+    }
+
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
@@ -113,6 +121,7 @@ class ChatViewModel @Inject constructor(
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     private var streamingJob: Job? = null
+    private val streamingMutex = Mutex()
     @Volatile private var wasCancelled = false
     // 防止主动对话链式触发
     @Volatile private var isProactiveMessage = false
@@ -162,22 +171,24 @@ class ChatViewModel @Inject constructor(
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            try {
-                val character = _character.value ?: return@launch
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    val character = _character.value ?: return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null)
-                if (result?.assistantMsgId != null && !wasCancelled) {
-                    splitIntoMultipleMessages(result.assistantMsgId)
-                    scheduleProactiveDialogue()
+                    val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null)
+                    if (result?.assistantMsgId != null && !wasCancelled) {
+                        splitIntoMultipleMessages(result.assistantMsgId)
+                        scheduleProactiveDialogue()
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    streamingJob = null
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                streamingJob = null
             }
         }
     }
@@ -186,47 +197,49 @@ class ChatViewModel @Inject constructor(
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            try {
-                val characters = _groupCharacters.value
-                if (characters.isEmpty()) return@launch
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    val characters = _groupCharacters.value
+                    if (characters.isEmpty()) return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                // 根据健谈度过滤：不是每个角色每次都回复
-                val respondingChars = characters.filter { char ->
-                    val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
-                    val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
-                    random.nextDouble() < responseChance
-                }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
+                    // 根据健谈度过滤：不是每个角色每次都回复
+                    val respondingChars = characters.filter { char ->
+                        val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
+                        val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
+                        random.nextDouble() < responseChance
+                    }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
 
-                val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
-                for ((charId, result) in results) {
-                    if (wasCancelled) break
-                    _respondingCharacter.value = characters.find { it.id == charId }
-                    if (result.assistantMsgId != null) {
-                        splitIntoMultipleMessages(result.assistantMsgId)
-                    }
-                    // 角色间延迟：基于消息长度的自然延迟
-                    if (charId != results.last().first && !wasCancelled) {
-                        val msgLen = result.fullResponse.length
-                        val baseDelay = when {
-                            msgLen < 30 -> 600L
-                            msgLen < 80 -> 1000L
-                            msgLen < 150 -> 1500L
-                            else -> 2000L
+                    val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
+                    for ((charId, result) in results) {
+                        if (wasCancelled) break
+                        _respondingCharacter.value = characters.find { it.id == charId }
+                        if (result.assistantMsgId != null) {
+                            splitIntoMultipleMessages(result.assistantMsgId)
                         }
-                        delay(baseDelay + random.nextLong(800))
+                        // 角色间延迟：基于消息长度的自然延迟
+                        if (charId != results.last().first && !wasCancelled) {
+                            val msgLen = result.fullResponse.length
+                            val baseDelay = when {
+                                msgLen < 30 -> 600L
+                                msgLen < 80 -> 1000L
+                                msgLen < 150 -> 1500L
+                                else -> 2000L
+                            }
+                            delay(baseDelay + random.nextLong(800))
+                        }
                     }
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                _respondingCharacter.value = null
-                streamingJob = null
-                if (!wasCancelled) {
-                    scheduleGroupProactiveDialogue()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    _respondingCharacter.value = null
+                    streamingJob = null
+                    if (!wasCancelled) {
+                        scheduleGroupProactiveDialogue()
+                    }
                 }
             }
         }
@@ -236,23 +249,25 @@ class ChatViewModel @Inject constructor(
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            _respondingCharacter.value = targetCharacter
-            try {
-                val characters = _groupCharacters.value
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                _respondingCharacter.value = targetCharacter
+                try {
+                    val characters = _groupCharacters.value
+                    val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config)
-                if (result?.assistantMsgId != null && !wasCancelled) {
-                    splitIntoMultipleMessages(result.assistantMsgId)
+                    val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config)
+                    if (result?.assistantMsgId != null && !wasCancelled) {
+                        splitIntoMultipleMessages(result.assistantMsgId)
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    _respondingCharacter.value = null
+                    streamingJob = null
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                _respondingCharacter.value = null
-                streamingJob = null
             }
         }
     }
@@ -310,23 +325,25 @@ class ChatViewModel @Inject constructor(
     private fun sendProactiveSingleMessage() {
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            isProactiveMessage = true
-            try {
-                val character = _character.value ?: return@launch
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                isProactiveMessage = true
+                try {
+                    val character = _character.value ?: return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendProactiveMessage(chatId, character, config)
-                if (result?.assistantMsgId != null) {
-                    splitIntoMultipleMessages(result.assistantMsgId)
+                    val result = sendMessageUseCase.sendProactiveMessage(chatId, character, config)
+                    if (result?.assistantMsgId != null) {
+                        splitIntoMultipleMessages(result.assistantMsgId)
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    isProactiveMessage = false
+                    streamingJob = null
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                isProactiveMessage = false
-                streamingJob = null
             }
         }
     }
@@ -352,25 +369,27 @@ class ChatViewModel @Inject constructor(
     private fun sendProactiveGroupMessage(character: CharacterEntity) {
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            _respondingCharacter.value = character
-            isProactiveMessage = true
-            try {
-                val characters = _groupCharacters.value
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                _respondingCharacter.value = character
+                isProactiveMessage = true
+                try {
+                    val characters = _groupCharacters.value
+                    val config = apiConfigStore.configFlow.first()
 
-                val result = sendMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
-                if (result?.assistantMsgId != null) {
-                    splitIntoMultipleMessages(result.assistantMsgId)
+                    val result = sendMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
+                    if (result?.assistantMsgId != null) {
+                        splitIntoMultipleMessages(result.assistantMsgId)
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    _respondingCharacter.value = null
+                    isProactiveMessage = false
+                    streamingJob = null
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                _respondingCharacter.value = null
-                isProactiveMessage = false
-                streamingJob = null
             }
         }
     }
@@ -382,20 +401,22 @@ class ChatViewModel @Inject constructor(
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            try {
-                val character = _character.value ?: return@launch
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    val character = _character.value ?: return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                sendMessageUseCase.continueGeneration(
-                    chatId, characterId, character, lastMsg.id, lastMsg.content, config
-                )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                streamingJob = null
+                    sendMessageUseCase.continueGeneration(
+                        chatId, characterId, character, lastMsg.id, lastMsg.content, config
+                    )
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    streamingJob = null
+                }
             }
         }
     }
@@ -412,20 +433,22 @@ class ChatViewModel @Inject constructor(
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
-            _isGenerating.value = true
-            try {
-                val character = _character.value ?: return@launch
-                val config = apiConfigStore.configFlow.first()
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    val character = _character.value ?: return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                sendMessageUseCase.regenerate(
-                    chatId, characterId, character, messageId, userMsg.content, config
-                )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toastMessage.emit("API 错误: ${e.message}")
-            } finally {
-                _isGenerating.value = false
-                streamingJob = null
+                    sendMessageUseCase.regenerate(
+                        chatId, characterId, character, messageId, userMsg.content, config
+                    )
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    _toastMessage.emit(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    streamingJob = null
+                }
             }
         }
     }
@@ -645,10 +668,29 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
         streamingJob?.cancel()
         ttsHelper.stop()
+        activeChatIds.remove(chatId)
     }
 
     companion object {
         private val random = kotlin.random.Random.Default
         private val PARAGRAPH_SPLIT_REGEX: Regex = Regex("\n{2,}")
+
+        private fun classifyError(e: Exception): String = when (e) {
+            is UnknownHostException -> "网络连接失败，请检查网络设置"
+            is SocketTimeoutException -> "请求超时，请稍后重试"
+            is kotlinx.coroutines.CancellationException -> throw e
+            else -> {
+                val msg = e.message ?: ""
+                when {
+                    msg.contains("429") -> "请求过于频繁，请等待后重试"
+                    msg.contains("500") || msg.contains("502") || msg.contains("503") -> "服务暂时不可用，请稍后重试"
+                    else -> "错误: ${e.message}"
+                }
+            }
+        }
+
+        /** Per-chat busy flag — Worker 检查此 map 跳过用户正在操作的聊天 */
+        private val activeChatIds = java.util.concurrent.ConcurrentHashMap<Long, Boolean>()
+        fun isChatActive(chatId: Long): Boolean = activeChatIds[chatId] == true
     }
 }
