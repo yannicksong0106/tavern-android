@@ -17,6 +17,7 @@ data class CharacterEntity(
     @ColumnInfo(name = "post_history_instructions") val postHistoryInstructions: String? = null,
     val tags: String = "[]", // JSON array
     @ColumnInfo(name = "world_book_id") val worldBookId: Long? = null,
+    @ColumnInfo(name = "preset_id") val presetId: Long? = null,
     @ColumnInfo(name = "background_path") val backgroundPath: String? = null,
     @ColumnInfo(name = "chattiness") val chattiness: Int = 50,  // 0-100, 健谈度
     val creator: String = "",

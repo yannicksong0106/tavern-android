@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tavern.lite.data.db.dao.AuthorNoteDao
+import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatCharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
@@ -16,6 +17,7 @@ import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
+import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.CharacterPersonaEntity
 import com.tavern.lite.data.db.entity.ChatCharacterEntity
@@ -44,8 +46,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         CharacterPersonaEntity::class,
         ChatCharacterEntity::class,
         PresetEntity::class,
+        BranchEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -60,6 +63,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun personaDao(): PersonaDao
     abstract fun chatCharacterDao(): ChatCharacterDao
     abstract fun presetDao(): PresetDao
+    abstract fun branchDao(): BranchDao
 
     companion object {
         /**
@@ -340,6 +344,32 @@ abstract class TavernDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // memory_atoms 分类+优先级复合索引：getAtomsByCategory / getTopAtoms / getCharacterConsistencyAtoms
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_category_importance ON memory_atoms(character_id, superseded, category, importance DESC)")
+            }
+        }
+
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // branches 表：分支元数据
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS branches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_branches_chat_id ON branches(chat_id)")
+
+                // presets 增加 scope 字段
+                db.execSQL("ALTER TABLE presets ADD COLUMN scope TEXT NOT NULL DEFAULT 'global'")
+
+                // characters 增加 preset_id 字段
+                db.execSQL("ALTER TABLE characters ADD COLUMN preset_id INTEGER")
+
+                // chats 增加 preset_id 字段
+                db.execSQL("ALTER TABLE chats ADD COLUMN preset_id INTEGER")
             }
         }
 

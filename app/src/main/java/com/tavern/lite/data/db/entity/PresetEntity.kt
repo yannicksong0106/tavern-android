@@ -18,6 +18,7 @@ data class PresetEntity(
     val authorNote: String = "",
     @ColumnInfo(name = "is_default")
     val isDefault: Boolean = false,
+    val scope: String = "global",  // "global" / "character" / "chat"
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at")
