@@ -22,7 +22,8 @@ import androidx.room.PrimaryKey
         Index("character_id", "category"),
         Index("character_id", "superseded"),
         Index("character_id", "superseded", "category"),
-        Index("character_id", "superseded", "source")
+        Index("character_id", "superseded", "source"),
+        Index(value = ["character_id", "superseded", "category", "importance"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC])
     ]
 )
 data class MemoryAtomEntity(

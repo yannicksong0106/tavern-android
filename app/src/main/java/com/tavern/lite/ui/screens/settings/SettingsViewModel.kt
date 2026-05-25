@@ -160,6 +160,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 _testState.value = ConnectionTestState.Success(result.toString().take(100))
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _testState.value = ConnectionTestState.Error(e.message ?: "Unknown error")
             }
         }

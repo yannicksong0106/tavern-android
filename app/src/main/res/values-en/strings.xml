@@ -288,6 +288,15 @@
     <string name="disable">Disable</string>
     <string name="enable">Enable</string>
 
+    <!-- World Book Assignment -->
+    <string name="select_world_book">Select World Book</string>
+    <string name="no_world_book_assigned">No World Book Assigned</string>
+
+    <!-- Group Chat -->
+    <string name="create_group_chat">Create Group Chat</string>
+    <string name="group_chat_select_hint">Select 2 or more characters to join group chat</string>
+    <string name="create_group_with_count">Create Group Chat (%d members)</string>
+
     <!-- Background Picker -->
     <string name="select_background">Select Background</string>
     <string name="custom_background">Custom</string>
@@ -315,6 +324,9 @@
     <string name="group_chattiness">Group Chattiness</string>
     <string name="group_chattiness_desc">Overall group proactive dialogue frequency</string>
     <string name="character_chattiness">Character Chattiness</string>
+
+    <!-- At Mention -->
+    <string name="at_mention_hint">@ character name for targeted reply</string>
 
     <!-- Search -->
     <string name="search_messages">Search messages…</string>

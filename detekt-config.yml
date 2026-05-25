@@ -1,0 +1,44 @@
+build:
+  maxIssues: 0
+  weights:
+    TooGenericExceptionCaught: 0
+
+config:
+  validation: false
+  warningsAsErrors: false
+
+complexity:
+  active: false
+
+coroutines:
+  active: false
+
+empty-blocks:
+  active: false
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: true
+    ignoredExceptionTypes:
+      - 'InterruptedException'
+      - 'MalformedURLException'
+      - 'NumberFormatException'
+      - 'ParseException'
+    allowedExceptionNameRegex: '_|(ignore|expected).*'
+  TooGenericExceptionCaught:
+    active: false
+  RethrowCaughtException:
+    active: true
+
+naming:
+  active: false
+
+performance:
+  active: false
+
+style:
+  active: false
+
+comments:
+  active: false

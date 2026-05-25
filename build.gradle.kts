@@ -5,4 +5,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.detekt)
+}
+
+detekt {
+    config.setFrom(files("detekt-config.yml"))
+    source.setFrom(files("app/src/main/java"))
 }

@@ -83,6 +83,8 @@ class HomeViewModel @Inject constructor(
                     onFailure = { _importResult.emit("导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.w("HomeViewModel", "导出角色失败", e)
                 _importResult.emit("导出失败: ${e.message}")
             }
         }
@@ -101,6 +103,8 @@ class HomeViewModel @Inject constructor(
                     onFailure = { _importResult.emit("PNG 导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.w("HomeViewModel", "PNG 导出角色失败", e)
                 _importResult.emit("PNG 导出失败: ${e.message}")
             }
         }
@@ -146,6 +150,8 @@ class HomeViewModel @Inject constructor(
                     onFailure = { _importResult.emit("导入失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.w("HomeViewModel", "导入角色失败", e)
                 _importResult.emit("导入失败: ${e.message}")
             }
         }

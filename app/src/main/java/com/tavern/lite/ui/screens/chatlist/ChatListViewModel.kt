@@ -97,6 +97,7 @@ class ChatListViewModel @Inject constructor(
                     onFailure = { _exportResult.emit("导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("ChatListViewModel", "导出聊天失败", e)
                 _exportResult.emit("导出失败: ${e.message}")
             }
@@ -115,6 +116,7 @@ class ChatListViewModel @Inject constructor(
                     onFailure = { _exportResult.emit("导出失败: ${it.message}") }
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("ChatListViewModel", "批量导出失败", e)
                 _exportResult.emit("导出失败: ${e.message}")
             }

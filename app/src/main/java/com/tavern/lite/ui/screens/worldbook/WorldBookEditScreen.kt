@@ -84,13 +84,13 @@ fun WorldBookEditScreen(
     }
 
     // 编辑条目对话框
-    if (editingEntry != null) {
+    editingEntry?.let { entry ->
         EntryEditDialog(
             title = stringResource(R.string.edit_entry),
-            entry = editingEntry,
+            entry = entry,
             onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic ->
                 viewModel.updateEntry(
-                    editingEntry!!.copy(
+                    entry.copy(
                         comment = comment,
                         content = content,
                         keys = JsonArray(keys.map { JsonPrimitive(it) }).toString(),
@@ -107,14 +107,14 @@ fun WorldBookEditScreen(
     }
 
     // 删除确认
-    if (deletingEntry != null) {
+    deletingEntry?.let { entry ->
         AlertDialog(
             onDismissRequest = { deletingEntry = null },
             title = { Text(stringResource(R.string.delete_entry_title)) },
-            text = { Text(stringResource(R.string.delete_entry_text, deletingEntry!!.comment.ifBlank { stringResource(R.string.untitled) })) },
+            text = { Text(stringResource(R.string.delete_entry_text, entry.comment.ifBlank { stringResource(R.string.untitled) })) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteEntry(deletingEntry!!)
+                    viewModel.deleteEntry(entry)
                     deletingEntry = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
@@ -152,9 +152,9 @@ fun WorldBookEditScreen(
                 .padding(padding)
         ) {
             // 世界书描述
-            if (worldBook?.description?.isNotBlank() == true) {
+            worldBook?.description?.takeIf { it.isNotBlank() }?.let { desc ->
                 Text(
-                    text = worldBook!!.description,
+                    text = desc,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

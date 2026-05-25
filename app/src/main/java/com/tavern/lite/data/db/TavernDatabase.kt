@@ -45,7 +45,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         ChatCharacterEntity::class,
         PresetEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -333,6 +333,13 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_sort ON memory_atoms(character_id, superseded, importance DESC, last_accessed DESC)")
                 // world_book_entries 复合索引：getActiveEntries WHERE disabled = 0
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_active ON world_book_entries(world_book_id, disabled)")
+            }
+        }
+
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // memory_atoms 分类+优先级复合索引：getAtomsByCategory / getTopAtoms / getCharacterConsistencyAtoms
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_category_importance ON memory_atoms(character_id, superseded, category, importance DESC)")
             }
         }
 

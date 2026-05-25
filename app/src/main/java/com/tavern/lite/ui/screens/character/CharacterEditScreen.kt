@@ -131,7 +131,9 @@ fun CharacterEditScreen(
                     )
                 )
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 // CropImage 启动失败时直接使用原图
+                android.util.Log.w("CharacterEditScreen", "CropImage launch failed, using original image", e)
                 viewModel.updateAvatar(uri)
             }
         }

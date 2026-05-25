@@ -32,6 +32,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Detekt
+        run: ./gradlew detekt
+
       - name: Lint
         run: ./gradlew lintDebug
 
