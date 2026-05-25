@@ -108,14 +108,14 @@ fun HomeScreen(
     }
 
     // 删除确认对话框
-    if (deletingCharacter != null) {
+    deletingCharacter?.let { character ->
         AlertDialog(
             onDismissRequest = { deletingCharacter = null },
             title = { Text(stringResource(R.string.delete_character_title)) },
-            text = { Text(stringResource(R.string.delete_character_text, deletingCharacter!!.name)) },
+            text = { Text(stringResource(R.string.delete_character_text, character.name)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteCharacter(deletingCharacter!!.id)
+                    viewModel.deleteCharacter(character.id)
                     deletingCharacter = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
@@ -126,14 +126,14 @@ fun HomeScreen(
     }
 
     // 删除群聊确认对话框
-    if (deletingGroupChat != null) {
+    deletingGroupChat?.let { groupChat ->
         AlertDialog(
             onDismissRequest = { deletingGroupChat = null },
             title = { Text(stringResource(R.string.delete_group_chat_title)) },
             text = { Text(stringResource(R.string.delete_group_chat_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteGroupChat(deletingGroupChat!!.id)
+                    viewModel.deleteGroupChat(groupChat.id)
                     deletingGroupChat = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },

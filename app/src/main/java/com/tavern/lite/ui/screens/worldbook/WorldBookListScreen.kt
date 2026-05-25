@@ -83,14 +83,14 @@ fun WorldBookListScreen(
     }
 
     // 删除确认
-    if (deletingBook != null) {
+    deletingBook?.let { book ->
         AlertDialog(
             onDismissRequest = { deletingBook = null },
             title = { Text(stringResource(R.string.delete_world_book_title)) },
-            text = { Text(stringResource(R.string.delete_world_book_text, deletingBook!!.name)) },
+            text = { Text(stringResource(R.string.delete_world_book_text, book.name)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteWorldBook(deletingBook!!)
+                    viewModel.deleteWorldBook(book)
                     deletingBook = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },

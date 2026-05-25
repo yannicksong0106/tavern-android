@@ -78,13 +78,13 @@ fun ScriptScreen(
         )
     }
 
-    if (editingScript != null) {
+    editingScript?.let { script ->
         ScriptEditDialog(
             title = stringResource(R.string.edit_script),
-            script = editingScript,
+            script = script,
             onConfirm = { name, comment, scriptType, find, replace, isRegex, caseSensitive ->
                 viewModel.updateScript(
-                    editingScript!!.copy(
+                    script.copy(
                         name = name,
                         comment = comment,
                         scriptType = scriptType,
@@ -100,14 +100,14 @@ fun ScriptScreen(
         )
     }
 
-    if (deletingScript != null) {
+    deletingScript?.let { script ->
         AlertDialog(
             onDismissRequest = { deletingScript = null },
             title = { Text(stringResource(R.string.delete_script_title)) },
-            text = { Text(stringResource(R.string.delete_script_text, deletingScript!!.name.ifBlank { stringResource(R.string.untitled) })) },
+            text = { Text(stringResource(R.string.delete_script_text, script.name.ifBlank { stringResource(R.string.untitled) })) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteScript(deletingScript!!)
+                    viewModel.deleteScript(script)
                     deletingScript = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },

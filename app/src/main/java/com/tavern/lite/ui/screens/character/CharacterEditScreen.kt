@@ -290,11 +290,12 @@ fun CharacterEditScreen(
 
             // 记忆管理
             if (state.isEditing && state.characterId != null) {
+                val characterId = state.characterId
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onMemoryClick(state.characterId!!) }
+                        .clickable { characterId?.let { onMemoryClick(it) } }
                         .padding(vertical = 12.dp)
                 ) {
                     Icon(
@@ -327,7 +328,7 @@ fun CharacterEditScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onScriptClick(state.characterId!!) }
+                        .clickable { characterId?.let { onScriptClick(it) } }
                         .padding(vertical = 12.dp)
                 ) {
                     Icon(

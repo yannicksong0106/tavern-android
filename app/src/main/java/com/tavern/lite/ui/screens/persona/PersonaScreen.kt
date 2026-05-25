@@ -75,13 +75,13 @@ fun PersonaScreen(
         )
     }
 
-    if (editingPersona != null) {
+    editingPersona?.let { persona ->
         PersonaDialog(
             title = stringResource(R.string.edit_persona),
-            initialName = editingPersona!!.name,
-            initialBiography = editingPersona!!.biography,
+            initialName = persona.name,
+            initialBiography = persona.biography,
             onConfirm = { name, biography ->
-                viewModel.updatePersona(editingPersona!!.id, name, biography, editingPersona!!.avatarPath)
+                viewModel.updatePersona(persona.id, name, biography, persona.avatarPath)
                 editingPersona = null
             },
             onDismiss = { editingPersona = null }

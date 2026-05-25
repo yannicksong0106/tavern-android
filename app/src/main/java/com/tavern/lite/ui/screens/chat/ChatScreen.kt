@@ -227,11 +227,11 @@ fun ChatScreen(
     }
 
     var editingMessage by remember { mutableStateOf<com.tavern.lite.data.db.entity.MessageEntity?>(null) }
-    if (editingMessage != null) {
+    editingMessage?.let { message ->
         EditMessageDialog(
-            originalContent = editingMessage!!.content,
+            originalContent = message.content,
             onConfirm = { newContent ->
-                viewModel.editMessage(editingMessage!!.id, newContent)
+                viewModel.editMessage(message.id, newContent)
                 editingMessage = null
             },
             onDismiss = { editingMessage = null }
@@ -239,10 +239,10 @@ fun ChatScreen(
     }
 
     var deletingMessageId by remember { mutableStateOf<Long?>(null) }
-    if (deletingMessageId != null) {
+    deletingMessageId?.let { messageId ->
         DeleteConfirmDialog(
             onConfirm = {
-                viewModel.deleteMessage(deletingMessageId!!)
+                viewModel.deleteMessage(messageId)
                 deletingMessageId = null
             },
             onDismiss = { deletingMessageId = null }

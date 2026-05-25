@@ -138,8 +138,9 @@ fun ChatListScreen(
         FormatBottomSheet(
             title = if (exportTargetChatId != null) stringResource(R.string.export_chat) else stringResource(R.string.export_all_chats),
             onFormatSelected = { format ->
-                if (exportTargetChatId != null) {
-                    viewModel.exportChat(exportTargetChatId!!, format)
+                val chatId = exportTargetChatId
+                if (chatId != null) {
+                    viewModel.exportChat(chatId, format)
                 } else {
                     viewModel.exportAllChats(format)
                 }
@@ -154,14 +155,14 @@ fun ChatListScreen(
     }
 
     // 删除确认
-    if (deletingChat != null) {
+    deletingChat?.let { chat ->
         AlertDialog(
             onDismissRequest = { deletingChat = null },
             title = { Text(stringResource(R.string.delete_chat_title)) },
             text = { Text(stringResource(R.string.delete_chat_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteChat(deletingChat!!.id)
+                    viewModel.deleteChat(chat.id)
                     deletingChat = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
@@ -172,11 +173,11 @@ fun ChatListScreen(
     }
 
     // 重命名对话
-    if (renamingChat != null) {
+    renamingChat?.let { chat ->
         RenameChatDialog(
-            currentName = renamingChat?.name ?: "",
+            currentName = chat.name ?: "",
             onConfirm = { newName ->
-                viewModel.renameChat(renamingChat!!.id, newName)
+                viewModel.renameChat(chat.id, newName)
                 renamingChat = null
             },
             onDismiss = { renamingChat = null }

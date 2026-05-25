@@ -75,12 +75,12 @@ fun PresetScreen(
         )
     }
 
-    if (editingPreset != null) {
+    editingPreset?.let { preset ->
         PresetEditDialog(
-            preset = editingPreset,
+            preset = preset,
             onConfirm = { name, desc, sysPrompt, postHistory, authorNote ->
                 viewModel.updatePreset(
-                    editingPreset!!.copy(
+                    preset.copy(
                         name = name,
                         description = desc,
                         systemPrompt = sysPrompt,
@@ -94,14 +94,14 @@ fun PresetScreen(
         )
     }
 
-    if (deletingPreset != null) {
+    deletingPreset?.let { preset ->
         AlertDialog(
             onDismissRequest = { deletingPreset = null },
             title = { Text(stringResource(R.string.delete_preset_title)) },
-            text = { Text(stringResource(R.string.delete_preset_text, deletingPreset!!.name)) },
+            text = { Text(stringResource(R.string.delete_preset_text, preset.name)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deletePreset(deletingPreset!!)
+                    viewModel.deletePreset(preset)
                     deletingPreset = null
                 }) {
                     Text(stringResource(R.string.delete))
