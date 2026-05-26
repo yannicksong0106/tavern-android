@@ -53,6 +53,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
             }
             Result.success()
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackgroundProactive", "Proactive message failed", e)
             when (e) {
                 is IOException -> Result.retry()
@@ -83,19 +84,30 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, selected, config)
     }
 
-    private fun selectCharacterByChattiness(characters: List<CharacterEntity>): CharacterEntity? {
-        val totalWeight = characters.sumOf { it.chattiness.coerceIn(0, 100) }
-        if (totalWeight <= 0) return characters.random()
-
-        var random = random.nextDouble() * totalWeight
-        for (char in characters) {
-            random -= char.chattiness.coerceIn(0, 100)
-            if (random <= 0) return char
-        }
-        return characters.last()
-    }
+    private fun selectCharacterByChattiness(characters: List<CharacterEntity>): CharacterEntity? =
+        selectByChattiness(characters)
 
     companion object {
         private val random = kotlin.random.Random.Default
+
+        /**
+         * 按健谈度加权选择一个角色。纯函数，可独立测试。
+         */
+        @androidx.annotation.VisibleForTesting
+        internal fun selectByChattiness(
+            characters: List<CharacterEntity>,
+            rng: kotlin.random.Random = random
+        ): CharacterEntity? {
+            if (characters.isEmpty()) return null
+            val totalWeight = characters.sumOf { it.chattiness.coerceIn(0, 100) }
+            if (totalWeight <= 0) return characters.random(rng)
+
+            var remaining = rng.nextDouble() * totalWeight
+            for (char in characters) {
+                remaining -= char.chattiness.coerceIn(0, 100)
+                if (remaining <= 0) return char
+            }
+            return characters.last()
+        }
     }
 }

@@ -107,6 +107,7 @@ class MessageExecutionHelper @Inject constructor(
 
     suspend fun personasafe(characterId: Long) =
         try { personaRepository.getEffectivePersona(characterId) } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("MessageHelper", "获取 persona 失败", e); null
         }
 }
