@@ -1,11 +1,10 @@
 package com.tavern.lite.domain.usecase
 
-import com.tavern.lite.data.db.dao.AuthorNoteDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PresetRepository
@@ -44,9 +43,8 @@ class ContinueGenerationUseCaseTest {
 
     @MockK private lateinit var chatRepository: ChatRepository
     @MockK private lateinit var worldBookRepository: WorldBookRepository
-    @MockK private lateinit var memoryAtomDao: MemoryAtomDao
     @MockK private lateinit var memoryRepository: MemoryRepository
-    @MockK private lateinit var authorNoteDao: AuthorNoteDao
+    @MockK private lateinit var authorNoteRepository: AuthorNoteRepository
     @MockK private lateinit var scriptRepository: ScriptRepository
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
@@ -84,17 +82,17 @@ class ContinueGenerationUseCaseTest {
             MessageEntity(id = 2, chatId = 100, role = "assistant", content = "Hi!")
         )
         coEvery { worldBookRepository.matchEntriesRecursive(any(), any()) } returns emptyList()
-        coEvery { memoryAtomDao.getRelevantAtoms(any(), any(), any()) } returns emptyList()
-        coEvery { memoryAtomDao.touchAtoms(any(), any()) } returns Unit
+        coEvery { memoryRepository.getRelevantAtoms(any(), any()) } returns emptyList()
+        coEvery { memoryRepository.touchAtoms(any()) } returns Unit
         coEvery { memoryRepository.getRelevantMemories(any(), any()) } returns emptyList()
-        coEvery { authorNoteDao.getAuthorNoteSync(any()) } returns null
+        coEvery { authorNoteRepository.getAuthorNoteSync(any()) } returns null
         coEvery { presetRepository.resolveEffectivePreset(any(), any()) } returns null
         coEvery { scriptRepository.applyScripts(any(), any(), any()) } returnsArgument 1
         coEvery { memoryExtractionUseCase.extractIfNeeded(any(), any(), any(), any(), any()) } returns Unit
 
         useCase = ContinueGenerationUseCase(
-            chatRepository, worldBookRepository, memoryAtomDao, memoryRepository,
-            authorNoteDao, scriptRepository, presetRepository, memoryExtractionUseCase, helper
+            chatRepository, worldBookRepository, memoryRepository,
+            authorNoteRepository, scriptRepository, presetRepository, memoryExtractionUseCase, helper
         )
     }
 
@@ -199,19 +197,19 @@ class ContinueGenerationUseCaseTest {
     @Test
     fun `continueGeneration loads memory atoms`() = runTest {
         val atoms = listOf(MemoryAtomEntity(id = 1, characterId = 42, content = "fact", category = "personality", importance = 8))
-        coEvery { memoryAtomDao.getRelevantAtoms(42, 10, any()) } returns atoms
+        coEvery { memoryRepository.getRelevantAtoms(42, 10) } returns atoms
         every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
         useCase.continueGeneration(100, 42, testCharacter, 2, "Hi!", testConfig)
 
-        coVerify { memoryAtomDao.touchAtoms(listOf(1), any()) }
+        coVerify { memoryRepository.touchAtoms(listOf(1)) }
     }
 
     @Test
     fun `continueGeneration loads memories when no atoms available`() = runTest {
-        coEvery { memoryAtomDao.getRelevantAtoms(any(), any(), any()) } returns emptyList()
+        coEvery { memoryRepository.getRelevantAtoms(any(), any()) } returns emptyList()
         coEvery { memoryRepository.getRelevantMemories(any(), any()) } returns listOf(mockk())
         every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit

@@ -8,8 +8,7 @@ import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
-import com.tavern.lite.data.db.dao.AuthorNoteDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.PromptBuilder
 import javax.inject.Inject
@@ -19,9 +18,8 @@ import javax.inject.Singleton
 class ContinueGenerationUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val worldBookRepository: WorldBookRepository,
-    private val memoryAtomDao: MemoryAtomDao,
     private val memoryRepository: MemoryRepository,
-    private val authorNoteDao: AuthorNoteDao,
+    private val authorNoteRepository: AuthorNoteRepository,
     private val scriptRepository: ScriptRepository,
     private val presetRepository: PresetRepository,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
@@ -46,12 +44,12 @@ class ContinueGenerationUseCase @Inject constructor(
             worldBookRepository.matchEntriesRecursive(character.worldBookId, lastUserMsg?.content ?: "")
         } else emptyList()
 
-        val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
-        memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+        val memoryAtoms = memoryRepository.getRelevantAtoms(characterId, 10)
+        memoryRepository.touchAtoms(memoryAtoms.map { it.id })
         val memories = if (memoryAtoms.isEmpty()) {
             memoryRepository.getRelevantMemories(characterId, "")
         } else emptyList()
-        val authorNote = authorNoteDao.getAuthorNoteSync(characterId)
+        val authorNote = authorNoteRepository.getAuthorNoteSync(characterId)
         val persona = helper.personasafe(characterId)
         val preset = presetRepository.resolveEffectivePreset(chatId, characterId)
 
@@ -125,13 +123,13 @@ class ContinueGenerationUseCase @Inject constructor(
             worldBookRepository.matchEntriesRecursive(character.worldBookId, userMessageContent)
         } else emptyList()
 
-        val memoryAtoms = memoryAtomDao.getRelevantAtoms(characterId, 10)
-        memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+        val memoryAtoms = memoryRepository.getRelevantAtoms(characterId, 10)
+        memoryRepository.touchAtoms(memoryAtoms.map { it.id })
         val memories = if (memoryAtoms.isEmpty()) {
             memoryRepository.getRelevantMemories(characterId, userMessageContent)
         } else emptyList()
 
-        val authorNote = authorNoteDao.getAuthorNoteSync(characterId)
+        val authorNote = authorNoteRepository.getAuthorNoteSync(characterId)
         val persona = helper.personasafe(characterId)
         val preset = presetRepository.resolveEffectivePreset(chatId, characterId)
 

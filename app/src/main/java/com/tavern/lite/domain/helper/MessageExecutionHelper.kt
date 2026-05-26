@@ -1,8 +1,6 @@
 package com.tavern.lite.domain.helper
 
 import android.util.Log
-import com.tavern.lite.data.db.dao.AuthorNoteDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
@@ -22,9 +20,7 @@ class MessageExecutionHelper @Inject constructor(
     val chatRepository: ChatRepository,
     val chatApiService: ChatApiService,
     val worldBookRepository: WorldBookRepository,
-    val memoryAtomDao: MemoryAtomDao,
     val memoryRepository: MemoryRepository,
-    val authorNoteDao: AuthorNoteDao,
     val personaRepository: PersonaRepository,
     val scriptRepository: ScriptRepository,
     val memoryExtractionUseCase: MemoryExtractionUseCase,

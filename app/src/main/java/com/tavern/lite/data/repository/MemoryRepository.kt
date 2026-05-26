@@ -106,4 +106,11 @@ class MemoryRepository @Inject constructor(
 
     suspend fun purgeExpired() =
         memoryAtomDao.purgeExpired()
+
+    suspend fun getRelevantAtoms(characterId: Long, limit: Int = 10): List<MemoryAtomEntity> =
+        memoryAtomDao.getRelevantAtoms(characterId, limit)
+
+    suspend fun touchAtoms(ids: List<Long>) {
+        if (ids.isNotEmpty()) memoryAtomDao.touchAtoms(ids)
+    }
 }

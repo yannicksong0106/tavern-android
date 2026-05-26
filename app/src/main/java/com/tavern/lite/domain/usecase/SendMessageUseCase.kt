@@ -1,10 +1,9 @@
 package com.tavern.lite.domain.usecase
 
-import com.tavern.lite.data.db.dao.AuthorNoteDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PresetRepository
@@ -19,9 +18,8 @@ import javax.inject.Singleton
 class SendMessageUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val worldBookRepository: WorldBookRepository,
-    private val memoryAtomDao: MemoryAtomDao,
     private val memoryRepository: MemoryRepository,
-    private val authorNoteDao: AuthorNoteDao,
+    private val authorNoteRepository: AuthorNoteRepository,
     private val scriptRepository: ScriptRepository,
     private val presetRepository: PresetRepository,
     private val helper: MessageExecutionHelper,
@@ -47,13 +45,13 @@ class SendMessageUseCase @Inject constructor(
             worldBookRepository.matchEntriesRecursive(character.worldBookId, processedContent)
         } else emptyList()
 
-        val memoryAtoms = memoryAtomDao.getRelevantAtoms(character.id, 10)
-        memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+        val memoryAtoms = memoryRepository.getRelevantAtoms(character.id, 10)
+        memoryRepository.touchAtoms(memoryAtoms.map { it.id })
         val memories = if (memoryAtoms.isEmpty()) {
             memoryRepository.getRelevantMemories(character.id, processedContent)
         } else emptyList()
 
-        val authorNote = authorNoteDao.getAuthorNoteSync(character.id)
+        val authorNote = authorNoteRepository.getAuthorNoteSync(character.id)
         val persona = helper.personasafe(character.id)
         val preset = presetRepository.resolveEffectivePreset(chatId, character.id)
 
@@ -106,13 +104,13 @@ class SendMessageUseCase @Inject constructor(
                 worldBookRepository.matchEntriesRecursive(char.worldBookId, processedContent)
             } else emptyList()
 
-            val memoryAtoms = memoryAtomDao.getRelevantAtoms(char.id, 10)
-            memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+            val memoryAtoms = memoryRepository.getRelevantAtoms(char.id, 10)
+            memoryRepository.touchAtoms(memoryAtoms.map { it.id })
             val memories = if (memoryAtoms.isEmpty()) {
                 memoryRepository.getRelevantMemories(char.id, processedContent)
             } else emptyList()
 
-            val authorNote = authorNoteDao.getAuthorNoteSync(char.id)
+            val authorNote = authorNoteRepository.getAuthorNoteSync(char.id)
 
             val promptMessages = PromptBuilder.buildGroupChat(
                 characters = characters,
@@ -171,13 +169,13 @@ class SendMessageUseCase @Inject constructor(
             worldBookRepository.matchEntriesRecursive(targetCharacter.worldBookId, userContent)
         } else emptyList()
 
-        val memoryAtoms = memoryAtomDao.getRelevantAtoms(targetCharacter.id, 10)
-        memoryAtomDao.touchAtoms(memoryAtoms.map { it.id })
+        val memoryAtoms = memoryRepository.getRelevantAtoms(targetCharacter.id, 10)
+        memoryRepository.touchAtoms(memoryAtoms.map { it.id })
         val memories = if (memoryAtoms.isEmpty()) {
             memoryRepository.getRelevantMemories(targetCharacter.id, userContent)
         } else emptyList()
 
-        val authorNote = authorNoteDao.getAuthorNoteSync(targetCharacter.id)
+        val authorNote = authorNoteRepository.getAuthorNoteSync(targetCharacter.id)
 
         val promptMessages = PromptBuilder.buildGroupChat(
             characters = characters,

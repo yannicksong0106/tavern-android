@@ -1,11 +1,10 @@
 package com.tavern.lite.domain.usecase
 
-import com.tavern.lite.data.db.dao.AuthorNoteDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PresetRepository
@@ -46,9 +45,8 @@ class SendMessageUseCaseIntegrationTest {
     @MockK private lateinit var chatRepository: ChatRepository
     @MockK private lateinit var chatApiService: ChatApiService
     @MockK private lateinit var worldBookRepository: WorldBookRepository
-    @MockK private lateinit var memoryAtomDao: MemoryAtomDao
     @MockK private lateinit var memoryRepository: MemoryRepository
-    @MockK private lateinit var authorNoteDao: AuthorNoteDao
+    @MockK private lateinit var authorNoteRepository: AuthorNoteRepository
     @MockK private lateinit var scriptRepository: ScriptRepository
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
@@ -77,9 +75,7 @@ class SendMessageUseCaseIntegrationTest {
             chatRepository = chatRepository,
             chatApiService = chatApiService,
             worldBookRepository = worldBookRepository,
-            memoryAtomDao = memoryAtomDao,
             memoryRepository = memoryRepository,
-            authorNoteDao = authorNoteDao,
             personaRepository = mockk(), // not used directly by SendMessageUseCase
             scriptRepository = scriptRepository,
             memoryExtractionUseCase = memoryExtractionUseCase
@@ -87,9 +83,8 @@ class SendMessageUseCaseIntegrationTest {
         useCase = SendMessageUseCase(
             chatRepository = chatRepository,
             worldBookRepository = worldBookRepository,
-            memoryAtomDao = memoryAtomDao,
             memoryRepository = memoryRepository,
-            authorNoteDao = authorNoteDao,
+            authorNoteRepository = authorNoteRepository,
             scriptRepository = scriptRepository,
             presetRepository = presetRepository,
             helper = helper
@@ -102,10 +97,10 @@ class SendMessageUseCaseIntegrationTest {
     }
 
     private fun stubDefaults() {
-        coEvery { memoryAtomDao.getRelevantAtoms(any(), any(), any()) } returns emptyList()
-        coEvery { memoryAtomDao.touchAtoms(any(), any()) } just runs
+        coEvery { memoryRepository.getRelevantAtoms(any(), any()) } returns emptyList()
+        coEvery { memoryRepository.touchAtoms(any()) } just runs
         coEvery { memoryRepository.getRelevantMemories(any(), any(), any()) } returns emptyList()
-        coEvery { authorNoteDao.getAuthorNoteSync(any()) } returns null
+        coEvery { authorNoteRepository.getAuthorNoteSync(any()) } returns null
         coEvery { scriptRepository.applyScripts(any(), any(), any()) } returns ""
         coEvery { chatRepository.getRecentMessages(any(), any()) } returns emptyList()
         coEvery { chatRepository.sendMessage(any(), any(), any(), any(), any()) } returns 100L

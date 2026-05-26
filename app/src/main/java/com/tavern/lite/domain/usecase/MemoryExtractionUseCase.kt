@@ -4,7 +4,6 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
-import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.network.MemoryExtractorService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,7 +12,6 @@ import javax.inject.Singleton
 class MemoryExtractionUseCase @Inject constructor(
     private val memoryExtractorService: MemoryExtractorService,
     private val memoryConsolidator: MemoryConsolidator,
-    private val memoryAtomDao: MemoryAtomDao,
     private val memoryRepository: MemoryRepository,
     private val chatRepository: ChatRepository,
 ) {
