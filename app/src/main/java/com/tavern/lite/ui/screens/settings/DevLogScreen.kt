@@ -147,6 +147,20 @@ private fun VersionCard(entry: VersionEntry) {
 
 private fun getDevLogEntries(): List<VersionEntry> = listOf(
     VersionEntry(
+        version = "v1.2.75",
+        date = "2026-05-26",
+        summary = "v1.3 核心体验对齐：三级预设 + 分支增强 + LaTeX + UseCase 拆分",
+        details = listOf(
+            "DB v21 迁移：BranchEntity 表 + PresetEntity.scope + presetId 字段",
+            "SendMessageUseCase 拆分为 3 个 UseCase + MessageExecutionHelper",
+            "三级预设系统：Chat > Character > Global 非空字段覆盖合并",
+            "预设 UI：scope 筛选 Tab + scope 标签 + scope 选择器",
+            "聊天分支/书签增强：BranchEntity CRUD + createBranchFromMessage",
+            "LaTeX 渲染：JLatexMathPlugin（$...$ 行内 / $$...$$ 块级）"
+        ),
+        lifeLog = "开发了这么久，我都不知道哪里有bug"
+    ),
+    VersionEntry(
         version = "v1.2.7",
         date = "2026-05-24",
         summary = "升级稳定性保障 + 迁移兜底",

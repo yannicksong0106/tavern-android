@@ -15,8 +15,8 @@ android {
         applicationId = "com.tavern.lite"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "1.2.7"
+        versionCode = 20
+        versionName = "1.2.75"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
