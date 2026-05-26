@@ -1,5 +1,39 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-27 — 全面审计 + domain 层架构清理 + 测试补全
+
+**commit `3ac7b69` — CE 修复 + 测试覆盖**:
+- `BackgroundProactiveWorker.doWork` — catch 块补 CancellationException rethrow
+- `MessageExecutionHelper.personasafe` — catch 块补 CancellationException rethrow
+- 补充 BackgroundProactiveWorker 单元测试（selectByChattiness 提取到 companion object，注入 rng）
+- 补充 ContinueGenerationUseCase 单元测试（19 tests）
+
+**commit `792ab36` — ViewModel 测试补全**:
+- 新增 8 个 ViewModel 测试文件，共 67 tests:
+  - CharacterEditViewModelTest (22), MemoryViewModelTest (19)
+  - WorldBookEditViewModelTest (9), WorldBookListViewModelTest (4)
+  - ScriptViewModelTest (5), PresetViewModelTest (4)
+  - PersonaViewModelTest (4), GroupChatCreateViewModelTest (2)
+- 测试总数: 203 → 314
+
+**commit `6bee7d8` — M1 架构修复**:
+- UI 层移除所有 DAO 直接依赖（CharacterEditViewModel: AuthorNoteDao → AuthorNoteRepository）
+- MemoryViewModel: CharacterDao/MemoryAtomDao/MemoryDao → CharacterRepository/MemoryRepository
+- 新增 AuthorNoteRepository 封装 AuthorNoteDao
+- MemoryRepository 新增 MemoryAtomDao 原子操作封装（10 个方法）
+
+**commit `45181ad` — domain 层 DAO 清理**:
+- MemoryRepository 新增 `getRelevantAtoms()` / `touchAtoms()`
+- ContinueGenerationUseCase: MemoryAtomDao + AuthorNoteDao → MemoryRepository + AuthorNoteRepository
+- SendMessageUseCase: 同上
+- MessageExecutionHelper: 移除未使用的 MemoryAtomDao + AuthorNoteDao 构造参数
+- MemoryExtractionUseCase: 移除未使用的 MemoryAtomDao 构造参数
+- 测试总数: 314 → 324
+
+**审计结论**: UI 层 + domain 层均零 DAO 直接依赖，所有数据访问经 Repository 层。CE rethrow 覆盖全部 suspend catch 块。324 tests 全通过。
+
+---
+
 ## 2026-05-24 — v1.2.6 DB v19 索引 + 剩余 catch 块补日志 + 常量提取
 
 **Task #13: DB v19 索引** (延续 v1.5 质量加固):
