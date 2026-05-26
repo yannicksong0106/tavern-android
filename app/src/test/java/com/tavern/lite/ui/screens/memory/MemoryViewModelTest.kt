@@ -1,12 +1,10 @@
 package com.tavern.lite.ui.screens.memory
 
 import androidx.lifecycle.SavedStateHandle
-import com.tavern.lite.data.db.dao.CharacterDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
-import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.model.MemoryCategory
+import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
 import io.mockk.MockKAnnotations
@@ -35,9 +33,7 @@ import org.junit.Test
 class MemoryViewModelTest {
 
     @MockK private lateinit var memoryRepository: MemoryRepository
-    @MockK private lateinit var memoryAtomDao: MemoryAtomDao
-    @MockK private lateinit var memoryDao: MemoryDao
-    @MockK private lateinit var characterDao: CharacterDao
+    @MockK private lateinit var characterRepository: CharacterRepository
     @MockK private lateinit var memoryConsolidator: MemoryConsolidator
 
     private lateinit var viewModel: MemoryViewModel
@@ -54,14 +50,14 @@ class MemoryViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
 
-        every { characterDao.getAllCharacters() } returns flowOf(emptyList())
-        every { memoryAtomDao.getCategoryCounts(characterId) } returns flowOf(emptyList())
-        every { memoryAtomDao.getAtomsForCharacter(characterId) } returns flowOf(emptyList())
-        every { memoryAtomDao.getLastExtractionTime(characterId) } returns flowOf(null)
-        coEvery { memoryAtomDao.purgeExpired(any()) } returns Unit
+        every { characterRepository.getAllCharacters() } returns flowOf(emptyList())
+        every { memoryRepository.getCategoryCounts(characterId) } returns flowOf(emptyList())
+        every { memoryRepository.getAtomsForCharacter(characterId) } returns flowOf(emptyList())
+        every { memoryRepository.getLastExtractionTime(characterId) } returns flowOf(null)
+        coEvery { memoryRepository.purgeExpired() } returns Unit
 
         val savedStateHandle = SavedStateHandle(mapOf("characterId" to characterId))
-        viewModel = MemoryViewModel(savedStateHandle, memoryRepository, memoryAtomDao, memoryDao, characterDao, memoryConsolidator)
+        viewModel = MemoryViewModel(savedStateHandle, memoryRepository, characterRepository, memoryConsolidator)
     }
 
     @After
@@ -160,15 +156,15 @@ class MemoryViewModelTest {
     fun `addAtom with blank content does nothing`() = runTest {
         viewModel.addAtom("", MemoryCategory.FACT, 5)
         advanceUntilIdle()
-        coVerify(exactly = 0) { memoryAtomDao.insert(any()) }
+        coVerify(exactly = 0) { memoryRepository.insertAtom(any()) }
     }
 
     @Test
     fun `addAtom inserts atom with correct fields`() = runTest {
-        coEvery { memoryAtomDao.insert(any()) } returns 1L
+        coEvery { memoryRepository.insertAtom(any()) } returns 1L
         viewModel.addAtom("New fact", MemoryCategory.FACT, 7)
         advanceUntilIdle()
-        coVerify { memoryAtomDao.insert(match {
+        coVerify { memoryRepository.insertAtom(match {
             it.characterId == characterId &&
             it.content == "New fact" &&
             it.category == "fact" &&
@@ -179,46 +175,46 @@ class MemoryViewModelTest {
 
     @Test
     fun `addAtom with TEMPORARY category sets expiresAt`() = runTest {
-        coEvery { memoryAtomDao.insert(any()) } returns 1L
+        coEvery { memoryRepository.insertAtom(any()) } returns 1L
         viewModel.addAtom("Temp note", MemoryCategory.TEMPORARY, 5)
         advanceUntilIdle()
-        coVerify { memoryAtomDao.insert(match { it.expiresAt != null }) }
+        coVerify { memoryRepository.insertAtom(match { it.expiresAt != null }) }
     }
 
     @Test
     fun `addAtom with non-TEMPORARY category has no expiresAt`() = runTest {
-        coEvery { memoryAtomDao.insert(any()) } returns 1L
+        coEvery { memoryRepository.insertAtom(any()) } returns 1L
         viewModel.addAtom("Permanent", MemoryCategory.FACT, 5)
         advanceUntilIdle()
-        coVerify { memoryAtomDao.insert(match { it.expiresAt == null }) }
+        coVerify { memoryRepository.insertAtom(match { it.expiresAt == null }) }
     }
 
     // ==================== updateAtom / deleteAtom / deleteAll ====================
 
     @Test
-    fun `updateAtom delegates to dao`() = runTest {
-        coEvery { memoryAtomDao.update(any()) } returns Unit
+    fun `updateAtom delegates to repository`() = runTest {
+        coEvery { memoryRepository.updateAtom(any()) } returns Unit
         viewModel.updateAtom(testAtom)
         advanceUntilIdle()
-        coVerify { memoryAtomDao.update(testAtom) }
+        coVerify { memoryRepository.updateAtom(testAtom) }
     }
 
     @Test
-    fun `deleteAtom delegates to dao`() = runTest {
-        coEvery { memoryAtomDao.deleteById(any()) } returns Unit
+    fun `deleteAtom delegates to repository`() = runTest {
+        coEvery { memoryRepository.deleteAtom(any()) } returns Unit
         viewModel.deleteAtom(1L)
         advanceUntilIdle()
-        coVerify { memoryAtomDao.deleteById(1L) }
+        coVerify { memoryRepository.deleteAtom(1L) }
     }
 
     @Test
     fun `deleteAll deletes atoms and memories for character`() = runTest {
-        coEvery { memoryAtomDao.deleteAllForCharacter(any()) } returns Unit
-        coEvery { memoryDao.deleteAllForCharacter(any()) } returns Unit
+        coEvery { memoryRepository.deleteAllAtomsForCharacter(any()) } returns Unit
+        coEvery { memoryRepository.deleteAllForCharacter(any()) } returns Unit
         viewModel.deleteAll()
         advanceUntilIdle()
-        coVerify { memoryAtomDao.deleteAllForCharacter(characterId) }
-        coVerify { memoryDao.deleteAllForCharacter(characterId) }
+        coVerify { memoryRepository.deleteAllAtomsForCharacter(characterId) }
+        coVerify { memoryRepository.deleteAllForCharacter(characterId) }
     }
 
     // ==================== auto-select first character ====================
@@ -226,13 +222,13 @@ class MemoryViewModelTest {
     @Test
     fun `auto-selects first character when initial id is 0`() = runTest {
         val chars = listOf(CharacterEntity(id = 5, name = "First"))
-        every { characterDao.getAllCharacters() } returns flowOf(chars)
-        every { memoryAtomDao.getCategoryCounts(5) } returns flowOf(emptyList())
-        every { memoryAtomDao.getAtomsForCharacter(5) } returns flowOf(emptyList())
-        every { memoryAtomDao.getLastExtractionTime(5) } returns flowOf(null)
+        every { characterRepository.getAllCharacters() } returns flowOf(chars)
+        every { memoryRepository.getCategoryCounts(5) } returns flowOf(emptyList())
+        every { memoryRepository.getAtomsForCharacter(5) } returns flowOf(emptyList())
+        every { memoryRepository.getLastExtractionTime(5) } returns flowOf(null)
 
         val savedStateHandle = SavedStateHandle(mapOf("characterId" to 0L))
-        val vm = MemoryViewModel(savedStateHandle, memoryRepository, memoryAtomDao, memoryDao, characterDao, memoryConsolidator)
+        val vm = MemoryViewModel(savedStateHandle, memoryRepository, characterRepository, memoryConsolidator)
         advanceUntilIdle()
 
         assertEquals(5L, vm.selectedCharacterId.value)

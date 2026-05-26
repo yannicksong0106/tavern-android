@@ -1,6 +1,9 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.dao.CategoryCount
+import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.dao.MemoryDao
+import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -8,7 +11,8 @@ import javax.inject.Singleton
 
 @Singleton
 class MemoryRepository @Inject constructor(
-    private val memoryDao: MemoryDao
+    private val memoryDao: MemoryDao,
+    private val memoryAtomDao: MemoryAtomDao
 ) {
     companion object {
         private val KEYWORD_SPLIT_REGEX = Regex("[\\s,，。！？.!?、；;：:\"\"''\\-]+")
@@ -70,4 +74,36 @@ class MemoryRepository @Inject constructor(
     suspend fun deleteAllForCharacter(characterId: Long) {
         memoryDao.deleteAllForCharacter(characterId)
     }
+
+    // ==================== Memory Atom methods ====================
+
+    fun getAtomsForCharacter(characterId: Long): Flow<List<MemoryAtomEntity>> =
+        memoryAtomDao.getAtomsForCharacter(characterId)
+
+    fun getCategoryCounts(characterId: Long): Flow<List<CategoryCount>> =
+        memoryAtomDao.getCategoryCounts(characterId)
+
+    fun getAtomsByCategory(characterId: Long, category: String): Flow<List<MemoryAtomEntity>> =
+        memoryAtomDao.getAtomsByCategoryFlow(characterId, category)
+
+    fun searchAtoms(characterId: Long, query: String): Flow<List<MemoryAtomEntity>> =
+        memoryAtomDao.searchAtomsFlow(characterId, query)
+
+    fun getLastExtractionTime(characterId: Long): Flow<Long?> =
+        memoryAtomDao.getLastExtractionTime(characterId)
+
+    suspend fun insertAtom(atom: MemoryAtomEntity): Long =
+        memoryAtomDao.insert(atom)
+
+    suspend fun updateAtom(atom: MemoryAtomEntity) =
+        memoryAtomDao.update(atom)
+
+    suspend fun deleteAtom(id: Long) =
+        memoryAtomDao.deleteById(id)
+
+    suspend fun deleteAllAtomsForCharacter(characterId: Long) =
+        memoryAtomDao.deleteAllForCharacter(characterId)
+
+    suspend fun purgeExpired() =
+        memoryAtomDao.purgeExpired()
 }

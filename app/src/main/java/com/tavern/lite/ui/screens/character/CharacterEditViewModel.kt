@@ -5,9 +5,9 @@ import android.util.Log
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.db.entity.WorldBookEntity
@@ -55,7 +55,7 @@ class CharacterEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterRepository: CharacterRepository,
     private val worldBookRepository: WorldBookRepository,
-    private val authorNoteDao: AuthorNoteDao
+    private val authorNoteRepository: AuthorNoteRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CharacterEditState())
@@ -71,7 +71,7 @@ class CharacterEditViewModel @Inject constructor(
     fun loadCharacter(id: Long) {
         viewModelScope.launch {
             val entity = characterRepository.getCharacterById(id) ?: return@launch
-            val authorNote = authorNoteDao.getAuthorNoteSync(id)
+            val authorNote = authorNoteRepository.getAuthorNoteSync(id)
             val worldBookName = entity.worldBookId?.let {
                 worldBookRepository.getWorldBookById(it)?.name
             }
@@ -241,7 +241,7 @@ class CharacterEditViewModel @Inject constructor(
             // Save author's note
             if (savedCharId != null) {
                 if (s.authorNoteContent.isNotBlank()) {
-                    authorNoteDao.insertOrUpdate(
+                    authorNoteRepository.insertOrUpdate(
                         AuthorNoteEntity(
                             characterId = savedCharId,
                             content = s.authorNoteContent,
@@ -250,7 +250,7 @@ class CharacterEditViewModel @Inject constructor(
                         )
                     )
                 } else {
-                    authorNoteDao.delete(savedCharId)
+                    authorNoteRepository.delete(savedCharId)
                 }
             }
 

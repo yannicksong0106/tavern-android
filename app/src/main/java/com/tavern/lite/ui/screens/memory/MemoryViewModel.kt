@@ -3,12 +3,10 @@ package com.tavern.lite.ui.screens.memory
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tavern.lite.data.db.dao.CharacterDao
-import com.tavern.lite.data.db.dao.MemoryAtomDao
-import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.model.MemoryCategory
+import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.MemoryConsolidator
 import com.tavern.lite.data.repository.MemoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,16 +32,14 @@ import javax.inject.Inject
 class MemoryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val memoryRepository: MemoryRepository,
-    private val memoryAtomDao: MemoryAtomDao,
-    private val memoryDao: MemoryDao,
-    private val characterDao: CharacterDao,
+    private val characterRepository: CharacterRepository,
     private val memoryConsolidator: MemoryConsolidator
 ) : ViewModel() {
 
     private val initialCharacterId: Long = savedStateHandle.get<Long>("characterId") ?: 0
 
     // --- Character selector ---
-    val characters: StateFlow<List<CharacterEntity>> = characterDao.getAllCharacters()
+    val characters: StateFlow<List<CharacterEntity>> = characterRepository.getAllCharacters()
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -53,7 +49,7 @@ class MemoryViewModel @Inject constructor(
     // --- Category counts (for tab badges) ---
     val categoryCounts: StateFlow<Map<String, Int>> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(emptyList())
-        else memoryAtomDao.getCategoryCounts(id)
+        else memoryRepository.getCategoryCounts(id)
     }.map { list ->
         list.associate { it.category to it.count }
     }.distinctUntilChanged()
@@ -69,9 +65,9 @@ class MemoryViewModel @Inject constructor(
 
         _selectedCategory.flatMapLatest { category ->
             if (category == null) {
-                memoryAtomDao.getAtomsForCharacter(charId)
+                memoryRepository.getAtomsForCharacter(charId)
             } else {
-                memoryAtomDao.getAtomsByCategoryFlow(charId, category.key)
+                memoryRepository.getAtomsByCategory(charId, category.key)
             }
         }
     }.distinctUntilChanged()
@@ -91,7 +87,7 @@ class MemoryViewModel @Inject constructor(
             else {
                 val charId = _selectedCharacterId.value
                 if (charId == 0L) flowOf(emptyList())
-                else memoryAtomDao.searchAtomsFlow(charId, query)
+                else memoryRepository.searchAtoms(charId, query)
             }
         }
         .distinctUntilChanged()
@@ -105,7 +101,7 @@ class MemoryViewModel @Inject constructor(
     // --- Last extraction time ---
     val lastExtractionTime: StateFlow<Long?> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(null)
-        else memoryAtomDao.getLastExtractionTime(id)
+        else memoryRepository.getLastExtractionTime(id)
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -116,7 +112,7 @@ class MemoryViewModel @Inject constructor(
     // --- Total memory count ---
     val totalMemoryCount: StateFlow<Int> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(0)
-        else memoryAtomDao.getAtomsForCharacter(id).map { it.size }
+        else memoryRepository.getAtomsForCharacter(id).map { it.size }
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -139,7 +135,7 @@ class MemoryViewModel @Inject constructor(
             var previousSize = 0
             _selectedCharacterId.flatMapLatest { id ->
                 if (id == 0L) flowOf(emptyList())
-                else memoryAtomDao.getAtomsForCharacter(id)
+                else memoryRepository.getAtomsForCharacter(id)
             }.collect { newList ->
                 if (newList.size > previousSize && previousSize > 0) {
                     _showPulse.value = true
@@ -152,7 +148,7 @@ class MemoryViewModel @Inject constructor(
 
         // Purge expired temporary memories on load
         viewModelScope.launch {
-            memoryAtomDao.purgeExpired()
+            memoryRepository.purgeExpired()
         }
     }
 
@@ -194,7 +190,7 @@ class MemoryViewModel @Inject constructor(
             val expiresAt = if (category == MemoryCategory.TEMPORARY) {
                 System.currentTimeMillis() + 4 * 3600_000L
             } else null
-            memoryAtomDao.insert(
+            memoryRepository.insertAtom(
                 MemoryAtomEntity(
                     characterId = _selectedCharacterId.value,
                     content = content,
@@ -210,17 +206,17 @@ class MemoryViewModel @Inject constructor(
     }
 
     fun updateAtom(atom: MemoryAtomEntity) {
-        viewModelScope.launch { memoryAtomDao.update(atom) }
+        viewModelScope.launch { memoryRepository.updateAtom(atom) }
     }
 
     fun deleteAtom(id: Long) {
-        viewModelScope.launch { memoryAtomDao.deleteById(id) }
+        viewModelScope.launch { memoryRepository.deleteAtom(id) }
     }
 
     fun deleteAll() {
         viewModelScope.launch {
-            memoryAtomDao.deleteAllForCharacter(_selectedCharacterId.value)
-            memoryDao.deleteAllForCharacter(_selectedCharacterId.value)
+            memoryRepository.deleteAllAtomsForCharacter(_selectedCharacterId.value)
+            memoryRepository.deleteAllForCharacter(_selectedCharacterId.value)
         }
     }
 }

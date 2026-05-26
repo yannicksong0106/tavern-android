@@ -3,7 +3,7 @@ package com.tavern.lite.ui.screens.character
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
-import com.tavern.lite.data.db.dao.AuthorNoteDao
+import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
@@ -37,7 +37,7 @@ class CharacterEditViewModelTest {
     @MockK private lateinit var context: Context
     @MockK private lateinit var characterRepository: CharacterRepository
     @MockK private lateinit var worldBookRepository: WorldBookRepository
-    @MockK private lateinit var authorNoteDao: AuthorNoteDao
+    @MockK private lateinit var authorNoteRepository: AuthorNoteRepository
 
     private lateinit var viewModel: CharacterEditViewModel
     private val testDispatcher = StandardTestDispatcher()
@@ -52,7 +52,7 @@ class CharacterEditViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
         every { worldBookRepository.getAllWorldBooks() } returns flowOf(emptyList())
-        viewModel = CharacterEditViewModel(context, characterRepository, worldBookRepository, authorNoteDao)
+        viewModel = CharacterEditViewModel(context, characterRepository, worldBookRepository, authorNoteRepository)
     }
 
     @After
@@ -114,7 +114,7 @@ class CharacterEditViewModelTest {
     @Test
     fun `loadCharacter populates state from entity`() = runTest {
         coEvery { characterRepository.getCharacterById(42) } returns testCharacter
-        coEvery { authorNoteDao.getAuthorNoteSync(42) } returns null
+        coEvery { authorNoteRepository.getAuthorNoteSync(42) } returns null
 
         viewModel.loadCharacter(42)
         advanceUntilIdle()
@@ -132,7 +132,7 @@ class CharacterEditViewModelTest {
     @Test
     fun `loadCharacter with author note populates note fields`() = runTest {
         coEvery { characterRepository.getCharacterById(42) } returns testCharacter
-        coEvery { authorNoteDao.getAuthorNoteSync(42) } returns AuthorNoteEntity(
+        coEvery { authorNoteRepository.getAuthorNoteSync(42) } returns AuthorNoteEntity(
             characterId = 42, content = "Note text", position = "before_an", depth = 2
         )
 
@@ -149,7 +149,7 @@ class CharacterEditViewModelTest {
     fun `loadCharacter with worldBookId loads world book name`() = runTest {
         val charWithWB = testCharacter.copy(worldBookId = 10)
         coEvery { characterRepository.getCharacterById(42) } returns charWithWB
-        coEvery { authorNoteDao.getAuthorNoteSync(42) } returns null
+        coEvery { authorNoteRepository.getAuthorNoteSync(42) } returns null
         coEvery { worldBookRepository.getWorldBookById(10) } returns WorldBookEntity(id = 10, name = "Lore")
 
         viewModel.loadCharacter(42)
@@ -218,8 +218,8 @@ class CharacterEditViewModelTest {
     @Test
     fun `save new character calls createCharacter`() = runTest {
         coEvery { characterRepository.createCharacter(any()) } returns 100L
-        coEvery { authorNoteDao.insertOrUpdate(any()) } returns Unit
-        coEvery { authorNoteDao.delete(any()) } returns Unit
+        coEvery { authorNoteRepository.insertOrUpdate(any()) } returns Unit
+        coEvery { authorNoteRepository.delete(any()) } returns Unit
 
         viewModel.updateField("name", "New Char")
         viewModel.updateField("description", "Desc")
@@ -233,8 +233,8 @@ class CharacterEditViewModelTest {
     fun `save editing character calls updateCharacter`() = runTest {
         coEvery { characterRepository.getCharacterById(42) } returns testCharacter
         coEvery { characterRepository.updateCharacter(any()) } returns Unit
-        coEvery { authorNoteDao.getAuthorNoteSync(42) } returns null
-        coEvery { authorNoteDao.delete(any()) } returns Unit
+        coEvery { authorNoteRepository.getAuthorNoteSync(42) } returns null
+        coEvery { authorNoteRepository.delete(any()) } returns Unit
 
         viewModel.loadCharacter(42)
         advanceUntilIdle()
@@ -249,27 +249,27 @@ class CharacterEditViewModelTest {
     @Test
     fun `save with author note content inserts note`() = runTest {
         coEvery { characterRepository.createCharacter(any()) } returns 100L
-        coEvery { authorNoteDao.insertOrUpdate(any()) } returns Unit
+        coEvery { authorNoteRepository.insertOrUpdate(any()) } returns Unit
 
         viewModel.updateField("name", "Char")
         viewModel.updateField("authorNoteContent", "Remember this")
         viewModel.save {}
         advanceUntilIdle()
 
-        coVerify { authorNoteDao.insertOrUpdate(match { it.content == "Remember this" && it.characterId == 100L }) }
+        coVerify { authorNoteRepository.insertOrUpdate(match { it.content == "Remember this" && it.characterId == 100L }) }
     }
 
     @Test
     fun `save with blank author note deletes existing note`() = runTest {
         coEvery { characterRepository.createCharacter(any()) } returns 100L
-        coEvery { authorNoteDao.delete(any()) } returns Unit
+        coEvery { authorNoteRepository.delete(any()) } returns Unit
 
         viewModel.updateField("name", "Char")
         // authorNoteContent is blank by default
         viewModel.save {}
         advanceUntilIdle()
 
-        coVerify { authorNoteDao.delete(100L) }
+        coVerify { authorNoteRepository.delete(100L) }
     }
 
     // ==================== updateAuthorNotePosition ====================

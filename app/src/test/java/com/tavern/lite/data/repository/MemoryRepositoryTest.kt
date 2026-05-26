@@ -3,6 +3,7 @@ package com.tavern.lite.data.repository
 import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.entity.MemoryEntity
 import androidx.sqlite.db.SupportSQLiteQuery
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -21,7 +22,7 @@ class MemoryRepositoryTest {
     @Before
     fun setup() {
         fakeDao = FakeMemoryDao()
-        repository = MemoryRepository(fakeDao)
+        repository = MemoryRepository(fakeDao, mockk(relaxed = true))
     }
 
     @Test
