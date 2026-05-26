@@ -1,47 +1,45 @@
 # Tavern Lite (酒馆 Lite)
 
-> **Debug v1.0.2** — This is a debug release for testing. Features and APIs may change. Issues and feedback are welcome!
+> **v1.2.75** — SillyTavern 安卓原生客户端，持续迭代中。
 >
 > Contact: yannicksong0106@163.com
 
-A native Android application that reimplements the core features of [SillyTavern](https://github.com/SillyTavern/SillyTavern) as a standalone APK — no server required.
+基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的 Android 端重新实现，以独立 APK 形式运行，无需服务端。由一名大学生独立开发，持续迭代中。如有问题或建议，欢迎提 issue 或邮件联系。
 
-> **Note:** This project is independently developed by a college student as a learning project and is actively maintained. If you have any questions or suggestions, feel free to open an issue or email yannicksong0106@163.com.
-
-基于开源项目 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 的 Android 端重新实现，以独立 APK 形式运行，无需服务端。由一名大学生独立开发，持续迭代中。如有问题或建议，欢迎提 issue 或邮件联系 yannicksong0106@163.com。
+A native Android reimplementation of [SillyTavern](https://github.com/SillyTavern/SillyTavern) — standalone APK, no server required.
 
 ---
 
 ## Features / 功能特性
 
-### Completed (Phase A-G) / 已完成
-
 | Module / 模块 | Description / 功能 |
 |------|------|
-| **Character Card / 角色卡** | Create/edit/delete, PNG import/export (tEXt chunk), chara_card_v2/v3 spec |
-| **Chat System / 对话系统** | SSE streaming (OpenAI/Claude/Ollama/Custom), edit/delete/regenerate, swipe alternatives, continue generation, branching |
-| **World Book / 世界书** | CRUD, keyword matching, selective logic (AND/OR/NOT), recursion depth control |
-| **Memory System / 记忆系统** | Auto/manual extraction, keyword retrieval, prompt injection, management UI |
-| **Regex Script / 正则脚本** | Regex/literal replacement, user/assistant/both, per-character |
-| **Visual / 视觉体验** | Custom backgrounds, bubble styles, Material You dynamic colors, animations |
-| **Export/Import / 导出导入** | Markdown/HTML/TXT/JSON, single/batch, SillyTavern JSONL import |
-| **User Persona / 用户角色** | Multi-identity, default persona, per-character override, prompt integration |
-| **Author's Note / 作者注释** | Configurable injection depth and position, per-character |
+| **角色卡** | 创建/编辑/删除，PNG 导入导出，chara_card_v2 spec |
+| **对话系统** | SSE 流式传输 (OpenAI/Claude/Ollama/自定义)，编辑/删除/重新生成/继续生成，聊天分支 |
+| **三级预设** | Chat > Character > Global 层级合并，scope 筛选 Tab |
+| **世界书** | CRUD，关键词匹配，选择逻辑 (AND/OR/NOT)，递归深度控制 |
+| **记忆系统** | 自动/手动提取，关键词检索，Prompt 注入，MemoryAtom 结构化存储 |
+| **正则脚本** | 正则/字面替换，用户/助手/双向，按角色 |
+| **群聊** | 多角色群聊，健谈度控制，主动发言调度 |
+| **TTS 语音** | Android 原生 TTS，语速/音调调节，自动语言检测 |
+| **LaTeX** | `$...$` 行内 / `$$...$$` 块级数学公式渲染 |
+| **分支/书签** | 聊天分支创建/切换，消息书签 |
+| **导出导入** | Markdown/HTML/TXT/JSON，单条/批量，SillyTavern JSONL 导入 |
+| **用户角色** | 多身份，默认角色，按角色覆盖 |
+| **作者注释** | 可配置注入深度和位置 |
+| **视觉体验** | 自定义背景，气泡样式，Material You 动态颜色 |
 
-### In Progress / 开发中
-
-See [ROADMAP.md](ROADMAP.md) for upcoming features.
+---
 
 ## Tech Stack / 技术栈
 
-- **Language / 语言**: Kotlin
+- **Language**: Kotlin 2.1.0
 - **UI**: Jetpack Compose + Material 3
-- **Architecture / 架构**: MVVM (ViewModel + StateFlow)
-- **DI**: Hilt
-- **Database / 数据库**: Room (v9)
-- **Network / 网络**: OkHttp + SSE streaming
-- **Image / 图片**: Coil
-- **Markdown**: Markwon
+- **Architecture**: MVVM + UseCase + Repository + Hilt DI
+- **Database**: Room (v21)
+- **Network**: OkHttp + SSE streaming
+- **Image**: Coil
+- **Markdown**: Markwon (LaTeX + HTML + Strikethrough)
 - **Min SDK**: 26 (Android 8.0)
 - **Target SDK**: 35
 
@@ -54,25 +52,8 @@ See [ROADMAP.md](ROADMAP.md) for upcoming features.
 # Release
 ./gradlew assembleRelease
 
-# Tests / 测试
+# Tests
 ./gradlew testDebugUnitTest
-```
-
-## Project Structure / 项目结构
-
-```
-app/src/main/java/com/tavern/lite/
-├── data/
-│   ├── db/          # Room database, Entity, DAO
-│   ├── model/       # Data models
-│   └── repository/  # Repository layer
-├── di/              # Hilt dependency injection
-├── network/         # API service, Prompt builder
-└── ui/
-    ├── components/  # Shared components
-    ├── navigation/  # Navigation graph
-    ├── screens/     # Screens
-    └── theme/       # Theme
 ```
 
 ## API Support / API 支持
@@ -83,6 +64,11 @@ app/src/main/java/com/tavern/lite/
 | Claude (Anthropic) | ✅ |
 | Ollama (Local) | ✅ |
 | Custom (OpenAI-compatible) | ✅ |
+| OpenRouter | ✅ |
+
+## Download / 下载
+
+[GitHub Releases](https://github.com/yannicksong0106/tavern-android/releases) — 下载最新版 APK 安装即可。
 
 ## Acknowledgements / 致谢
 

@@ -35,6 +35,7 @@ class SillyTavernImporter @Inject constructor(
             val id = characterRepository.createCharacter(card.data, avatarPath = avatarFile.absolutePath)
             Result.success(id)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "PNG 导入失败", e)
             Result.failure(e)
         }
@@ -50,6 +51,7 @@ class SillyTavernImporter @Inject constructor(
             val id = characterRepository.createCharacter(card.data)
             Result.success(id)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "JSON 导入失败", e)
             Result.failure(e)
         }
@@ -66,6 +68,7 @@ class SillyTavernImporter @Inject constructor(
             outputFile.writeText(json.encodeToString(CharacterCard.serializer(), card), Charsets.UTF_8)
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "JSON 导出失败", e)
             Result.failure(e)
         }
@@ -97,6 +100,7 @@ class SillyTavernImporter @Inject constructor(
             PngMetadata.writeCharaCard(sourcePng, jsonStr, outputFile)
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "PNG 导出失败", e)
             Result.failure(e)
         }

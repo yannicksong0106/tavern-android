@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
@@ -101,6 +102,7 @@ class TtsHelper @Inject constructor(
     }
 
     fun shutdown() {
+        scope.cancel()
         tts?.stop()
         tts?.shutdown()
         tts = null

@@ -49,6 +49,7 @@ class ChatImporter @Inject constructor(
 
         Result.success("导入成功，共 $messageCount 条消息")
     } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         Result.failure(e)
     }
 
@@ -107,6 +108,7 @@ class ChatImporter @Inject constructor(
                 val result = importSillyTavernMessage(chatId, msg)
                 if (result) count++
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("ChatImporter", "Failed to parse jsonl line: ${e.message}", e)
             }
         }

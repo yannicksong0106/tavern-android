@@ -143,6 +143,7 @@ class CharacterEditViewModel @Inject constructor(
                 }
                 _state.value = _state.value.copy(avatarPath = avatarPath)
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("CharacterEditVM", "头像保存失败", e)
                 _error.value = "头像保存失败: ${e.message}"
             }
@@ -171,6 +172,7 @@ class CharacterEditViewModel @Inject constructor(
                 }
                 _state.value = _state.value.copy(backgroundPath = bgPath)
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("CharacterEditVM", "背景保存失败", e)
                 _error.value = "背景保存失败: ${e.message}"
             }

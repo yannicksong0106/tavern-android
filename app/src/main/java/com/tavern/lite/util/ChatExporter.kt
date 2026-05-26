@@ -70,6 +70,7 @@ class ChatExporter @Inject constructor(
         outputFile.writeText(content, Charsets.UTF_8)
         Result.success(outputFile)
     } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         Log.w("ChatExporter", "导出聊天失败", e)
         Result.failure(e)
     }
@@ -117,6 +118,7 @@ class ChatExporter @Inject constructor(
 
         Result.success(zipFile)
     } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         Log.w("ChatExporter", "批量导出失败", e)
         Result.failure(e)
     }

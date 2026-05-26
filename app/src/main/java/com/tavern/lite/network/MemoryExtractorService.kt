@@ -449,6 +449,7 @@ $conversation
                 }
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w(TAG, "Failed to parse extracted memory facts: ${e.message}, response length: ${responseText.length}")
         }
 

@@ -192,6 +192,7 @@ class BackupManager @Inject constructor(
 
             Result.success(file)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackupManager", "备份失败", e)
             Result.failure(e)
         }
@@ -358,6 +359,7 @@ class BackupManager @Inject constructor(
                 )
             )
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackupManager", "恢复失败", e)
             Result.failure(e)
         }
