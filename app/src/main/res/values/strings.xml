@@ -343,6 +343,11 @@
     <string name="preset_name">预设名称</string>
     <string name="no_presets">还没有预设</string>
     <string name="no_presets_hint">点击右下角 + 添加系统提示词预设</string>
+    <string name="scope_all">全部</string>
+    <string name="scope_global">全局</string>
+    <string name="scope_character">角色</string>
+    <string name="scope_chat">对话</string>
+    <string name="preset_scope">预设范围</string>
 
     <!-- 群聊列表 / Group Chat List -->
     <string name="group_chats">群聊</string>
