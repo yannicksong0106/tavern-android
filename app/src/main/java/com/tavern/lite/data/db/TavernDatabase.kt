@@ -49,7 +49,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         BranchEntity::class,
     ],
     version = 21,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
     abstract fun characterDao(): CharacterDao

@@ -16,6 +16,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.TtsHelper
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
@@ -691,11 +692,11 @@ class ChatViewModelTest {
         job.cancel()
     }
 
-    // ==================== isChatActive (companion) ====================
+    // ==================== ChatActiveTracker ====================
 
     @Test
-    fun `isChatActive returns false for unknown chat`() {
-        assertFalse(ChatViewModel.isChatActive(999L))
+    fun `ChatActiveTracker isActive returns false for unknown chat`() {
+        assertFalse(ChatActiveTracker.isActive(999L))
     }
 
     // ==================== getCharacterForMessage ====================

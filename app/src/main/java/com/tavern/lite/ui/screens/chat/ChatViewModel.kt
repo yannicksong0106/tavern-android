@@ -20,6 +20,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.SwipeUtils
 import com.tavern.lite.util.TtsHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -103,22 +104,6 @@ class ChatViewModel @Inject constructor(
     private val _messageMap = MutableStateFlow<Map<Long, MessageEntity>>(emptyMap())
     private var searchCacheVersion = 0
     private val _searchCache = mutableMapOf<Pair<String, Int>, List<Int>>()
-    init {
-        viewModelScope.launch {
-            messages.collect { list ->
-                _messageMap.value = list.associateBy { it.id }
-                searchCacheVersion++
-                _searchCache.clear()
-            }
-        }
-    }
-
-    private fun findMessage(id: Long): MessageEntity? = _messageMap.value[id]
-
-    init {
-        activeChatIds[chatId] = true
-    }
-
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
@@ -132,6 +117,16 @@ class ChatViewModel @Inject constructor(
     @Volatile private var isProactiveMessage = false
 
     init {
+        ChatActiveTracker.setActive(chatId)
+
+        viewModelScope.launch {
+            messages.collect { list ->
+                _messageMap.value = list.associateBy { it.id }
+                searchCacheVersion++
+                _searchCache.clear()
+            }
+        }
+
         viewModelScope.launch {
             val char = characterRepository.getCharacterById(characterId)
             _character.value = char
@@ -156,6 +151,8 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+
+    private fun findMessage(id: Long): MessageEntity? = _messageMap.value[id]
 
     fun sendMessage(content: String) {
         if (content.isBlank() || _isGenerating.value) return
@@ -699,7 +696,7 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
         streamingJob?.cancel()
         ttsHelper.stop()
-        activeChatIds.remove(chatId)
+        ChatActiveTracker.clearActive(chatId)
     }
 
     companion object {
@@ -719,9 +716,5 @@ class ChatViewModel @Inject constructor(
                 }
             }
         }
-
-        /** Per-chat busy flag — Worker 检查此 map 跳过用户正在操作的聊天 */
-        private val activeChatIds = java.util.concurrent.ConcurrentHashMap<Long, Boolean>()
-        fun isChatActive(chatId: Long): Boolean = activeChatIds[chatId] == true
     }
 }

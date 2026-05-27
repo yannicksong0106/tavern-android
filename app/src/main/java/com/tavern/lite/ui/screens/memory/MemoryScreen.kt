@@ -64,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
@@ -362,7 +364,10 @@ private fun CharacterSelectorRow(
                 ) {
                     if (character.avatarPath != null) {
                         AsyncImage(
-                            model = File(character.avatarPath),
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(character.avatarPath))
+                                .memoryCacheKey(character.avatarPath)
+                                .build(),
                             contentDescription = character.name,
                             placeholder = painterResource(android.R.drawable.ic_menu_gallery),
                             error = painterResource(android.R.drawable.ic_menu_gallery),

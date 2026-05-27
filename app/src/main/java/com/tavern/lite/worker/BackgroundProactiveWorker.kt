@@ -13,7 +13,7 @@ import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.ui.screens.chat.ChatViewModel
+import com.tavern.lite.util.ChatActiveTracker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -40,7 +40,7 @@ class BackgroundProactiveWorker @AssistedInject constructor(
         if (recentChats.isEmpty()) return Result.success()
 
         // 3. 随机选择一个聊天（跳过用户正在前台操作的聊天）
-        val availableChats = recentChats.filter { !ChatViewModel.isChatActive(it.id) }
+        val availableChats = recentChats.filter { !ChatActiveTracker.isActive(it.id) }
         if (availableChats.isEmpty()) return Result.success()
         val chat = availableChats.random()
 

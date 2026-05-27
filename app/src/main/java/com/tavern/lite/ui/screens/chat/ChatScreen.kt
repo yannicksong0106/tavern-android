@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.tavern.lite.R
 import com.tavern.lite.ui.components.BackgroundPickerSheet
 import com.tavern.lite.ui.components.CharacterAvatar
@@ -357,7 +358,10 @@ fun ChatScreen(
                     val fileExists = remember(bgPath) { file.exists() }
                     if (fileExists) {
                         AsyncImage(
-                            model = file,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(file)
+                                .memoryCacheKey(bgPath)
+                                .build(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -466,8 +470,8 @@ fun ChatScreen(
                             val msgCharName = msgChar?.name ?: character?.name ?: ""
                             val msgAvatarPath = msgChar?.avatarPath ?: character?.avatarPath
                             // 引用消息查找 — O(1) 索引查找
-                            val quotedMsg = remember(message.replyToId) {
-                                message.replyToId?.let { qid -> messages.find { it.id == qid } }
+                            val quotedMsg = remember(message.replyToId, messageIdToIndex) {
+                                message.replyToId?.let { qid -> messageIdToIndex[qid]?.let { messages[it] } }
                             }
                             val quotedName = remember(quotedMsg) {
                                 quotedMsg?.let { qm ->

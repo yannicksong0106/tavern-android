@@ -43,8 +43,10 @@ import com.tavern.lite.R
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import java.io.File
 
 /**
@@ -173,7 +175,10 @@ fun BackgroundPickerSheet(
                                 .clickable { onClear() }
                         ) {
                             AsyncImage(
-                                model = File(currentBackgroundPath),
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(File(currentBackgroundPath))
+                                    .memoryCacheKey(currentBackgroundPath)
+                                    .build(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier

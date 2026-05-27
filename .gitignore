@@ -35,6 +35,9 @@ desktop.ini
 
 # Screenshots (keep for README)
 
+# Room schema export
+schemas/
+
 # Emulator scripts
 start-emulator.bat
 start-emulator.ps1

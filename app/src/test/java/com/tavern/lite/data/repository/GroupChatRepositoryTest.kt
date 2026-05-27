@@ -163,6 +163,7 @@ private class FakeGroupMessageDao : MessageDao {
     override suspend fun activateBranch(chatId: Long, branchId: Long) {}
     override suspend fun updateSwipe(id: Long, swipeJson: String, swipeIndex: Int, currentContent: String) {}
     override suspend fun updateSwipeIndex(id: Long, swipeIndex: Int, currentContent: String) {}
+    override suspend fun getAllActiveMessagesForChat(chatId: Long): List<MessageEntity> = emptyList()
     override suspend fun getAllMessages(): List<MessageEntity> = emptyList()
     override suspend fun setPinned(messageId: Long, pinned: Boolean) {}
     override fun getPinnedMessages(chatId: Long): Flow<List<MessageEntity>> = flowOf(emptyList())

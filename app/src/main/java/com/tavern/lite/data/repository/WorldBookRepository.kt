@@ -14,8 +14,12 @@ class WorldBookRepository @Inject constructor(
     private val worldBookDao: WorldBookDao,
     private val json: Json
 ) {
-    // Cache decoded+lowercased keys by entry ID to avoid repeated JSON parsing
-    private val keyCache = mutableMapOf<Long, Pair<List<String>, List<String>>>()
+    // Cache decoded+lowercased keys by entry ID to avoid repeated JSON parsing (LRU, max 256)
+    private val keyCache = object : LinkedHashMap<Long, Pair<List<String>, List<String>>>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Pair<List<String>, List<String>>>?): Boolean {
+            return size > 256
+        }
+    }
 
     private fun getCachedKeys(entry: WorldBookEntryEntity): Pair<List<String>, List<String>> {
         return keyCache.getOrPut(entry.id) {

@@ -8,13 +8,13 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
-import java.util.Collections
 
 object PromptBuilder {
 
-    // 静态 prompt 缓存：key = "characterId_userName_descHash"，避免每条消息重复构建
-    private val staticPromptCache = Collections.synchronizedMap(LinkedHashMap<String, String>(8, 0.75f, true))
-    private const val MAX_CACHE_SIZE = 16
+    // 静态 prompt 缓存：key = "characterId_userName_descHash"，避免每条消息重复构建 (LRU, max 16)
+    private val staticPromptCache = object : LinkedHashMap<String, String>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 16
+    }
 
     private fun getStaticPromptCacheKey(character: CharacterEntity, userName: String): String {
         val descHash = (character.description.hashCode() * 31 + character.personality.hashCode()) * 31 +
@@ -25,13 +25,7 @@ object PromptBuilder {
     private fun getCachedStaticPrompt(character: CharacterEntity, userName: String): String {
         val key = getStaticPromptCacheKey(character, userName)
         return synchronized(staticPromptCache) {
-            staticPromptCache.getOrPut(key) {
-                if (staticPromptCache.size >= MAX_CACHE_SIZE) {
-                    val eldest = staticPromptCache.keys.first()
-                    staticPromptCache.remove(eldest)
-                }
-                buildStaticSystemPrompt(character, userName)
-            }
+            staticPromptCache.getOrPut(key) { buildStaticSystemPrompt(character, userName) }
         }
     }
 

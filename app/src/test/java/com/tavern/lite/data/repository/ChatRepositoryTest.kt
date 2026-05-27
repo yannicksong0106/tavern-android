@@ -191,6 +191,8 @@ private class FakeMessageDao : MessageDao {
         updatedSwipeIndex = swipeIndex
         updatedSwipeContent = currentContent
     }
+    override suspend fun getAllActiveMessagesForChat(chatId: Long): List<MessageEntity> =
+        messages.values.filter { it.chatId == chatId && it.isActive }.sortedBy { it.createdAt }
     override suspend fun getAllMessages(): List<MessageEntity> = messages.values.toList()
     override suspend fun setPinned(messageId: Long, pinned: Boolean) { pinnedStates[messageId] = pinned }
     override fun getPinnedMessages(chatId: Long): Flow<List<MessageEntity>> = flowOf(emptyList())

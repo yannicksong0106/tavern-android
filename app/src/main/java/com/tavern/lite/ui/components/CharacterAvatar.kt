@@ -29,6 +29,7 @@ fun CharacterAvatar(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(File(avatarPath))
+                .memoryCacheKey(avatarPath)
                 .crossfade(true)
                 .build(),
             contentDescription = name,

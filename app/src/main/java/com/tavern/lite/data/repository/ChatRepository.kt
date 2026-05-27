@@ -94,7 +94,7 @@ class ChatRepository @Inject constructor(
         chatDao.getAllChatsForCharacter(characterId)
 
     suspend fun getAllMessagesForChat(chatId: Long): List<MessageEntity> =
-        messageDao.getRecentMessages(chatId, 10000)
+        messageDao.getAllActiveMessagesForChat(chatId)
 
     // Swipe alternatives
     suspend fun addSwipe(messageId: Long, newContent: String) {
@@ -144,7 +144,7 @@ class ChatRepository @Inject constructor(
      */
     suspend fun createBranchFromMessage(chatId: Long, messageId: Long, branchName: String): Long {
         val branchId = createBranch(chatId, branchName)
-        val messages = messageDao.getRecentMessages(chatId, 10000)
+        val messages = messageDao.getAllActiveMessagesForChat(chatId)
         val targetIndex = messages.indexOfFirst { it.id == messageId }
         if (targetIndex < 0) return branchId
 
