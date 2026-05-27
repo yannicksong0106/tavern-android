@@ -34,8 +34,10 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ForkRight
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
@@ -100,6 +102,8 @@ fun MessageBubble(
     onStopSpeak: () -> Unit = {},
     onPinToggle: () -> Unit = {},
     onCopy: () -> Unit = {},
+    onResend: () -> Unit = {},
+    onBranch: () -> Unit = {},
     quotedMessage: MessageEntity? = null,
     quotedMessageName: String? = null,
     onQuoteClick: ((Long) -> Unit)? = null
@@ -441,6 +445,16 @@ fun MessageBubble(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+                ActionBarDivider()
+                // 重发（仅用户消息）
+                IconButton(onClick = onResend, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.resend),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             } else {
                 IconButton(onClick = onRegenerate, modifier = Modifier.size(32.dp)) {
                     Icon(
@@ -478,6 +492,17 @@ fun MessageBubble(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+            }
+
+            // 创建分支
+            ActionBarDivider()
+            IconButton(onClick = onBranch, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.ForkRight,
+                    contentDescription = stringResource(R.string.create_branch),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
             }
 
             ActionBarDivider()

@@ -466,6 +466,27 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 重发用户消息：删除该消息及之后的所有消息，然后重新发送
+     */
+    fun resendUserMessage(messageId: Long) {
+        val allMessages = messages.value
+        val msg = allMessages.find { it.id == messageId }
+        if (msg == null || msg.role != "user" || _isGenerating.value) return
+
+        val msgIndex = allMessages.indexOfFirst { it.id == messageId }
+        val content = msg.content
+
+        viewModelScope.launch {
+            // 删除该消息及之后的所有消息
+            for (i in msgIndex until allMessages.size) {
+                chatRepository.deleteMessage(allMessages[i].id)
+            }
+            // 重新发送
+            sendMessage(content)
+        }
+    }
+
     fun swipeLeft(messageId: Long) {
         viewModelScope.launch {
             val msg = findMessage(messageId) ?: return@launch

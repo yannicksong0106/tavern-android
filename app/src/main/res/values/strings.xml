@@ -57,6 +57,8 @@
     <string name="branch_previous">上一个分支</string>
     <string name="branch_next">下一个分支</string>
     <string name="branch_info">分支 %1$d / %2$d</string>
+    <string name="resend">重发</string>
+    <string name="create_branch">创建分支</string>
     <string name="time_just_now">刚刚</string>
     <string name="time_minutes">%d 分钟前</string>
     <string name="time_hours">%d 小时前</string>

@@ -519,6 +519,8 @@ fun ChatScreen(
                                         viewModel.copyMessage(context, message.id)
                                         Toast.makeText(context, context.getString(R.string.copy_message_toast), Toast.LENGTH_SHORT).show()
                                     },
+                                    onResend = { viewModel.resendUserMessage(message.id) },
+                                    onBranch = { viewModel.createBranchFromMessage(message.id, "分支 ${message.id}") },
                                     quotedMessage = quotedMsg,
                                     quotedMessageName = quotedName,
                                     onQuoteClick = scrollToMessage
