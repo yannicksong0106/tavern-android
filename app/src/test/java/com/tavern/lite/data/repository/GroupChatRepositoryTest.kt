@@ -150,6 +150,7 @@ private class FakeGroupMessageDao : MessageDao {
     override fun getMessagesForChat(chatId: Long): Flow<List<MessageEntity>> = flowOf(emptyList())
     override suspend fun getRecentMessages(chatId: Long, limit: Int): List<MessageEntity> = emptyList()
     override suspend fun getLastMessageForChat(chatId: Long): MessageEntity? = null
+    override suspend fun getLastUserMessage(chatId: Long): MessageEntity? = null
     override suspend fun getMessageById(id: Long): MessageEntity? = null
     override suspend fun getMessageCount(chatId: Long): Int = 0
     override suspend fun insert(message: MessageEntity): Long = 1

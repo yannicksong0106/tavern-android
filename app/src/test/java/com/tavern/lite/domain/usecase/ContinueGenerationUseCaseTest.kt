@@ -81,6 +81,7 @@ class ContinueGenerationUseCaseTest {
             MessageEntity(id = 1, chatId = 100, role = "user", content = "Hello"),
             MessageEntity(id = 2, chatId = 100, role = "assistant", content = "Hi!")
         )
+        coEvery { chatRepository.getLastUserMessage(any()) } returns MessageEntity(id = 1, chatId = 100, role = "user", content = "Hello")
         coEvery { worldBookRepository.matchEntriesRecursive(any(), any()) } returns emptyList()
         coEvery { memoryRepository.getRelevantAtoms(any(), any()) } returns emptyList()
         coEvery { memoryRepository.touchAtoms(any()) } returns Unit

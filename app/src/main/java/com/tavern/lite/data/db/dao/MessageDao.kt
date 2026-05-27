@@ -20,6 +20,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE chat_id = :chatId AND is_active = 1 ORDER BY created_at DESC LIMIT 1")
     suspend fun getLastMessageForChat(chatId: Long): MessageEntity?
 
+    @Query("SELECT * FROM messages WHERE chat_id = :chatId AND is_active = 1 AND role = 'user' ORDER BY created_at DESC LIMIT 1")
+    suspend fun getLastUserMessage(chatId: Long): MessageEntity?
+
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun getMessageById(id: Long): MessageEntity?
 

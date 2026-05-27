@@ -56,6 +56,9 @@ class ChatRepository @Inject constructor(
     suspend fun getLastMessageForChat(chatId: Long): MessageEntity? =
         messageDao.getLastMessageForChat(chatId)
 
+    suspend fun getLastUserMessage(chatId: Long): MessageEntity? =
+        messageDao.getLastUserMessage(chatId)
+
     suspend fun sendMessage(chatId: Long, content: String, role: String, characterId: Long? = null, replyToId: Long? = null): Long {
         val id = messageDao.insert(
             MessageEntity(chatId = chatId, role = role, content = content, characterId = characterId, replyToId = replyToId)

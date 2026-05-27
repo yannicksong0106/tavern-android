@@ -39,8 +39,7 @@ class ContinueGenerationUseCase @Inject constructor(
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
 
         val worldBookEntries = if (character.worldBookId != null) {
-            val lastUserMsg = chatRepository.getRecentMessages(chatId, 100)
-                .lastOrNull { it.role == "user" }
+            val lastUserMsg = chatRepository.getLastUserMessage(chatId)
             worldBookRepository.matchEntriesRecursive(character.worldBookId, lastUserMsg?.content ?: "")
         } else emptyList()
 

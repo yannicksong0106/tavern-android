@@ -157,6 +157,8 @@ private class FakeMessageDao : MessageDao {
         messages.values.filter { it.chatId == chatId && it.isActive }.sortedByDescending { it.createdAt }.take(limit)
     override suspend fun getLastMessageForChat(chatId: Long): MessageEntity? =
         messages.values.filter { it.chatId == chatId && it.isActive }.maxByOrNull { it.createdAt }
+    override suspend fun getLastUserMessage(chatId: Long): MessageEntity? =
+        messages.values.filter { it.chatId == chatId && it.isActive && it.role == "user" }.maxByOrNull { it.createdAt }
     override suspend fun getMessageById(id: Long): MessageEntity? = messages[id]
     override suspend fun getMessageCount(chatId: Long): Int =
         messages.values.count { it.chatId == chatId && it.isActive }
