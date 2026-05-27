@@ -179,7 +179,7 @@ fun ScriptScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(scripts, key = { it.id }) { script ->
+                    items(scripts, key = { it.id }, contentType = { "script" }) { script ->
                         ScriptCard(
                             script = script,
                             onEdit = { editingScript = script },

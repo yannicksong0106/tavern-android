@@ -261,7 +261,7 @@ fun ChatListScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(padding)
             ) {
-                items(chatsWithLastMessage, key = { it.id }) { chatWithMsg ->
+                items(chatsWithLastMessage, key = { it.id }, contentType = { "chat" }) { chatWithMsg ->
                     val chat = chatWithMsg.toChatEntity()
                     val lastMsg = if (chatWithMsg.lastMessageContent != null) {
                         Pair(chatWithMsg.lastMessageRole ?: "", chatWithMsg.lastMessageContent)

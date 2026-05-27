@@ -107,9 +107,9 @@
 - [ ] N3 扩展存储（ExtensionConfigEntity）
 - [ ] N4 扩展 UI（扩展商店/启用/禁用）
 
-### Phase O：最终打磨  ← 待做
+### Phase O：最终打磨  ← 进行中
 
-- [ ] O1 性能优化（已优化：Gradle caching, LRU caches, O(1) lookups, dedicated DB queries）
+- [x] O1 性能优化（已优化：Gradle caching, LRU caches, O(1) lookups, dedicated DB queries, derivedStateOf, contentType for all LazyColumn/LazyRow, hoisted LocalContext）
 - [ ] O2 无障碍（TalkBack, contentDescription, semantics）
 - [ ] O3 多语言（i18n: 英文/日文/韩文字符串资源）
 - [x] O4 测试补充（当前 400 tests, 目标 400+）

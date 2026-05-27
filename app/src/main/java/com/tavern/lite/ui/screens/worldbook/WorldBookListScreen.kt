@@ -68,6 +68,7 @@ fun WorldBookListScreen(
     var deletingBook by remember { mutableStateOf<WorldBookEntity?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJson by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     // 创建对话框
     if (showCreateDialog) {
@@ -196,8 +197,7 @@ fun WorldBookListScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(padding)
             ) {
-                items(worldBooks, key = { it.id }) { book ->
-                    val context = LocalContext.current
+                items(worldBooks, key = { it.id }, contentType = { "world_book" }) { book ->
                     WorldBookCard(
                         worldBook = book,
                         onClick = { onWorldBookClick(book.id) },

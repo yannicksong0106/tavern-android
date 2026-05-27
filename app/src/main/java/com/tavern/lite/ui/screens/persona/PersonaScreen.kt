@@ -138,7 +138,7 @@ fun PersonaScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(padding)
             ) {
-                items(personas, key = { it.id }) { persona ->
+                items(personas, key = { it.id }, contentType = { "persona" }) { persona ->
                     PersonaCard(
                         persona = persona,
                         onEdit = { editingPersona = persona },

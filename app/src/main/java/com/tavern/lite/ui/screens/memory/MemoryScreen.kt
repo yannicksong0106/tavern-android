@@ -54,6 +54,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -275,8 +276,12 @@ fun MemoryScreen(
                 }
             } else if (selectedCategory == null && !searchActive) {
                 // "All" tab: grouped by core vs temporary
-                val coreAtoms = displayAtoms.filter { MemoryCategory.fromKey(it.category).isCore }
-                val temporaryAtoms = displayAtoms.filter { !MemoryCategory.fromKey(it.category).isCore }
+                val coreAtoms by remember(displayAtoms) {
+                    derivedStateOf { displayAtoms.filter { MemoryCategory.fromKey(it.category).isCore } }
+                }
+                val temporaryAtoms by remember(displayAtoms) {
+                    derivedStateOf { displayAtoms.filter { !MemoryCategory.fromKey(it.category).isCore } }
+                }
 
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -289,7 +294,7 @@ fun MemoryScreen(
                                 count = coreAtoms.size
                             )
                         }
-                        items(coreAtoms, key = { it.id }) { atom ->
+                        items(coreAtoms, key = { it.id }, contentType = { "memory_atom" }) { atom ->
                             MemoryCard(
                                 atom = atom,
                                 onEdit = { viewModel.startEdit(atom) },
@@ -304,7 +309,7 @@ fun MemoryScreen(
                                 count = temporaryAtoms.size
                             )
                         }
-                        items(temporaryAtoms, key = { it.id }) { atom ->
+                        items(temporaryAtoms, key = { it.id }, contentType = { "memory_atom" }) { atom ->
                             MemoryCard(
                                 atom = atom,
                                 isTemporary = true,
@@ -319,7 +324,7 @@ fun MemoryScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(displayAtoms, key = { it.id }) { atom ->
+                    items(displayAtoms, key = { it.id }, contentType = { "memory_atom" }) { atom ->
                         val isTemp = MemoryCategory.fromKey(atom.category) == MemoryCategory.TEMPORARY
                         MemoryCard(
                             atom = atom,
@@ -344,7 +349,7 @@ private fun CharacterSelectorRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(characters, key = { it.id }) { character ->
+        items(characters, key = { it.id }, contentType = { "character" }) { character ->
             val isSelected = character.id == selectedId
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

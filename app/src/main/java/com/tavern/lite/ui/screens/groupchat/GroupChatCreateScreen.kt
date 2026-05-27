@@ -128,7 +128,7 @@ fun GroupChatCreateScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(characters, key = { it.id }) { character ->
+                    items(characters, key = { it.id }, contentType = { "character" }) { character ->
                         val isSelected = character.id in selectedIds
                         CharacterSelectItem(
                             character = character,

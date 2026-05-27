@@ -199,7 +199,7 @@ fun PresetScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    items(filteredPresets, key = { it.id }) { preset ->
+                    items(filteredPresets, key = { it.id }, contentType = { "preset" }) { preset ->
                         PresetItem(
                             preset = preset,
                             onClick = {
