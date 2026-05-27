@@ -709,6 +709,73 @@ class ChatViewModelTest {
         assertFalse(ChatActiveTracker.isActive(999L))
     }
 
+    // ==================== generateImage ====================
+
+    @Test
+    fun `generateImage ignores blank prompt`() = runTest {
+        viewModel.generateImage("")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { imageGenerationService.generateImage(any(), any()) }
+    }
+
+    @Test
+    fun `generateImage handles CancellationException correctly`() = runTest {
+        coEvery { imageGenerationService.generateImage(any(), any()) } throws CancellationException()
+
+        viewModel.generateImage("a cat")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGenerating.value)
+    }
+
+    @Test
+    fun `generateImage calls service with correct config`() = runTest {
+        coEvery { imageGenerationService.generateImage(any(), any()) } returns "/tmp/image.png"
+        coEvery {
+            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
+        } returns null
+
+        viewModel.generateImage("a cute cat")
+        advanceUntilIdle()
+
+        coVerify { imageGenerationService.generateImage("a cute cat", testConfig) }
+    }
+
+    @Test
+    fun `generateImage sends message on success`() = runTest {
+        coEvery { imageGenerationService.generateImage(any(), any()) } returns "/tmp/image.png"
+        coEvery {
+            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
+        } returns null
+
+        viewModel.generateImage("a cute cat")
+        advanceUntilIdle()
+
+        coVerify {
+            chatRepository.sendMessage(
+                chatId = CHAT_ID,
+                content = "/imagine a cute cat",
+                role = "user",
+                imagePaths = listOf("/tmp/image.png")
+            )
+        }
+    }
+
+    @Test
+    fun `generateImage shows toast on service failure`() = runTest {
+        coEvery { imageGenerationService.generateImage(any(), any()) } returns null
+
+        val toasts = mutableListOf<String>()
+        val job = launch { viewModel.toastMessage.collect { toasts.add(it) } }
+
+        viewModel.generateImage("a cat")
+        advanceUntilIdle()
+
+        assertTrue(toasts.any { it.contains("图片生成失败") })
+        job.cancel()
+    }
+
     // ==================== getCharacterForMessage ====================
 
     @Test

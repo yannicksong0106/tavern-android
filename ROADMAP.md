@@ -112,7 +112,7 @@
 - [ ] O1 性能优化（已优化：Gradle caching, LRU caches, O(1) lookups, dedicated DB queries）
 - [ ] O2 无障碍（TalkBack, contentDescription, semantics）
 - [ ] O3 多语言（i18n: 英文/日文/韩文字符串资源）
-- [ ] O4 测试补充（当前 346 tests, 目标 400+）
+- [x] O4 测试补充（当前 400 tests, 目标 400+）
 - [ ] O5 发布（Play Store preparation, screenshots, listing）
 
 ---
