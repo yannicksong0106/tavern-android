@@ -10,6 +10,8 @@ import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.util.SwipeUtils
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -61,9 +63,9 @@ class ChatRepository @Inject constructor(
     suspend fun getLastUserMessage(chatId: Long): MessageEntity? =
         messageDao.getLastUserMessage(chatId)
 
-    suspend fun sendMessage(chatId: Long, content: String, role: String, characterId: Long? = null, replyToId: Long? = null): Long {
+    suspend fun sendMessage(chatId: Long, content: String, role: String, characterId: Long? = null, replyToId: Long? = null, imagePaths: List<String> = emptyList()): Long {
         val id = messageDao.insert(
-            MessageEntity(chatId = chatId, role = role, content = content, characterId = characterId, replyToId = replyToId)
+            MessageEntity(chatId = chatId, role = role, content = content, characterId = characterId, replyToId = replyToId, imagePaths = JsonArray(imagePaths.map { JsonPrimitive(it) }).toString())
         )
         chatDao.updateTimestamp(chatId)
         return id

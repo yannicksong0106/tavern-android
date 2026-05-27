@@ -41,5 +41,7 @@ data class MessageEntity(
     @ColumnInfo(name = "swipe_content", defaultValue = "[]") val swipeContent: String = "[]",
     @ColumnInfo(name = "swipe_index", defaultValue = "0") val swipeIndex: Int = 0,
     @ColumnInfo(name = "reply_to_id") val replyToId: Long? = null,
-    @ColumnInfo(name = "is_pinned", defaultValue = "0") val isPinned: Boolean = false
+    @ColumnInfo(name = "is_pinned", defaultValue = "0") val isPinned: Boolean = false,
+    // 图片附件路径列表（JSON array of file paths）
+    @ColumnInfo(name = "image_paths", defaultValue = "[]") val imagePaths: String = "[]"
 )

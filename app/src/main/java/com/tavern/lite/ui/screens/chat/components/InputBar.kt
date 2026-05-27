@@ -1,6 +1,7 @@
 package com.tavern.lite.ui.screens.chat.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -18,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Stop
@@ -40,13 +44,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.util.TokenEstimator
+import java.io.File
 
 @Composable
 fun InputBar(
@@ -63,6 +70,9 @@ fun InputBar(
     inputTokens: Int = 0,
     isListening: Boolean = false,
     onVoiceInput: () -> Unit = {},
+    imagePaths: List<String> = emptyList(),
+    onAddImage: () -> Unit = {},
+    onRemoveImage: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
@@ -92,6 +102,44 @@ fun InputBar(
             modifier = modifier
                 .background(MaterialTheme.colorScheme.surface)
         ) {
+        // 选中图片预览
+        if (imagePaths.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                items(imagePaths) { path ->
+                    Box(modifier = Modifier.size(64.dp)) {
+                        AsyncImage(
+                            model = File(path),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        IconButton(
+                            onClick = { onRemoveImage(path) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.remove_image),
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier
@@ -145,6 +193,22 @@ fun InputBar(
                         )
                     }
                 }
+                // 图片附件按钮
+                IconButton(
+                    onClick = onAddImage,
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = stringResource(R.string.add_image),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 // 语音输入按钮（输入为空时显示）
                 if (value.isBlank() && !isListening) {
                     IconButton(
@@ -181,22 +245,23 @@ fun InputBar(
                         )
                     }
                 }
+                val canSend = value.isNotBlank() || imagePaths.isNotEmpty()
                 IconButton(
                     onClick = onSend,
-                    enabled = value.isNotBlank(),
+                    enabled = canSend,
                     modifier = Modifier
                         .padding(start = 4.dp)
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(
-                            if (value.isNotBlank()) MaterialTheme.colorScheme.primary
+                            if (canSend) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.surfaceVariant
                         )
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = stringResource(R.string.send),
-                        tint = if (value.isNotBlank())
+                        tint = if (canSend)
                             MaterialTheme.colorScheme.onPrimary
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant,

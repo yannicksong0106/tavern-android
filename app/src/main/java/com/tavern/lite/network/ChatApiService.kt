@@ -320,7 +320,25 @@ class ChatApiService @Inject constructor(
             messages.forEach { msg ->
                 put(JSONObject().apply {
                     put("role", msg.role)
-                    put("content", msg.content)
+                    if (msg.imageUrls.isNotEmpty()) {
+                        // multimodal: content 为数组，包含 text + image_url 部分
+                        put("content", JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("type", "text")
+                                put("text", msg.content)
+                            })
+                            msg.imageUrls.forEach { url ->
+                                put(JSONObject().apply {
+                                    put("type", "image_url")
+                                    put("image_url", JSONObject().apply {
+                                        put("url", url)
+                                    })
+                                })
+                            }
+                        })
+                    } else {
+                        put("content", msg.content)
+                    }
                     // 思维链模型要求传回 reasoning_content
                     if (msg.reasoningContent != null) {
                         put("reasoning_content", msg.reasoningContent)
@@ -334,7 +352,9 @@ class ChatApiService @Inject constructor(
 data class ChatMessage(
     val role: String,
     val content: String,
-    val reasoningContent: String? = null
+    val reasoningContent: String? = null,
+    // 图片附件（base64 data URI 列表），非空时 content 以 multimodal 数组格式发送
+    val imageUrls: List<String> = emptyList()
 )
 
 class ApiException(val code: Int, override val message: String) : Exception(message)

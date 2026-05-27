@@ -43,7 +43,8 @@ object PromptBuilder {
         memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         authorNote: AuthorNoteEntity? = null,
         persona: PersonaEntity? = null,
-        preset: PresetEntity? = null
+        preset: PresetEntity? = null,
+        imageUrls: List<String> = emptyList()
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -111,8 +112,8 @@ object PromptBuilder {
             ))
         }
 
-        // 6. 当前用户消息
-        messages.add(ChatMessage(role = "user", content = userMessage))
+        // 6. 当前用户消息（支持 multimodal 图片附件）
+        messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
 
         return messages
     }
@@ -304,7 +305,8 @@ object PromptBuilder {
         memoryAtoms: List<MemoryAtomEntity> = emptyList(),
         persona: PersonaEntity? = null,
         authorNote: AuthorNoteEntity? = null,
-        preset: PresetEntity? = null
+        preset: PresetEntity? = null,
+        imageUrls: List<String> = emptyList()
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -369,7 +371,7 @@ object PromptBuilder {
         }
 
         // 6. Current user message
-        messages.add(ChatMessage(role = "user", content = userMessage))
+        messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
 
         return messages
     }

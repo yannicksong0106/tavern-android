@@ -11,6 +11,8 @@ import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.util.ImageUtils
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,10 +35,11 @@ class SendMessageUseCase @Inject constructor(
         userContent: String,
         config: ApiConfig,
         replyToId: Long? = null,
+        imagePaths: List<String> = emptyList(),
     ): MessageExecutionHelper.ExecutionResult? {
-        val processedContent = if (userContent.isNotBlank()) {
+        val processedContent = if (userContent.isNotBlank() || imagePaths.isNotEmpty()) {
             val processed = scriptRepository.applyScripts(character.id, userContent, 0)
-            chatRepository.sendMessage(chatId, processed, "user", replyToId = replyToId)
+            chatRepository.sendMessage(chatId, processed, "user", replyToId = replyToId, imagePaths = imagePaths)
             processed
         } else ""
 
@@ -55,6 +58,8 @@ class SendMessageUseCase @Inject constructor(
         val persona = helper.personasafe(character.id)
         val preset = presetRepository.resolveEffectivePreset(chatId, character.id)
 
+        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+
         val promptMessages = PromptBuilder.build(
             character = character,
             userMessage = processedContent,
@@ -65,7 +70,8 @@ class SendMessageUseCase @Inject constructor(
             memoryAtoms = memoryAtoms,
             authorNote = authorNote,
             persona = persona,
-            preset = preset
+            preset = preset,
+            imageUrls = imageUrls
         )
 
         return helper.executeAndSave(chatId, character.id, character.name, promptMessages, config, processedContent)
@@ -80,12 +86,15 @@ class SendMessageUseCase @Inject constructor(
         characters: List<CharacterEntity>,
         userContent: String,
         config: ApiConfig,
+        imagePaths: List<String> = emptyList(),
     ): List<Pair<Long, MessageExecutionHelper.ExecutionResult>> {
-        val processedContent = if (userContent.isNotBlank()) {
+        val processedContent = if (userContent.isNotBlank() || imagePaths.isNotEmpty()) {
             val processed = scriptRepository.applyScripts(characters.first().id, userContent, 0)
-            chatRepository.sendMessage(chatId, processed, "user")
+            chatRepository.sendMessage(chatId, processed, "user", imagePaths = imagePaths)
             processed
         } else ""
+
+        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
 
         val results = mutableListOf<Pair<Long, MessageExecutionHelper.ExecutionResult>>()
         val characterMap = characters.associateBy { it.id }
@@ -124,7 +133,8 @@ class SendMessageUseCase @Inject constructor(
                 memoryAtoms = memoryAtoms,
                 persona = persona,
                 authorNote = authorNote,
-                preset = preset
+                preset = preset,
+                imageUrls = imageUrls
             )
 
             val result = helper.executeAndSave(chatId, char.id, char.name, promptMessages, config, processedContent)
@@ -153,12 +163,15 @@ class SendMessageUseCase @Inject constructor(
         targetCharacter: CharacterEntity,
         userContent: String,
         config: ApiConfig,
+        imagePaths: List<String> = emptyList(),
     ): MessageExecutionHelper.ExecutionResult? {
-        val processedContent = if (userContent.isNotBlank()) {
+        val processedContent = if (userContent.isNotBlank() || imagePaths.isNotEmpty()) {
             val processed = scriptRepository.applyScripts(targetCharacter.id, userContent, 0)
-            chatRepository.sendMessage(chatId, processed, "user")
+            chatRepository.sendMessage(chatId, processed, "user", imagePaths = imagePaths)
             processed
         } else ""
+
+        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
 
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
         val persona = helper.personasafe(targetCharacter.id)
@@ -189,7 +202,8 @@ class SendMessageUseCase @Inject constructor(
             memoryAtoms = memoryAtoms,
             persona = persona,
             authorNote = authorNote,
-            preset = preset
+            preset = preset,
+            imageUrls = imageUrls
         )
 
         return helper.executeAndSave(chatId, targetCharacter.id, targetCharacter.name, promptMessages, config, userContent)

@@ -26,6 +26,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -326,6 +334,35 @@ fun MessageBubble(
                         }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                // 显示图片附件
+                val imagePathsList = remember(message.imagePaths) {
+                    try {
+                        if (message.imagePaths != "[]" && message.imagePaths.isNotBlank()) {
+                            Json.parseToJsonElement(message.imagePaths).jsonArray
+                                .map { it.jsonPrimitive.content }
+                        } else emptyList()
+                    } catch (_: Exception) { emptyList() }
+                }
+                if (imagePathsList.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (message.content.isNotBlank()) 6.dp else 0.dp)
+                    ) {
+                        items(imagePathsList) { path ->
+                            AsyncImage(
+                                model = File(path),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        }
+                    }
                 }
 
                 val content = message.content.ifEmpty { stringResource(R.string.empty_message) }
