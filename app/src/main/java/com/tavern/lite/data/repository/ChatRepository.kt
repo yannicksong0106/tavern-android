@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.TransactionRunner
 import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
@@ -14,6 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ChatRepository @Inject constructor(
+    private val tx: TransactionRunner,
     private val chatDao: ChatDao,
     private val messageDao: MessageDao,
     private val branchDao: BranchDao
@@ -88,7 +90,7 @@ class ChatRepository @Inject constructor(
     // 分支操作
     suspend fun getBranchIds(chatId: Long): List<Long?> = messageDao.getBranchIds(chatId)
 
-    suspend fun switchBranch(chatId: Long, branchId: Long) {
+    suspend fun switchBranch(chatId: Long, branchId: Long) = tx.run {
         messageDao.deactivateAllMessages(chatId)
         messageDao.activateBranch(chatId, branchId)
     }
@@ -100,10 +102,9 @@ class ChatRepository @Inject constructor(
         messageDao.getAllActiveMessagesForChat(chatId)
 
     // Swipe alternatives
-    suspend fun addSwipe(messageId: Long, newContent: String) {
-        val msg = messageDao.getMessageById(messageId) ?: return
+    suspend fun addSwipe(messageId: Long, newContent: String) = tx.run {
+        val msg = messageDao.getMessageById(messageId) ?: return@run
         val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent).toMutableList()
-        // If current content is not in swipes, add it first
         if (swipes.isEmpty() || swipes.last() != msg.content) {
             swipes.add(msg.content)
         }
@@ -112,10 +113,10 @@ class ChatRepository @Inject constructor(
         messageDao.updateSwipe(messageId, SwipeUtils.toJsonArray(swipes), newIndex, newContent)
     }
 
-    suspend fun switchSwipe(messageId: Long, newIndex: Int) {
-        val msg = messageDao.getMessageById(messageId) ?: return
+    suspend fun switchSwipe(messageId: Long, newIndex: Int) = tx.run {
+        val msg = messageDao.getMessageById(messageId) ?: return@run
         val swipes = SwipeUtils.parseSwipeContent(msg.swipeContent)
-        if (newIndex < 0 || newIndex >= swipes.size) return
+        if (newIndex < 0 || newIndex >= swipes.size) return@run
         messageDao.updateSwipeIndex(messageId, newIndex, swipes[newIndex])
     }
 

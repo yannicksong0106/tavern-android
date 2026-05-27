@@ -48,7 +48,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         PresetEntity::class,
         BranchEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -370,6 +370,13 @@ abstract class TavernDatabase : RoomDatabase() {
 
                 // chats 增加 preset_id 字段
                 db.execSQL("ALTER TABLE chats ADD COLUMN preset_id INTEGER")
+            }
+        }
+
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // branch_id 索引：分支切换查询优化
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_branch_id ON messages(branch_id)")
             }
         }
 

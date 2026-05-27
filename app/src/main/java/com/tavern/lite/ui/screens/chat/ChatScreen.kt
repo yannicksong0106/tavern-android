@@ -111,6 +111,7 @@ fun ChatScreen(
     val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
+    val estimatedContextTokens by viewModel.estimatedContextTokens.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -594,6 +595,8 @@ fun ChatScreen(
                     showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
                     isGroupChat = isGroupChat,
                     groupCharacters = groupCharacters,
+                    contextTokens = estimatedContextTokens,
+                    inputTokens = if (inputText.isNotBlank()) viewModel.estimateInputTokens(inputText) else 0,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

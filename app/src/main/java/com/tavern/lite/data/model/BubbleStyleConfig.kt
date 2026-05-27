@@ -1,7 +1,9 @@
 package com.tavern.lite.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class BubbleStyleConfig(
     val userBubbleColor: Long = 0L,       // 0 = use theme default

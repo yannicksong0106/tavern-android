@@ -1,11 +1,13 @@
 package com.tavern.lite.data.db.entity
 
+import androidx.compose.runtime.Stable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+@Stable
 @Entity(
     tableName = "messages",
     foreignKeys = [
@@ -20,6 +22,7 @@ import androidx.room.PrimaryKey
         Index("chat_id"),
         Index("parent_id"),
         Index("character_id"),
+        Index("branch_id"),
         Index(value = ["chat_id", "is_active", "created_at"], name = "index_messages_chat_active_created"),
         Index(value = ["chat_id", "is_active", "is_pinned"], name = "index_messages_chat_active_pinned")
     ]

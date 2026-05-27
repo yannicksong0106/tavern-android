@@ -30,18 +30,21 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
-# Retrofit
+# Retrofit — only keep HTTP method interfaces, not the entire library
 -keepattributes Signature, Exceptions
--keep class retrofit2.** { *; }
 -keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
 
-# Markwon
--keep class io.noties.markwon.** { *; }
+# Markwon — keep plugin classes loaded via reflection
+-keep class io.noties.markwon.core.** { *; }
+-keep class io.noties.markwon.html.** { *; }
+-keep class io.noties.markwon.ext.latex.** { *; }
+-keep class io.noties.markwon.ext.strikethrough.** { *; }
 
-# Coil
--keep class coil.** { *; }
+# Coil — keep fetcher/decoder factories
+-keep class coil.fetch.** { *; }
+-keep class coil.decode.** { *; }
 
 # Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}

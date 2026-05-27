@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.util.TokenEstimator
 
 @Composable
 fun InputBar(
@@ -56,6 +57,8 @@ fun InputBar(
     showContinue: Boolean = false,
     isGroupChat: Boolean = false,
     groupCharacters: List<CharacterEntity> = emptyList(),
+    contextTokens: Int = 0,
+    inputTokens: Int = 0,
     modifier: Modifier = Modifier
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
@@ -162,6 +165,21 @@ fun InputBar(
                 }
             }
         }
+            // Token count display
+            if (contextTokens > 0) {
+                val totalTokens = contextTokens + inputTokens
+                val tokenText = if (inputTokens > 0) {
+                    "${TokenEstimator.formatTokenCount(totalTokens)} (${TokenEstimator.formatTokenCount(contextTokens)} + ${TokenEstimator.formatTokenCount(inputTokens)})"
+                } else {
+                    TokenEstimator.formatTokenCount(contextTokens)
+                }
+                Text(
+                    text = tokenText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
+                )
+            }
         } // Column
 
         if (showAtMenu && groupCharacters.isNotEmpty()) {

@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.TransactionRunner
 import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
@@ -27,7 +28,10 @@ class ChatRepositoryTest {
     fun setup() {
         fakeChatDao = FakeChatDao()
         fakeMessageDao = FakeMessageDao()
-        repository = ChatRepository(fakeChatDao, fakeMessageDao, FakeBranchDao())
+        val fakeTx = object : TransactionRunner {
+            override suspend fun <R> run(block: suspend () -> R): R = block()
+        }
+        repository = ChatRepository(fakeTx, fakeChatDao, fakeMessageDao, FakeBranchDao())
     }
 
     @Test

@@ -22,6 +22,7 @@ import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.SwipeUtils
+import com.tavern.lite.util.TokenEstimator
 import com.tavern.lite.util.TtsHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
@@ -124,6 +125,16 @@ class ChatViewModel @Inject constructor(
                 _messageMap.value = list.associateBy { it.id }
                 searchCacheVersion++
                 _searchCache.clear()
+                // Update token estimate
+                val char = _character.value
+                val tokens = if (char != null) {
+                    val systemOverhead = 500
+                    val historyTokens = list.sumOf { TokenEstimator.estimateText(it.content) + 4 }
+                    systemOverhead + historyTokens
+                } else {
+                    0
+                }
+                _estimatedContextTokens.value = tokens
             }
         }
 
@@ -501,6 +512,12 @@ class ChatViewModel @Inject constructor(
             chatRepository.togglePinMessage(messageId, !msg.isPinned)
         }
     }
+
+    // Token estimation for context window usage
+    private val _estimatedContextTokens = MutableStateFlow(0)
+    val estimatedContextTokens: StateFlow<Int> = _estimatedContextTokens.asStateFlow()
+
+    fun estimateInputTokens(text: String): Int = TokenEstimator.estimateText(text)
 
     val pinnedMessages: StateFlow<List<MessageEntity>> = chatRepository.getPinnedMessages(chatId)
         .distinctUntilChanged()

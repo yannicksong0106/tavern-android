@@ -1,9 +1,11 @@
 package com.tavern.lite.data.db.entity
 
+import androidx.compose.runtime.Stable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+@Stable
 @Entity(tableName = "characters")
 data class CharacterEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

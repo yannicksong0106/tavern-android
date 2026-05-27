@@ -3,6 +3,8 @@ package com.tavern.lite.di
 import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
+import com.tavern.lite.data.db.RoomTransactionRunner
+import com.tavern.lite.data.db.TransactionRunner
 import com.tavern.lite.data.db.TavernDatabase
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatCharacterDao
@@ -55,10 +57,15 @@ object AppModule {
             TavernDatabase.MIGRATION_17_18,
             TavernDatabase.MIGRATION_18_19,
             TavernDatabase.MIGRATION_19_20,
-            TavernDatabase.MIGRATION_20_21
+            TavernDatabase.MIGRATION_20_21,
+            TavernDatabase.MIGRATION_21_22
         ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
          .build()
     }
+
+    @Provides
+    @Singleton
+    fun provideTransactionRunner(db: TavernDatabase): TransactionRunner = RoomTransactionRunner(db)
 
     @Provides
     fun provideCharacterDao(db: TavernDatabase): CharacterDao = db.characterDao()
