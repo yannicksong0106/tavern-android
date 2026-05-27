@@ -61,7 +61,9 @@ class WorldBookEditViewModel @Inject constructor(
         keysSecondary: List<String>,
         constant: Boolean,
         selective: Boolean,
-        selectiveLogic: Int
+        selectiveLogic: Int,
+        depth: Int = 4,
+        position: Int = 1
     ) {
         viewModelScope.launch {
             worldBookRepository.insertEntry(
@@ -74,6 +76,8 @@ class WorldBookEditViewModel @Inject constructor(
                     constant = constant,
                     selective = selective,
                     selectiveLogic = selectiveLogic,
+                    depth = depth,
+                    position = position,
                     orderVal = (entries.value.maxOfOrNull { it.orderVal } ?: 0) + 1
                 )
             )

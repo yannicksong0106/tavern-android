@@ -89,7 +89,7 @@
 
 - [x] K1 高级 WI 字段（selective logic, group, depth, probability — 已在 C3 完成）
 - [x] K2 Prompt 模板（PresetEntity 已支持 systemPrompt/postHistoryInstructions/authorNote）
-- [ ] K3 注入深度/位置控制 UI（目前 depth 字段存在但无 UI 调整入口）
+- [x] K3 注入深度/位置控制 UI（目前 depth 字段存在但无 UI 调整入口）
 - [x] K4 Token 计数器（TokenEstimator 字符类别估算，InputBar 实时显示上下文 token 数）
 
 ### Phase L：UI 手势  ← 部分完成

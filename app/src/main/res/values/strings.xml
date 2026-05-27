@@ -189,6 +189,12 @@
     <string name="delete_entry_text">确定要删除「%s」吗？</string>
     <string name="no_entries_hint">点击右下角 + 添加条目</string>
     <string name="entry_comment">备注</string>
+    <string name="entry_depth">注入深度（从末尾算起）</string>
+    <string name="entry_position">注入位置</string>
+    <string name="position_before_an_short">作者注释前</string>
+    <string name="position_after_an_short">作者注释后</string>
+    <string name="position_before_main">主提示前</string>
+    <string name="position_after_main">主提示后</string>
     <string name="primary_keywords">主关键词（逗号分隔）</string>
     <string name="secondary_keywords">副关键词（逗号分隔）</string>
     <string name="content">内容</string>

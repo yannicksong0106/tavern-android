@@ -75,8 +75,8 @@ fun WorldBookEditScreen(
         EntryEditDialog(
             title = stringResource(R.string.add_entry),
             entry = null,
-            onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic ->
-                viewModel.addEntry(comment, content, keys, keysSecondary, constant, selective, selectiveLogic)
+            onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic, depth, position ->
+                viewModel.addEntry(comment, content, keys, keysSecondary, constant, selective, selectiveLogic, depth, position)
                 showAddEntryDialog = false
             },
             onDismiss = { showAddEntryDialog = false }
@@ -88,7 +88,7 @@ fun WorldBookEditScreen(
         EntryEditDialog(
             title = stringResource(R.string.edit_entry),
             entry = entry,
-            onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic ->
+            onConfirm = { comment, content, keys, keysSecondary, constant, selective, selectiveLogic, depth, position ->
                 viewModel.updateEntry(
                     entry.copy(
                         comment = comment,
@@ -97,7 +97,9 @@ fun WorldBookEditScreen(
                         keysSecondary = JsonArray(keysSecondary.map { JsonPrimitive(it) }).toString(),
                         constant = constant,
                         selective = selective,
-                        selectiveLogic = selectiveLogic
+                        selectiveLogic = selectiveLogic,
+                        depth = depth,
+                        position = position
                     )
                 )
                 editingEntry = null
@@ -310,7 +312,7 @@ private fun EntryCard(
 private fun EntryEditDialog(
     title: String,
     entry: WorldBookEntryEntity?,
-    onConfirm: (comment: String, content: String, keys: List<String>, keysSecondary: List<String>, constant: Boolean, selective: Boolean, selectiveLogic: Int) -> Unit,
+    onConfirm: (comment: String, content: String, keys: List<String>, keysSecondary: List<String>, constant: Boolean, selective: Boolean, selectiveLogic: Int, depth: Int, position: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     var comment by remember { mutableStateOf(entry?.comment ?: "") }
@@ -342,6 +344,9 @@ private fun EntryEditDialog(
         stringResource(R.string.logic_or),
         stringResource(R.string.logic_not)
     )
+    var depthText by remember { mutableStateOf((entry?.depth ?: 4).toString()) }
+    var position by remember { mutableStateOf(entry?.position ?: 1) }
+    var positionExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -425,6 +430,50 @@ private fun EntryEditDialog(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = depthText,
+                    onValueChange = { depthText = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.entry_depth)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val positionOptions = listOf(
+                    stringResource(R.string.position_after_an_short),
+                    stringResource(R.string.position_before_an_short),
+                    stringResource(R.string.position_after_main),
+                    stringResource(R.string.position_before_main)
+                )
+                ExposedDropdownMenuBox(
+                    expanded = positionExpanded,
+                    onExpandedChange = { positionExpanded = !positionExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = positionOptions.getOrElse(position) { positionOptions[0] },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.entry_position)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(positionExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = positionExpanded,
+                        onDismissRequest = { positionExpanded = false }
+                    ) {
+                        positionOptions.forEachIndexed { index, name ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    position = index
+                                    positionExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -432,7 +481,8 @@ private fun EntryEditDialog(
                 onClick = {
                     val keys = keysText.split(",").map { it.trim() }.filter { it.isNotBlank() }
                     val keys2 = keysSecondaryText.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                    onConfirm(comment, content, keys, keys2, constant, selective, selectiveLogic)
+                    val depth = depthText.toIntOrNull() ?: 4
+                    onConfirm(comment, content, keys, keys2, constant, selective, selectiveLogic, depth, position)
                 },
                 enabled = content.isNotBlank()
             ) { Text(stringResource(R.string.save)) }
