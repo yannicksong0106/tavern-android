@@ -5,11 +5,13 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RewriteQueriesToDropUnusedColumns
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.ChatWithLastMessage
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+@RewriteQueriesToDropUnusedColumns
 interface ChatDao {
 
     @Query("SELECT * FROM chats WHERE character_id = :characterId ORDER BY updated_at DESC")
