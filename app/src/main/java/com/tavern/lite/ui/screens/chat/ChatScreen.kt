@@ -1,6 +1,9 @@
 package com.tavern.lite.ui.screens.chat
 
+import android.Manifest
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.RepeatMode
@@ -112,6 +115,7 @@ fun ChatScreen(
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
     val estimatedContextTokens by viewModel.estimatedContextTokens.collectAsStateWithLifecycle()
+    val isListening by viewModel.isListening.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -159,6 +163,17 @@ fun ChatScreen(
 
     val listState = rememberLazyListState()
     var inputText by remember { mutableStateOf("") }
+    val voicePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.startVoiceInput { result ->
+                inputText = if (inputText.isBlank()) result else "$inputText $result"
+            }
+        } else {
+            Toast.makeText(context, context.getString(R.string.voice_permission_denied), Toast.LENGTH_SHORT).show()
+        }
+    }
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
     val pinnedMessages by viewModel.pinnedMessages.collectAsStateWithLifecycle()
     // O(1) 查找集合，避免在 LazyColumn items 中重复 O(n) 扫描
@@ -599,6 +614,14 @@ fun ChatScreen(
                     groupCharacters = groupCharacters,
                     contextTokens = estimatedContextTokens,
                     inputTokens = if (inputText.isNotBlank()) viewModel.estimateInputTokens(inputText) else 0,
+                    isListening = isListening,
+                    onVoiceInput = {
+                        if (isListening) {
+                            viewModel.stopVoiceInput()
+                        } else {
+                            voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

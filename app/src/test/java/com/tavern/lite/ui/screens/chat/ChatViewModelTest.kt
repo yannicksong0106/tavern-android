@@ -18,6 +18,7 @@ import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.TtsHelper
+import com.tavern.lite.util.SttHelper
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -59,6 +60,7 @@ class ChatViewModelTest {
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
     @MockK private lateinit var ttsHelper: TtsHelper
+    @MockK private lateinit var sttHelper: SttHelper
     @MockK private lateinit var markwon: Markwon
 
     private lateinit var viewModel: ChatViewModel
@@ -99,6 +101,10 @@ class ChatViewModelTest {
         every { ttsHelper.speakingMessageId } returns MutableStateFlow(null)
         every { ttsHelper.stop() } returns Unit
         every { ttsHelper.speak(any(), any()) } returns Unit
+        every { sttHelper.isListening } returns MutableStateFlow(false)
+        every { sttHelper.partialText } returns MutableStateFlow("")
+        every { sttHelper.stopListening() } returns Unit
+        every { sttHelper.shutdown() } returns Unit
 
         val savedStateHandle = SavedStateHandle(
             mapOf("characterId" to CHARACTER_ID, "chatId" to CHAT_ID)
@@ -116,6 +122,7 @@ class ChatViewModelTest {
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
             ttsHelper,
+            sttHelper,
             markwon
         )
     }
@@ -723,6 +730,7 @@ class ChatViewModelTest {
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
             ttsHelper,
+            sttHelper,
             markwon
         )
     }

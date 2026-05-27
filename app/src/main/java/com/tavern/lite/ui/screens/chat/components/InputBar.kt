@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +61,8 @@ fun InputBar(
     groupCharacters: List<CharacterEntity> = emptyList(),
     contextTokens: Int = 0,
     inputTokens: Int = 0,
+    isListening: Boolean = false,
+    onVoiceInput: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
@@ -138,6 +142,42 @@ fun InputBar(
                         Text(
                             text = stringResource(R.string.continue_generation),
                             style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+                // 语音输入按钮（输入为空时显示）
+                if (value.isBlank() && !isListening) {
+                    IconButton(
+                        onClick = onVoiceInput,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = stringResource(R.string.voice_input),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                // 正在录音时显示停止按钮
+                if (isListening) {
+                    IconButton(
+                        onClick = onVoiceInput,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Icon(
+                            Icons.Default.MicOff,
+                            contentDescription = stringResource(R.string.voice_input),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

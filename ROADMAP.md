@@ -81,7 +81,7 @@
 ### Phase J：TTS/STT/多模态  ← 部分完成
 
 - [x] J1 TTS 朗读（TtsHelper, auto-detect locale, speed/pitch 控制）
-- [ ] J2 STT 语音输入（SpeechRecognizer 集成）
+- [x] J2 STT 语音输入（SpeechRecognizer 集成）
 - [ ] J3 图片发送（multimodal API: base64 image in message）
 - [ ] J4 图片生成（DALL-E / Stable Diffusion API）
 

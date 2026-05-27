@@ -24,6 +24,7 @@ import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.SwipeUtils
 import com.tavern.lite.util.TokenEstimator
 import com.tavern.lite.util.TtsHelper
+import com.tavern.lite.util.SttHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.CancellationException
@@ -60,6 +61,7 @@ class ChatViewModel @Inject constructor(
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
     private val ttsHelper: TtsHelper,
+    private val sttHelper: SttHelper,
     val markwon: Markwon
 ) : ViewModel() {
 
@@ -724,6 +726,21 @@ class ChatViewModel @Inject constructor(
         ttsHelper.stop()
     }
 
+    // STT 语音输入
+    val isListening: StateFlow<Boolean> = sttHelper.isListening
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val sttPartialText: StateFlow<String> = sttHelper.partialText
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    fun startVoiceInput(onResult: (String) -> Unit) {
+        sttHelper.startListening(onResult = onResult)
+    }
+
+    fun stopVoiceInput() {
+        sttHelper.stopListening()
+    }
+
     fun copyMessage(context: Context, messageId: Long) {
         val msg = findMessage(messageId) ?: return
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -734,6 +751,7 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
         streamingJob?.cancel()
         ttsHelper.stop()
+        sttHelper.shutdown()
         ChatActiveTracker.clearActive(chatId)
     }
 
