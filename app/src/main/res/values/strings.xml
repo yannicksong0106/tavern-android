@@ -61,6 +61,12 @@
     <string name="create_branch">创建分支</string>
     <string name="voice_input">语音输入</string>
     <string name="voice_permission_denied">需要麦克风权限才能使用语音输入</string>
+    <string name="add_image">添加图片</string>
+    <string name="remove_image">移除图片</string>
+    <string name="generate_image">生成图片</string>
+    <string name="generating_image">正在生成图片…</string>
+    <string name="image_generation_failed">图片生成失败</string>
+    <string name="image_generation_only_openai">图片生成仅支持 OpenAI API</string>
     <string name="time_just_now">刚刚</string>
     <string name="time_minutes">%d 分钟前</string>
     <string name="time_hours">%d 小时前</string>

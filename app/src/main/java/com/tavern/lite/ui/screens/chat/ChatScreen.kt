@@ -1,8 +1,10 @@
 package com.tavern.lite.ui.screens.chat
 
 import android.Manifest
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.InfiniteRepeatableSpec
@@ -172,6 +174,25 @@ fun ChatScreen(
             }
         } else {
             Toast.makeText(context, context.getString(R.string.voice_permission_denied), Toast.LENGTH_SHORT).show()
+        }
+    }
+    var selectedImagePaths by remember { mutableStateOf(listOf<String>()) }
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(4)
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            val imageDir = java.io.File(context.filesDir, "chat_images")
+            imageDir.mkdirs()
+            val newPaths = uris.mapNotNull { uri ->
+                try {
+                    val file = java.io.File(imageDir, "img_${System.currentTimeMillis()}_${uris.indexOf(uri)}.jpg")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    file.absolutePath
+                } catch (_: Exception) { null }
+            }
+            selectedImagePaths = selectedImagePaths + newPaths
         }
     }
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
@@ -599,11 +620,20 @@ fun ChatScreen(
                     value = inputText,
                     onValueChange = { inputText = it },
                     onSend = {
-                        if (inputText.isNotBlank()) {
+                        if (inputText.isNotBlank() || selectedImagePaths.isNotEmpty()) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             selectedMessageId = null
-                            viewModel.sendMessage(inputText)
+                            // Handle /imagine command for image generation
+                            if (inputText.trimStart().startsWith("/imagine ")) {
+                                val prompt = inputText.trimStart().removePrefix("/imagine ").trim()
+                                if (prompt.isNotBlank()) {
+                                    viewModel.generateImage(prompt)
+                                }
+                            } else {
+                                viewModel.sendMessage(inputText, selectedImagePaths)
+                            }
                             inputText = ""
+                            selectedImagePaths = emptyList()
                         }
                     },
                     onStop = { viewModel.stopGeneration() },
@@ -621,6 +651,13 @@ fun ChatScreen(
                         } else {
                             voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
+                    },
+                    imagePaths = selectedImagePaths,
+                    onAddImage = {
+                        photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onRemoveImage = { path ->
+                        selectedImagePaths = selectedImagePaths.filter { it != path }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )

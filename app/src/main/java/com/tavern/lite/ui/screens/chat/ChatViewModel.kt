@@ -20,6 +20,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.ImageGenerationService
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.SwipeUtils
 import com.tavern.lite.util.TokenEstimator
@@ -60,6 +61,7 @@ class ChatViewModel @Inject constructor(
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
+    private val imageGenerationService: ImageGenerationService,
     private val ttsHelper: TtsHelper,
     private val sttHelper: SttHelper,
     val markwon: Markwon
@@ -167,22 +169,22 @@ class ChatViewModel @Inject constructor(
 
     private fun findMessage(id: Long): MessageEntity? = _messageMap.value[id]
 
-    fun sendMessage(content: String) {
-        if (content.isBlank() || _isGenerating.value) return
+    fun sendMessage(content: String, imagePaths: List<String> = emptyList()) {
+        if ((content.isBlank() && imagePaths.isEmpty()) || _isGenerating.value) return
 
         if (_isGroupChat.value) {
             val atResult = proactiveDialogueUseCase.parseAtMention(content, _groupCharacters.value)
             if (atResult != null) {
-                sendDirectMessage(atResult.second, atResult.first)
+                sendDirectMessage(atResult.second, atResult.first, imagePaths)
             } else {
-                sendGroupChatMessage(content)
+                sendGroupChatMessage(content, imagePaths)
             }
         } else {
-            sendSingleChatMessage(content)
+            sendSingleChatMessage(content, imagePaths)
         }
     }
 
-    private fun sendSingleChatMessage(content: String) {
+    private fun sendSingleChatMessage(content: String, imagePaths: List<String> = emptyList()) {
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
@@ -192,7 +194,7 @@ class ChatViewModel @Inject constructor(
                     val character = _character.value ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null)
+                    val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null, imagePaths)
                     if (result?.assistantMsgId != null && !wasCancelled) {
                         splitIntoMultipleMessages(result.assistantMsgId)
                         scheduleProactiveDialogue()
@@ -208,7 +210,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun sendGroupChatMessage(content: String) {
+    private fun sendGroupChatMessage(content: String, imagePaths: List<String> = emptyList()) {
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
@@ -226,7 +228,7 @@ class ChatViewModel @Inject constructor(
                         random.nextDouble() < responseChance
                     }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
 
-                    val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config)
+                    val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config, imagePaths)
                     for ((charId, result) in results) {
                         if (wasCancelled) break
                         _respondingCharacter.value = characters.find { it.id == charId }
@@ -260,7 +262,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity) {
+    private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity, imagePaths: List<String> = emptyList()) {
         wasCancelled = false
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
@@ -271,7 +273,7 @@ class ChatViewModel @Inject constructor(
                     val characters = _groupCharacters.value
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config)
+                    val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config, imagePaths)
                     if (result?.assistantMsgId != null && !wasCancelled) {
                         splitIntoMultipleMessages(result.assistantMsgId)
                     }
@@ -432,6 +434,42 @@ class ChatViewModel @Inject constructor(
                     _isGenerating.value = false
                     streamingJob = null
                 }
+            }
+        }
+    }
+
+    /**
+     * Generate an image using DALL-E API and send it as a message attachment.
+     * Triggered by "/imagine <prompt>" command.
+     */
+    fun generateImage(prompt: String) {
+        if (prompt.isBlank() || _isGenerating.value) return
+
+        viewModelScope.launch {
+            _isGenerating.value = true
+            try {
+                val config = apiConfigStore.configFlow.first()
+                val character = _character.value ?: return@launch
+
+                val imagePath = imageGenerationService.generateImage(prompt, config)
+                if (imagePath != null) {
+                    // Send the generated image as a user message with attachment
+                    chatRepository.sendMessage(
+                        chatId = chatId,
+                        content = "/imagine $prompt",
+                        role = "user",
+                        imagePaths = listOf(imagePath)
+                    )
+                    // Let the AI respond to the image
+                    sendSingleChatMessage("", listOf(imagePath))
+                } else {
+                    _toastMessage.emit("图片生成失败，请检查 OpenAI API 配置")
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _toastMessage.emit(classifyError(e))
+            } finally {
+                _isGenerating.value = false
             }
         }
     }

@@ -16,6 +16,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.ImageGenerationService
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.TtsHelper
 import com.tavern.lite.util.SttHelper
@@ -59,6 +60,7 @@ class ChatViewModelTest {
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
+    @MockK private lateinit var imageGenerationService: ImageGenerationService
     @MockK private lateinit var ttsHelper: TtsHelper
     @MockK private lateinit var sttHelper: SttHelper
     @MockK private lateinit var markwon: Markwon
@@ -121,6 +123,7 @@ class ChatViewModelTest {
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
+            imageGenerationService,
             ttsHelper,
             sttHelper,
             markwon
@@ -729,6 +732,7 @@ class ChatViewModelTest {
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
+            imageGenerationService,
             ttsHelper,
             sttHelper,
             markwon

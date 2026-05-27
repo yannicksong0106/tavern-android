@@ -78,21 +78,21 @@
 
 ## 待完成 Phases
 
-### Phase J：TTS/STT/多模态  ← 部分完成
+### Phase J：TTS/STT/多模态  ← ✅ 已完成
 
 - [x] J1 TTS 朗读（TtsHelper, auto-detect locale, speed/pitch 控制）
 - [x] J2 STT 语音输入（SpeechRecognizer 集成）
-- [ ] J3 图片发送（multimodal API: base64 image in message）
-- [ ] J4 图片生成（DALL-E / Stable Diffusion API）
+- [x] J3 图片发送（multimodal API: base64 image in message）
+- [x] J4 图片生成（DALL-E API, /imagine 命令触发）
 
-### Phase K：高级 WI + Prompt  ← 部分完成
+### Phase K：高级 WI + Prompt  ← ✅ 已完成
 
 - [x] K1 高级 WI 字段（selective logic, group, depth, probability — 已在 C3 完成）
 - [x] K2 Prompt 模板（PresetEntity 已支持 systemPrompt/postHistoryInstructions/authorNote）
 - [x] K3 注入深度/位置控制 UI（目前 depth 字段存在但无 UI 调整入口）
 - [x] K4 Token 计数器（TokenEstimator 字符类别估算，InputBar 实时显示上下文 token 数）
 
-### Phase L：UI 手势  ← 部分完成
+### Phase L：UI 手势  ← ✅ 已完成
 
 - [x] L2 消息搜索（ChatViewModel: searchQuery, searchResults, searchIndex）
 - [x] L5 收藏置顶（MessageEntity.isPinned, togglePinMessage, getPinnedMessages）
@@ -131,17 +131,15 @@ Phase H (群聊)           ← ✅ 已完成
 Phase I (扩展 API)       ← ✅ 已完成
 Phase M (数据管理)       ← ✅ 已完成
 
-Phase J (TTS/STT/多模态) ← 部分完成 (J1 ✅, J2-J4 待做)
-Phase K (高级 WI+Prompt) ← 部分完成 (K1-K2 ✅, K3-K4 待做)
-Phase L (UI 手势)        ← 部分完成 (L2/L5 ✅, L1/L3/L4 待做)
+Phase J (TTS/STT/多模态) ← ✅ 已完成 (J1-J4 全部完成)
+Phase K (高级 WI+Prompt) ← ✅ 已完成 (K1-K4 全部完成)
+Phase L (UI 手势)        ← ✅ 已完成 (L1-L5 全部完成)
 Phase N (扩展系统)       ← 待做
 Phase O (最终打磨)       ← 待做
 ```
 
 **下一步优先级:**
-1. **K4 Token 计数器** — 用户高频需求，实时显示上下文占用
-2. **L1 滑动操作 + L3 上下文菜单** — 移动端核心交互体验
-3. **J2 STT 语音输入** — 移动端差异化功能
-4. **L4 标签筛选** — 已有数据层，只需加 UI
+1. **N1-N4 扩展系统** — 插件化架构，将 TTS/记忆/正则等重构为扩展
+2. **O1-O5 最终打磨** — 性能优化、无障碍、多语言、测试补充、发布准备
 
 每个 Phase 完成后 `assembleDebug` 验证 + `testDebugUnitTest` + 安装到模拟器测试。
