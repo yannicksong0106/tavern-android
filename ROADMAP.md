@@ -29,7 +29,7 @@
 
 ### Phase D：质量保障 ✅
 
-- D1 单元测试（335 tests, 29 test files）
+- D1 单元测试（336 tests, 29 test files）
 - D2 UI 测试依赖已添加
 - D3 ProGuard/R8 + GitHub Actions CI
 
@@ -90,7 +90,7 @@
 - [x] K1 高级 WI 字段（selective logic, group, depth, probability — 已在 C3 完成）
 - [x] K2 Prompt 模板（PresetEntity 已支持 systemPrompt/postHistoryInstructions/authorNote）
 - [ ] K3 注入深度/位置控制 UI（目前 depth 字段存在但无 UI 调整入口）
-- [ ] K4 Token 计数器（tiktoken 或本地 tokenizer，实时显示上下文 token 数）
+- [x] K4 Token 计数器（TokenEstimator 字符类别估算，InputBar 实时显示上下文 token 数）
 
 ### Phase L：UI 手势  ← 部分完成
 
@@ -112,7 +112,7 @@
 - [ ] O1 性能优化（已优化：Gradle caching, LRU caches, O(1) lookups, dedicated DB queries）
 - [ ] O2 无障碍（TalkBack, contentDescription, semantics）
 - [ ] O3 多语言（i18n: 英文/日文/韩文字符串资源）
-- [ ] O4 测试补充（当前 335 tests, 目标 400+）
+- [ ] O4 测试补充（当前 336 tests, 目标 400+）
 - [ ] O5 发布（Play Store preparation, screenshots, listing）
 
 ---
