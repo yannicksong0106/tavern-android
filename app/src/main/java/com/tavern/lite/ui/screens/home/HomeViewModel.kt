@@ -21,14 +21,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -38,10 +40,12 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
+    private val _selectedTag = MutableStateFlow<String?>(null)
     private val _importResult = MutableSharedFlow<String>()
     val importResult: SharedFlow<String> = _importResult.asSharedFlow()
+    val selectedTag: StateFlow<String?> = _selectedTag.asStateFlow()
 
-    val characters: StateFlow<List<CharacterEntity>> = _searchQuery
+    private val _allCharacters: StateFlow<List<CharacterEntity>> = _searchQuery
         .debounce { query -> if (query.isBlank()) 0L else 300L }
         .flatMapLatest { query ->
             if (query.isBlank()) characterRepository.getAllCharacters()
@@ -50,12 +54,40 @@ class HomeViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val characters: StateFlow<List<CharacterEntity>> = combine(_allCharacters, _selectedTag) { chars, tag ->
+        if (tag.isNullOrBlank()) chars
+        else chars.filter { character ->
+            parseTags(character.tags).contains(tag)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allTags: StateFlow<List<String>> = _allCharacters
+        .map { chars ->
+            chars.flatMap { parseTags(it.tags) }.distinct().sorted()
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val groupChats: StateFlow<List<ChatEntity>> = chatRepository.getAllGroupChats()
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+    }
+
+    fun onTagSelected(tag: String?) {
+        _selectedTag.value = if (tag == _selectedTag.value) null else tag
+    }
+
+    private fun parseTags(tagsJson: String): List<String> {
+        if (tagsJson == "[]" || tagsJson.isBlank()) return emptyList()
+        return try {
+            val arr = org.json.JSONArray(tagsJson)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) {
+            // Fallback: comma-separated or plain text
+            tagsJson.removeSurrounding("[", "]").replace("\"", "").split(",").map { it.trim() }.filter { it.isNotBlank() }
+        }
     }
 
     fun deleteCharacter(id: Long) {

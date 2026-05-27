@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +40,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,6 +92,8 @@ fun HomeScreen(
 ) {
     val characters by viewModel.characters.collectAsStateWithLifecycle()
     val groupChats by viewModel.groupChats.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
+    val selectedTag by viewModel.selectedTag.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var deletingCharacter by remember { mutableStateOf<CharacterEntity?>(null) }
     var deletingGroupChat by remember { mutableStateOf<ChatEntity?>(null) }
@@ -188,6 +194,26 @@ fun HomeScreen(
         Column(modifier = Modifier.padding(padding)) {
             AnimatedVisibility(visible = showSearch) {
                 SearchBar(onQueryChanged = viewModel::onSearchQueryChanged)
+            }
+
+            // 标签筛选
+            if (allTags.isNotEmpty()) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allTags, key = { it }) { tag ->
+                        FilterChip(
+                            selected = selectedTag == tag,
+                            onClick = { viewModel.onTagSelected(tag) },
+                            label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
             }
 
             LazyColumn(

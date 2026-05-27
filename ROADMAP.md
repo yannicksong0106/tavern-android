@@ -98,7 +98,7 @@
 - [x] L5 收藏置顶（MessageEntity.isPinned, togglePinMessage, getPinnedMessages）
 - [x] L1 滑动操作（左滑回复/编辑，右滑删除 — MessageBubble detectHorizontalDragGestures）
 - [x] L3 上下文菜单（长按消息：复制/编辑/删除/重发/分支）
-- [ ] L4 标签筛选（CharacterEntity.tags 存在但 HomeScreen 无标签筛选 UI）
+- [x] L4 标签筛选（CharacterEntity.tags 存在但 HomeScreen 无标签筛选 UI）
 
 ### Phase N：扩展系统  ← 待做
 
