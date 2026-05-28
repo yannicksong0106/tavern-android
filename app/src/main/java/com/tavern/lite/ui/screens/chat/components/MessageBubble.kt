@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -65,6 +66,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -119,6 +122,9 @@ fun MessageBubble(
     val isUser = message.role == "user"
     val isDark = isSystemInDarkTheme()
     val context = LocalContext.current
+    val messageRoleLabel = stringResource(
+        if (isUser) R.string.a11y_user_message else R.string.a11y_assistant_message
+    )
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val maxBubbleWidth = (screenWidth * 0.75f).dp
 
@@ -171,7 +177,7 @@ fun MessageBubble(
             ) {
                 Icon(
                     if (isUser) Icons.Default.Edit else Icons.Default.Refresh,
-                    contentDescription = null,
+                    contentDescription = stringResource(if (isUser) R.string.edit else R.string.replying),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
@@ -190,7 +196,7 @@ fun MessageBubble(
             ) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(18.dp)
                 )
@@ -286,6 +292,7 @@ fun MessageBubble(
                     .animateContentSize()
                     .clickable { onTap() }
                     .padding(12.dp)
+                    .semantics { contentDescription = messageRoleLabel }
             ) {
                 if (!isUser && showName) {
                     Text(
@@ -352,10 +359,14 @@ fun MessageBubble(
                             .fillMaxWidth()
                             .padding(bottom = if (message.content.isNotBlank()) 6.dp else 0.dp)
                     ) {
-                        items(imagePathsList) { path ->
+                        items(imagePathsList, key = { it }) { path ->
                             AsyncImage(
-                                model = File(path),
-                                contentDescription = null,
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(File(path))
+                                    .memoryCacheKey(path)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = stringResource(R.string.a11y_attached_image),
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .size(120.dp)

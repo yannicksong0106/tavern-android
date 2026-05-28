@@ -110,7 +110,7 @@
 ### Phase O：最终打磨  ← 进行中
 
 - [x] O1 性能优化（已优化：Gradle caching, LRU caches, O(1) lookups, dedicated DB queries, derivedStateOf, contentType for all LazyColumn/LazyRow, hoisted LocalContext）
-- [ ] O2 无障碍（TalkBack, contentDescription, semantics）
+- [x] O2 无障碍（TalkBack: Modifier.semantics contentDescription on LoadingDots, CharacterAvatar, MessageBubble, CharacterCard, GroupChatCard, ChatItem, all Sliders; 修复 swipe reveal icons + attached images contentDescription）
 - [ ] O3 多语言（i18n: 英文/日文/韩文字符串资源）
 - [x] O4 测试补充（当前 400 tests, 目标 400+）
 - [ ] O5 发布（Play Store preparation, screenshots, listing）
@@ -135,11 +135,12 @@ Phase J (TTS/STT/多模态) ← ✅ 已完成 (J1-J4 全部完成)
 Phase K (高级 WI+Prompt) ← ✅ 已完成 (K1-K4 全部完成)
 Phase L (UI 手势)        ← ✅ 已完成 (L1-L5 全部完成)
 Phase N (扩展系统)       ← 待做
-Phase O (最终打磨)       ← 待做
+Phase O (最终打磨)       ← 进行中 (O1, O2, O4 已完成)
 ```
 
 **下一步优先级:**
-1. **N1-N4 扩展系统** — 插件化架构，将 TTS/记忆/正则等重构为扩展
-2. **O1-O5 最终打磨** — 性能优化、无障碍、多语言、测试补充、发布准备
+1. **O3 多语言** — i18n: 英文/日文/韩文字符串资源
+2. **N1-N4 扩展系统** — 插件化架构，将 TTS/记忆/正则等重构为扩展
+3. **O5 发布** — Play Store preparation, screenshots, listing
 
 每个 Phase 完成后 `assembleDebug` 验证 + `testDebugUnitTest` + 安装到模拟器测试。
