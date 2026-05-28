@@ -4,11 +4,13 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import com.tavern.lite.data.repository.AuthorNoteRepository
+import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.model.CharacterData
 import com.tavern.lite.data.repository.CharacterRepository
+import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
@@ -38,6 +40,8 @@ class CharacterEditViewModelTest {
     @MockK private lateinit var characterRepository: CharacterRepository
     @MockK private lateinit var worldBookRepository: WorldBookRepository
     @MockK private lateinit var authorNoteRepository: AuthorNoteRepository
+    @MockK private lateinit var spriteRepository: SpriteRepository
+    @MockK private lateinit var bgmRepository: BgmRepository
 
     private lateinit var viewModel: CharacterEditViewModel
     private val testDispatcher = StandardTestDispatcher()
@@ -52,7 +56,7 @@ class CharacterEditViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
         every { worldBookRepository.getAllWorldBooks() } returns flowOf(emptyList())
-        viewModel = CharacterEditViewModel(context, characterRepository, worldBookRepository, authorNoteRepository)
+        viewModel = CharacterEditViewModel(context, characterRepository, worldBookRepository, authorNoteRepository, spriteRepository, bgmRepository)
     }
 
     @After

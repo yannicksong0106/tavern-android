@@ -8,7 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.repository.AuthorNoteRepository
+import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.CharacterRepository
+import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,7 +57,9 @@ class CharacterEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterRepository: CharacterRepository,
     private val worldBookRepository: WorldBookRepository,
-    private val authorNoteRepository: AuthorNoteRepository
+    private val authorNoteRepository: AuthorNoteRepository,
+    val spriteRepository: SpriteRepository,
+    val bgmRepository: BgmRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CharacterEditState())

@@ -205,7 +205,7 @@ CREATE TABLE summaries (
 | V3 | VN 游戏界面 | 全屏立绘 + 底部对话框 + 背景层 | ✅ |
 | V4 | 转场动画 | 淡入淡出、滑动等场景切换效果 | ✅ |
 | V5 | BGM 系统 | `BgmEntity` + `BgmDao` + `BgmRepository`，角色可配置背景音乐，DB v27 | ✅ |
-| V6 | VN 设置 | 角色编辑页: 上传立绘、配置表情映射、设置 BGM | ⬜ |
+| V6 | VN 设置 | 角色编辑页: 上传立绘、配置表情映射、设置 BGM | ✅ |
 | V7 | DB Migration v26 | 新增 `sprites` 表 (v26) + `bgms` 表 (v27) | ✅ |
 
 **差异化价值**：这是 SillyTavern 没有的移动端独有功能，可成为核心卖点

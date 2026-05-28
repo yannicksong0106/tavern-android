@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -74,6 +78,8 @@ fun CharacterEditScreen(
     }
     var showBackgroundPicker by remember { mutableStateOf(false) }
     var showWorldBookPicker by remember { mutableStateOf(false) }
+    var showSpriteSheet by remember { mutableStateOf(false) }
+    var showBgmSheet by remember { mutableStateOf(false) }
 
     // 背景选择器
     if (showBackgroundPicker) {
@@ -102,6 +108,25 @@ fun CharacterEditScreen(
                 showWorldBookPicker = false
             },
             onDismiss = { showWorldBookPicker = false }
+        )
+    }
+
+    // 立绘管理弹窗
+    val currentCharacterId = state.characterId
+    if (showSpriteSheet && currentCharacterId != null) {
+        SpriteSheet(
+            characterId = currentCharacterId,
+            spriteRepository = viewModel.spriteRepository,
+            onDismiss = { showSpriteSheet = false }
+        )
+    }
+
+    // BGM 管理弹窗
+    if (showBgmSheet && currentCharacterId != null) {
+        BgmSheet(
+            characterId = currentCharacterId,
+            bgmRepository = viewModel.bgmRepository,
+            onDismiss = { showBgmSheet = false }
         )
     }
 
@@ -273,7 +298,18 @@ fun CharacterEditScreen(
                     onValueChange = { viewModel.updateField("chattiness", it.toInt().toString()) },
                     valueRange = 0f..100f,
                     steps = 10,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            val label = when {
+                                state.chattiness <= 20 -> context.getString(R.string.chattiness_silent)
+                                state.chattiness <= 40 -> context.getString(R.string.chattiness_quiet)
+                                state.chattiness <= 60 -> context.getString(R.string.chattiness_normal)
+                                state.chattiness <= 80 -> context.getString(R.string.chattiness_talkative)
+                                else -> context.getString(R.string.chattiness_very_talkative)
+                            }
+                            contentDescription = context.getString(R.string.a11y_chattiness_value, state.chattiness, label)
+                        }
                 )
                 Text(
                     text = when {
@@ -378,6 +414,72 @@ fun CharacterEditScreen(
                         )
                         Text(
                             text = stringResource(R.string.preset_management_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.enter),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // 立绘管理
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showSpriteSheet = true }
+                        .padding(vertical = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Face,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.vn_sprites),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.vn_sprites_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.enter),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // BGM 管理
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showBgmSheet = true }
+                        .padding(vertical = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.bgm_title),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.bgm_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
