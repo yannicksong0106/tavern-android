@@ -114,7 +114,7 @@
     <string name="chat_bubble">채팅 버블</string>
     <string name="theme">테마</string>
     <string name="about">정보</string>
-    <string name="about_version">버전 1.2.75 · SillyTavern 데이터 형식 기반</string>
+    <string name="about_version">버전 1.2.8 · SillyTavern 데이터 형식 기반</string>
     <string name="about_click_hint">탭하여 개발 로그 보기</string>
     <string name="dev_log_title">개발 로그</string>
     <string name="dev_log_subtitle">Tavern AI의 성장 기록, 모든 진보와 일상의 기록</string>

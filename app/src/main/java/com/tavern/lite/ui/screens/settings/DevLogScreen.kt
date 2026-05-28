@@ -147,6 +147,22 @@ private fun VersionCard(entry: VersionEntry) {
 
 private fun getDevLogEntries(): List<VersionEntry> = listOf(
     VersionEntry(
+        version = "v1.2.8",
+        date = "2026-05-28",
+        summary = "安全收敛 + 多语言 + 聊天分支 + 自动摘要 + Web Search + VN 模式",
+        details = listOf(
+            "Phase S: TLS 证书固定 + Coil key 补全 + CE rethrow 全量审计",
+            "Phase O3: 中/英/日/韩 四语言完整支持 + 语言切换 UI",
+            "Phase P: 聊天分支系统 + 书签导航 + BranchEntity CRUD",
+            "Phase Q: 三级预设 (Global/Char/Chat) + Handlebars 模板引擎",
+            "Phase R: 自动摘要系统 — 长对话压缩 + 摘要注入 Prompt",
+            "Phase T: Web Search — DuckDuckGo/Bing/Google 搜索引擎集成",
+            "Phase U: 群聊调度增强 — 自然/列表/轮询三种策略",
+            "Phase V: Visual Novel 模式 — 立绘系统 + 表情映射 + BGM + 转场动画"
+        ),
+        lifeLog = "日常：炸鸡太好吃了"
+    ),
+    VersionEntry(
         version = "v1.2.75",
         date = "2026-05-26",
         summary = "v1.3 核心体验对齐：三级预设 + 分支增强 + LaTeX + UseCase 拆分",
