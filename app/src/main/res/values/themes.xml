@@ -5,8 +5,8 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
-    <!-- CropImageActivity 需要 AppCompat 主题，否则会崩溃 -->
-    <style name="Theme.TavernAndroid.CropImage" parent="Theme.AppCompat.Light.NoActionBar">
+    <!-- CropImageActivity 需要带 ActionBar 的 AppCompat 主题，确认按钮在 ActionBar 中 -->
+    <style name="Theme.TavernAndroid.CropImage" parent="Theme.AppCompat.Light.DarkActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
