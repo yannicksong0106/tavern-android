@@ -1,9 +1,12 @@
 package com.tavern.lite.ui.screens.vn
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -159,18 +162,24 @@ private fun VnSprite(
 
     AnimatedVisibility(
         visible = spritePath != null,
-        enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300))
+        enter = fadeIn(animationSpec = tween(500)),
+        exit = fadeOut(animationSpec = tween(500))
     ) {
         if (spritePath != null) {
             val file = File(context.filesDir, spritePath)
             if (file.exists()) {
-                Image(
-                    painter = rememberAsyncImagePainter(file),
-                    contentDescription = "$characterName - $emotion",
-                    modifier = modifier,
-                    contentScale = ContentScale.Fit
-                )
+                Crossfade(
+                    targetState = spritePath,
+                    animationSpec = tween(500),
+                    label = "sprite_crossfade"
+                ) { path ->
+                    Image(
+                        painter = rememberAsyncImagePainter(File(context.filesDir, path)),
+                        contentDescription = "$characterName - $emotion",
+                        modifier = modifier,
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
         }
     }
@@ -182,30 +191,42 @@ private fun VnDialogueBox(
     message: String,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.7f))
-            .padding(16.dp)
+    AnimatedVisibility(
+        visible = message.isNotEmpty(),
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(500)
+        ) + fadeIn(animationSpec = tween(500)),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(300)
+        ) + fadeOut(animationSpec = tween(300))
     ) {
-        // 角色名称
-        Text(
-            text = characterName,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF4fc3f7),
-            fontSize = 18.sp
-        )
+        Column(
+            modifier = modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black.copy(alpha = 0.7f))
+                .padding(16.dp)
+        ) {
+            // 角色名称
+            Text(
+                text = characterName,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF4fc3f7),
+                fontSize = 18.sp
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // 对话内容
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
-            fontSize = 16.sp,
-            lineHeight = 24.sp
-        )
+            // 对话内容
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White,
+                fontSize = 16.sp,
+                lineHeight = 24.sp
+            )
+        }
     }
 }
 
