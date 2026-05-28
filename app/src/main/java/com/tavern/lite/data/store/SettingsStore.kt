@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.model.BubbleStyleConfig
+import com.tavern.lite.network.WebSearchConfig
 import com.tavern.lite.security.CryptoHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,7 @@ class SettingsStore @Inject constructor(
         private val BACKGROUND_PROACTIVE_KEY = booleanPreferencesKey("background_proactive_enabled")
         private val TTS_SETTINGS_KEY = stringPreferencesKey("tts_settings_json")
         private val GLOBAL_PRESET_ID_KEY = longPreferencesKey("global_preset_id")
+        private val WEB_SEARCH_CONFIG_KEY = stringPreferencesKey("web_search_config_json")
     }
 
     val languageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
@@ -120,6 +122,26 @@ class SettingsStore @Inject constructor(
     suspend fun saveGlobalPresetId(id: Long) {
         context.settingsDataStore.edit { prefs ->
             prefs[GLOBAL_PRESET_ID_KEY] = id
+        }
+    }
+
+    val webSearchConfigFlow: Flow<WebSearchConfig> = context.settingsDataStore.data.map { prefs ->
+        val jsonStr = prefs[WEB_SEARCH_CONFIG_KEY]
+        if (jsonStr != null) {
+            try {
+                json.decodeFromString<WebSearchConfig>(jsonStr)
+            } catch (e: Exception) {
+                Log.w("SettingsStore", "搜索配置损坏，回退默认值", e)
+                WebSearchConfig()
+            }
+        } else {
+            WebSearchConfig()
+        }
+    }.distinctUntilChanged()
+
+    suspend fun saveWebSearchConfig(config: WebSearchConfig) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[WEB_SEARCH_CONFIG_KEY] = json.encodeToString(config)
         }
     }
 }

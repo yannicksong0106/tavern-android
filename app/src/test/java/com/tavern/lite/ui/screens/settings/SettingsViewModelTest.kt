@@ -51,6 +51,7 @@ class SettingsViewModelTest {
         every { settingsStore.languageFlow } returns flowOf("system")
         every { settingsStore.backgroundProactiveFlow } returns flowOf(false)
         every { settingsStore.ttsSettingsFlow } returns flowOf(com.tavern.lite.data.store.TtsSettings())
+        every { settingsStore.webSearchConfigFlow } returns flowOf(com.tavern.lite.network.WebSearchConfig())
         val tmpDir = File(System.getProperty("java.io.tmpdir"), "test_settings_${System.nanoTime()}")
         tmpDir.mkdirs()
         every { context.cacheDir } returns tmpDir

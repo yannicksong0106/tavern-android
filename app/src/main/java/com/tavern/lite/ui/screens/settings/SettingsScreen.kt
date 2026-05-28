@@ -1,6 +1,7 @@
 package com.tavern.lite.ui.screens.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Tune
@@ -26,13 +28,20 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +52,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.R
 import com.tavern.lite.data.model.ApiProvider
+import com.tavern.lite.network.SearchEngine
+import com.tavern.lite.network.WebSearchConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +74,7 @@ fun SettingsScreen(
     val language by viewModel.language.collectAsStateWithLifecycle()
     val backgroundProactive by viewModel.backgroundProactive.collectAsStateWithLifecycle()
     val ttsSettings by viewModel.ttsSettings.collectAsStateWithLifecycle()
+    val webSearchConfig by viewModel.webSearchConfig.collectAsStateWithLifecycle()
     val storageSizes by viewModel.storageSizes.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -174,6 +186,12 @@ fun SettingsScreen(
                 },
                 onClick = onTtsClick
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 网络搜索
+            SectionHeader(stringResource(R.string.web_search))
+            WebSearchSection(webSearchConfig, viewModel)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -411,7 +429,9 @@ private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewMode
     val languages = listOf(
         "system" to stringResource(R.string.language_system),
         "zh" to stringResource(R.string.language_chinese),
-        "en" to stringResource(R.string.language_english)
+        "en" to stringResource(R.string.language_english),
+        "ja" to stringResource(R.string.language_japanese),
+        "ko" to stringResource(R.string.language_korean)
     )
 
     fun applyLanguage(code: String) {
@@ -440,6 +460,142 @@ private fun LanguageSection(currentLanguage: String, viewModel: SettingsViewMode
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(label, style = MaterialTheme.typography.bodyLarge)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WebSearchSection(config: WebSearchConfig, viewModel: SettingsViewModel) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // 启用开关
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.web_search_enabled), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = stringResource(R.string.web_search_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = config.enabled,
+                    onCheckedChange = { viewModel.updateWebSearchConfig(config.copy(enabled = it)) }
+                )
+            }
+
+            if (config.enabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 搜索引擎选择
+                var engineExpanded by remember { mutableStateOf(false) }
+                val engineLabel = when (config.engine) {
+                    SearchEngine.DUCKDUCKGO -> stringResource(R.string.web_search_engine_ddg)
+                    SearchEngine.BING -> stringResource(R.string.web_search_engine_bing)
+                    SearchEngine.GOOGLE -> stringResource(R.string.web_search_engine_google)
+                }
+                Text(stringResource(R.string.web_search_engine), style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+                Box {
+                    OutlinedTextField(
+                        value = engineLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { engineExpanded = true },
+                        enabled = false,
+                        singleLine = true
+                    )
+                    DropdownMenu(
+                        expanded = engineExpanded,
+                        onDismissRequest = { engineExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.web_search_engine_ddg)) },
+                            onClick = {
+                                viewModel.updateWebSearchConfig(config.copy(engine = SearchEngine.DUCKDUCKGO))
+                                engineExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.web_search_engine_bing)) },
+                            onClick = {
+                                viewModel.updateWebSearchConfig(config.copy(engine = SearchEngine.BING))
+                                engineExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.web_search_engine_google)) },
+                            onClick = {
+                                viewModel.updateWebSearchConfig(config.copy(engine = SearchEngine.GOOGLE))
+                                engineExpanded = false
+                            }
+                        )
+                    }
+                }
+
+                // API Key (Bing/Google)
+                if (config.engine != SearchEngine.DUCKDUCKGO) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = config.apiKey,
+                        onValueChange = { viewModel.updateWebSearchConfig(config.copy(apiKey = it)) },
+                        label = { Text(stringResource(R.string.web_search_api_key)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 最大结果数
+                Text(
+                    text = stringResource(R.string.web_search_max_results, config.maxResults),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = config.maxResults.toFloat(),
+                    onValueChange = { viewModel.updateWebSearchConfig(config.copy(maxResults = it.toInt())) },
+                    valueRange = 1f..10f,
+                    steps = 8,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 自动搜索
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.web_search_auto), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = stringResource(R.string.web_search_auto_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = config.autoSearch,
+                        onCheckedChange = { viewModel.updateWebSearchConfig(config.copy(autoSearch = it)) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.web_search_command_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

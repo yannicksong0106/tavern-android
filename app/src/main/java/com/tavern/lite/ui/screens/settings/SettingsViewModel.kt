@@ -11,6 +11,8 @@ import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.data.store.TtsSettings
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.SearchEngine
+import com.tavern.lite.network.WebSearchConfig
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.util.BackupManager
@@ -74,6 +76,10 @@ class SettingsViewModel @Inject constructor(
     val ttsSettings: StateFlow<TtsSettings> = settingsStore.ttsSettingsFlow
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TtsSettings())
+
+    val webSearchConfig: StateFlow<WebSearchConfig> = settingsStore.webSearchConfigFlow
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WebSearchConfig())
 
     private val _testState = MutableStateFlow<ConnectionTestState>(ConnectionTestState.Idle)
     val testState: StateFlow<ConnectionTestState> = _testState.asStateFlow()
@@ -183,6 +189,8 @@ class SettingsViewModel @Inject constructor(
             val localeList = when (lang) {
                 "zh" -> LocaleListCompat.forLanguageTags("zh")
                 "en" -> LocaleListCompat.forLanguageTags("en")
+                "ja" -> LocaleListCompat.forLanguageTags("ja")
+                "ko" -> LocaleListCompat.forLanguageTags("ko")
                 else -> LocaleListCompat.getEmptyLocaleList()
             }
             AppCompatDelegate.setApplicationLocales(localeList)
@@ -203,6 +211,12 @@ class SettingsViewModel @Inject constructor(
     fun updateTtsSettings(settings: TtsSettings) {
         viewModelScope.launch {
             settingsStore.saveTtsSettings(settings)
+        }
+    }
+
+    fun updateWebSearchConfig(config: WebSearchConfig) {
+        viewModelScope.launch {
+            settingsStore.saveWebSearchConfig(config)
         }
     }
 
