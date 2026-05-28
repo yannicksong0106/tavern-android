@@ -15,6 +15,7 @@ import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.data.repository.SummaryRepository
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
@@ -24,6 +25,7 @@ import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.EmotionDetector
 import com.tavern.lite.network.ImageGenerationService
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.SwipeUtils
@@ -67,6 +69,8 @@ class ChatViewModel @Inject constructor(
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
     private val summaryUseCase: SummaryUseCase,
     private val summaryRepository: SummaryRepository,
+    private val spriteRepository: SpriteRepository,
+    private val emotionDetector: EmotionDetector,
     private val imageGenerationService: ImageGenerationService,
     private val ttsHelper: TtsHelper,
     private val sttHelper: SttHelper,
@@ -110,6 +114,16 @@ class ChatViewModel @Inject constructor(
     // 发言间隔
     private val _messageIntervalMs = MutableStateFlow(1500L)
     val messageIntervalMs: StateFlow<Long> = _messageIntervalMs.asStateFlow()
+
+    // VN 模式 - 立绘状态
+    private val _currentEmotion = MutableStateFlow("neutral")
+    val currentEmotion: StateFlow<String> = _currentEmotion.asStateFlow()
+
+    private val _currentSpritePath = MutableStateFlow<String?>(null)
+    val currentSpritePath: StateFlow<String?> = _currentSpritePath.asStateFlow()
+
+    private val _availableEmotions = MutableStateFlow<List<String>>(emptyList())
+    val availableEmotions: StateFlow<List<String>> = _availableEmotions.asStateFlow()
 
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .distinctUntilChanged()
@@ -169,6 +183,9 @@ class ChatViewModel @Inject constructor(
             // 加载健谈度
             if (char != null) _characterChattiness.value = char.chattiness
 
+            // 加载可用表情
+            loadAvailableEmotions()
+
             // Group chat detection
             if (chat?.isGroup == true) {
                 _isGroupChat.value = true
@@ -212,6 +229,11 @@ class ChatViewModel @Inject constructor(
 
                     val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null, imagePaths)
                     if (result?.assistantMsgId != null && !wasCancelled) {
+                        // 更新立绘表情
+                        val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
+                        if (assistantMsg != null) {
+                            updateEmotionFromResponse(assistantMsg.content)
+                        }
                         splitIntoMultipleMessages(result.assistantMsgId)
                         scheduleProactiveDialogue()
                     }
@@ -249,6 +271,11 @@ class ChatViewModel @Inject constructor(
                         if (wasCancelled) break
                         _respondingCharacter.value = characters.find { it.id == charId }
                         if (result.assistantMsgId != null) {
+                            // 更新立绘表情
+                            val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
+                            if (assistantMsg != null) {
+                                updateEmotionFromResponse(assistantMsg.content)
+                            }
                             splitIntoMultipleMessages(result.assistantMsgId)
                         }
                         // 角色间延迟：基于配置间隔 + 自然抖动
@@ -866,6 +893,56 @@ class ChatViewModel @Inject constructor(
         val msg = findMessage(messageId) ?: return
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("message", msg.content))
+    }
+
+    // ==================== VN 模式 - 立绘表情 ====================
+
+    /**
+     * 加载角色的可用表情列表。
+     */
+    fun loadAvailableEmotions() {
+        viewModelScope.launch {
+            val charId = if (_isGroupChat.value) {
+                _respondingCharacter.value?.id ?: _groupCharacters.value.firstOrNull()?.id ?: return@launch
+            } else {
+                characterId
+            }
+            _availableEmotions.value = spriteRepository.getAvailableEmotions(charId)
+        }
+    }
+
+    /**
+     * 根据 AI 回复内容更新当前表情。
+     */
+    fun updateEmotionFromResponse(responseText: String) {
+        val emotion = emotionDetector.detectEmotion(responseText)
+        _currentEmotion.value = emotion
+
+        viewModelScope.launch {
+            val charId = if (_isGroupChat.value) {
+                _respondingCharacter.value?.id ?: _groupCharacters.value.firstOrNull()?.id ?: return@launch
+            } else {
+                characterId
+            }
+            val sprite = spriteRepository.getSpriteByEmotion(charId, emotion)
+            _currentSpritePath.value = sprite?.imagePath
+        }
+    }
+
+    /**
+     * 手动设置当前表情（用于用户选择）。
+     */
+    fun setEmotion(emotion: String) {
+        _currentEmotion.value = emotion
+        viewModelScope.launch {
+            val charId = if (_isGroupChat.value) {
+                _respondingCharacter.value?.id ?: _groupCharacters.value.firstOrNull()?.id ?: return@launch
+            } else {
+                characterId
+            }
+            val sprite = spriteRepository.getSpriteByEmotion(charId, emotion)
+            _currentSpritePath.value = sprite?.imagePath
+        }
     }
 
     override fun onCleared() {

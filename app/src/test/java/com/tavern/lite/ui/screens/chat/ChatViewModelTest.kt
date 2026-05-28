@@ -9,14 +9,18 @@ import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.data.repository.SummaryRepository
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
+import com.tavern.lite.domain.usecase.SummaryUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.EmotionDetector
 import com.tavern.lite.network.ImageGenerationService
+import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.TtsHelper
 import com.tavern.lite.util.SttHelper
@@ -60,6 +64,10 @@ class ChatViewModelTest {
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
+    @MockK private lateinit var summaryUseCase: SummaryUseCase
+    @MockK private lateinit var summaryRepository: SummaryRepository
+    @MockK private lateinit var spriteRepository: SpriteRepository
+    @MockK private lateinit var emotionDetector: EmotionDetector
     @MockK private lateinit var imageGenerationService: ImageGenerationService
     @MockK private lateinit var ttsHelper: TtsHelper
     @MockK private lateinit var sttHelper: SttHelper
@@ -98,6 +106,11 @@ class ChatViewModelTest {
         }
         coEvery { chatRepository.getMessageCount(CHAT_ID) } returns 0
         every { memoryExtractionUseCase.setMessageCount(any()) } returns Unit
+        every { summaryRepository.getSummariesForChat(CHAT_ID) } returns flowOf(emptyList())
+        every { spriteRepository.getSpritesForCharacter(CHARACTER_ID) } returns flowOf(emptyList())
+        coEvery { spriteRepository.getAvailableEmotions(CHARACTER_ID) } returns emptyList()
+        every { emotionDetector.detectEmotion(any()) } returns "neutral"
+        every { emotionDetector.getSupportedEmotions() } returns listOf("happy", "sad", "angry", "surprised", "scared", "disgusted", "confused", "embarrassed", "love", "neutral")
         every { apiConfigStore.configFlow } returns MutableStateFlow(testConfig)
         every { ttsHelper.isSpeaking } returns MutableStateFlow(false)
         every { ttsHelper.speakingMessageId } returns MutableStateFlow(null)
@@ -123,6 +136,10 @@ class ChatViewModelTest {
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
+            summaryUseCase,
+            summaryRepository,
+            spriteRepository,
+            emotionDetector,
             imageGenerationService,
             ttsHelper,
             sttHelper,
@@ -799,6 +816,10 @@ class ChatViewModelTest {
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
             memoryExtractionUseCase,
+            summaryUseCase,
+            summaryRepository,
+            spriteRepository,
+            emotionDetector,
             imageGenerationService,
             ttsHelper,
             sttHelper,
