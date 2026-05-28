@@ -158,7 +158,8 @@ private fun getDevLogEntries(): List<VersionEntry> = listOf(
             "Phase R: 自动摘要系统 — 长对话压缩 + 摘要注入 Prompt",
             "Phase T: Web Search — DuckDuckGo/Bing/Google 搜索引擎集成",
             "Phase U: 群聊调度增强 — 自然/列表/轮询三种策略",
-            "Phase V: Visual Novel 模式 — 立绘系统 + 表情映射 + BGM + 转场动画"
+            "Phase V: Visual Novel 模式 — 立绘系统 + 表情映射 + BGM + 转场动画",
+            "修复：头像裁剪确认按钮不可见（主题缺少 ActionBar）"
         ),
         lifeLog = "日常：炸鸡太好吃了"
     ),
