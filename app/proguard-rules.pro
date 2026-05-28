@@ -61,3 +61,11 @@
 -keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
     <fields>;
 }
+
+# Handlebars template engine (javax.script not available on Android)
+-dontwarn javax.script.**
+-dontwarn jdk.dynalink.**
+-dontwarn org.openjdk.nashorn.**
+-dontwarn jakarta.servlet.**
+-keep class com.github.jknack.handlebars.** { *; }
+-keep class org.openjdk.nashorn.** { *; }
