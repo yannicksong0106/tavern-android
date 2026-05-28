@@ -65,4 +65,10 @@ interface ChatDao {
 
     @Query("SELECT * FROM chats ORDER BY id ASC")
     suspend fun getAllChatsSync(): List<ChatEntity>
+
+    @Query("UPDATE chats SET scheduling_strategy = :strategy WHERE id = :chatId")
+    suspend fun updateSchedulingStrategy(chatId: Long, strategy: String)
+
+    @Query("UPDATE chats SET message_interval_ms = :intervalMs WHERE id = :chatId")
+    suspend fun updateMessageInterval(chatId: Long, intervalMs: Long)
 }

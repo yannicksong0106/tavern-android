@@ -45,6 +45,11 @@
     <string name="pin_message">Pin message</string>
     <string name="unpin_message">Unpin message</string>
     <string name="pinned_messages">Pinned messages</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="no_bookmarks">No bookmarked messages</string>
+    <string name="you">You</string>
+    <string name="assistant">Assistant</string>
+    <string name="system">System</string>
     <string name="edit_message_title">Edit Message</string>
     <string name="regenerate">Regenerate</string>
     <string name="input_hint">Say something…</string>
@@ -61,6 +66,15 @@
     <string name="time_minutes">%d min ago</string>
     <string name="time_hours">%d hr ago</string>
     <string name="time_days">%d days ago</string>
+    <string name="resend">Resend</string>
+    <string name="voice_input">Voice Input</string>
+    <string name="voice_permission_denied">Microphone permission is required for voice input</string>
+    <string name="add_image">Add Image</string>
+    <string name="remove_image">Remove Image</string>
+    <string name="generate_image">Generate Image</string>
+    <string name="generating_image">Generating image…</string>
+    <string name="image_generation_failed">Image generation failed</string>
+    <string name="image_generation_only_openai">Image generation only supports OpenAI API</string>
 
     <!-- Chat List -->
     <string name="chat_list">Chat List</string>
@@ -99,7 +113,7 @@
     <string name="chat_bubble">Chat Bubbles</string>
     <string name="theme">Theme</string>
     <string name="about">About</string>
-    <string name="about_version">Version 1.2.0 · Based on SillyTavern data format</string>
+    <string name="about_version">Version 1.2.75 · Based on SillyTavern data format</string>
     <string name="about_click_hint">Tap to view dev log</string>
     <string name="dev_log_title">Dev Log</string>
     <string name="dev_log_subtitle">The growth journey of Tavern AI, recording every progress and life moments</string>
@@ -126,6 +140,8 @@
     <string name="language_setting">Language</string>
     <string name="language_chinese">中文</string>
     <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_korean">한국어</string>
     <string name="language_system">Follow System</string>
 
     <!-- Background Proactive -->
@@ -197,6 +213,12 @@
     <string name="keywords_label">Keywords: %s</string>
     <string name="constant_tag">Constant</string>
     <string name="selective_tag">Selective(%s)</string>
+    <string name="entry_depth">Injection Depth (from end)</string>
+    <string name="entry_position">Injection Position</string>
+    <string name="position_before_an_short">Before Author\'s Note</string>
+    <string name="position_after_an_short">After Author\'s Note</string>
+    <string name="position_before_main">Before Main Prompt</string>
+    <string name="position_after_main">After Main Prompt</string>
 
     <!-- Memory -->
     <string name="memory_title">Memory Management</string>
@@ -324,6 +346,14 @@
     <string name="group_chattiness">Group Chattiness</string>
     <string name="group_chattiness_desc">Overall group proactive dialogue frequency</string>
     <string name="character_chattiness">Character Chattiness</string>
+    <string name="scheduling_strategy">Scheduling Strategy</string>
+    <string name="scheduling_strategy_desc">Control character speaking order in group chat</string>
+    <string name="strategy_natural">Natural</string>
+    <string name="strategy_list_order">List Order</string>
+    <string name="strategy_round_robin">Round Robin</string>
+    <string name="message_interval">Message Interval</string>
+    <string name="message_interval_desc">Wait time between character messages</string>
+    <string name="message_interval_value">%.1f sec</string>
 
     <!-- At Mention -->
     <string name="at_mention_hint">@ character name for targeted reply</string>
@@ -343,6 +373,11 @@
     <string name="preset_name">Preset Name</string>
     <string name="no_presets">No presets yet</string>
     <string name="no_presets_hint">Tap + to add system prompt presets</string>
+    <string name="scope_all">All</string>
+    <string name="scope_global">Global</string>
+    <string name="scope_character">Character</string>
+    <string name="scope_chat">Chat</string>
+    <string name="preset_scope">Preset Scope</string>
 
     <!-- Group Chat List -->
     <string name="group_chats">Group Chats</string>
@@ -402,4 +437,39 @@
     <string name="tts_voice_onyx">Onyx</string>
     <string name="tts_voice_nova">Nova</string>
     <string name="tts_voice_shimmer">Shimmer</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_user_message">User message</string>
+    <string name="a11y_assistant_message">Assistant message</string>
+    <string name="a11y_typing_indicator">Typing</string>
+    <string name="a11y_attached_image">Attached image</string>
+    <string name="a11y_swipe_hint">Swipe left to reply, swipe right to delete</string>
+    <string name="a11y_character_card">%s, character card</string>
+    <string name="a11y_group_chat_card">%s, group chat</string>
+    <string name="a11y_chat_item">%s, chat</string>
+    <string name="a11y_chattiness_value">Chattiness %d, %s</string>
+    <string name="a11y_group_icon">Group chat icon</string>
+    <string name="a11y_chat_icon">Chat icon</string>
+    <string name="summaries">Chat Summaries</string>
+    <string name="no_summaries">No summaries yet</string>
+    <string name="generate_summary">Generate Summary</string>
+    <string name="summary_generating">Generating summary…</string>
+    <string name="delete_summary">Delete Summary</string>
+    <string name="summary_deleted">Summary deleted</string>
+    <string name="summary_range">Covers %d messages</string>
+    <string name="summary_tokens">~%d tokens</string>
+
+    <!-- Web Search -->
+    <string name="web_search">Web Search</string>
+    <string name="web_search_desc">Let characters search the web for real-time information</string>
+    <string name="web_search_enabled">Enable Web Search</string>
+    <string name="web_search_engine">Search Engine</string>
+    <string name="web_search_engine_ddg">DuckDuckGo (Free)</string>
+    <string name="web_search_engine_bing">Bing</string>
+    <string name="web_search_engine_google">Google</string>
+    <string name="web_search_api_key">API Key</string>
+    <string name="web_search_max_results">Max Results: %d</string>
+    <string name="web_search_auto">Auto Search</string>
+    <string name="web_search_auto_desc">AI automatically decides when to search (uses more tokens)</string>
+    <string name="web_search_command_hint">Send /search keyword to search manually</string>
 </resources>

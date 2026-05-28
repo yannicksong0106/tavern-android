@@ -15,6 +15,7 @@ import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
+import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.BranchEntity
@@ -28,6 +29,7 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.ScriptEntity
+import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 
@@ -47,8 +49,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         ChatCharacterEntity::class,
         PresetEntity::class,
         BranchEntity::class,
+        SummaryEntity::class,
     ],
-    version = 23,
+    version = 25,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -64,6 +67,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun chatCharacterDao(): ChatCharacterDao
     abstract fun presetDao(): PresetDao
     abstract fun branchDao(): BranchDao
+    abstract fun summaryDao(): SummaryDao
 
     companion object {
         /**
@@ -384,6 +388,31 @@ abstract class TavernDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // messages 增加 image_paths 字段（图片附件）
                 db.execSQL("ALTER TABLE messages ADD COLUMN image_paths TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
+
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS summaries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        content TEXT NOT NULL,
+                        message_range_start INTEGER NOT NULL,
+                        message_range_end INTEGER NOT NULL,
+                        token_count INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_summaries_chat_id ON summaries(chat_id)")
+            }
+        }
+
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE chats ADD COLUMN scheduling_strategy TEXT NOT NULL DEFAULT 'natural'")
+                db.execSQL("ALTER TABLE chats ADD COLUMN message_interval_ms INTEGER NOT NULL DEFAULT 1500")
             }
         }
 

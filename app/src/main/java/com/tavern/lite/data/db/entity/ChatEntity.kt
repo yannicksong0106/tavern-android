@@ -26,6 +26,8 @@ data class ChatEntity(
     @ColumnInfo(name = "group_chattiness") val groupChattiness: Int = 50,  // 群聊默认健谈度
     @ColumnInfo(name = "background_path") val backgroundPath: String? = null,
     @ColumnInfo(name = "preset_id") val presetId: Long? = null,
+    @ColumnInfo(name = "scheduling_strategy") val schedulingStrategy: String = "natural",
+    @ColumnInfo(name = "message_interval_ms") val messageIntervalMs: Long = 1500L,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )

@@ -105,4 +105,16 @@ class GroupChatRepository @Inject constructor(
      */
     suspend fun getChatCharacters(chatId: Long): List<ChatCharacterEntity> =
         chatCharacterDao.getCharactersForChat(chatId)
+
+    /**
+     * Update the scheduling strategy for a group chat.
+     */
+    suspend fun updateSchedulingStrategy(chatId: Long, strategy: String) =
+        chatDao.updateSchedulingStrategy(chatId, strategy)
+
+    /**
+     * Update the message interval for a group chat.
+     */
+    suspend fun updateMessageInterval(chatId: Long, intervalMs: Long) =
+        chatDao.updateMessageInterval(chatId, intervalMs)
 }

@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tavern Lite</string>
+
+    <!-- 共通 -->
+    <string name="back">戻る</string>
+    <string name="delete">削除</string>
+    <string name="cancel">キャンセル</string>
+    <string name="save">保存</string>
+    <string name="edit">編集</string>
+    <string name="close">閉じる</string>
+    <string name="more">もっと</string>
+    <string name="send">送信</string>
+    <string name="stop">停止</string>
+    <string name="create">作成</string>
+    <string name="enter">入室</string>
+    <string name="copy">コピー</string>
+    <string name="copied">コピーしました</string>
+    <string name="default_label">デフォルト</string>
+    <string name="untitled">無題</string>
+    <string name="confirm_delete_title">削除</string>
+    <string name="confirm_delete_text">本当に削除しますか？</string>
+
+    <!-- ホーム -->
+    <string name="home_title">Tavern Lite</string>
+    <string name="search">検索</string>
+    <string name="import_character">キャラクターカードをインポート</string>
+    <string name="world_book">ワールドブック</string>
+    <string name="settings">設定</string>
+    <string name="new_character">新規キャラクター</string>
+    <string name="search_characters">キャラクターを検索…</string>
+    <string name="delete_character_title">キャラクターを削除</string>
+    <string name="delete_character_text">「%s」を削除しますか？このキャラクターのすべてのチャット履歴も削除されます。</string>
+    <string name="export_json">JSONとしてエクスポート</string>
+    <string name="export_png">PNGとしてエクスポート</string>
+    <string name="no_characters">キャラクターがまだいません</string>
+    <string name="no_characters_hint">右下の + をタップして最初のキャラクターを作成</string>
+
+    <!-- チャット -->
+    <string name="loading">読み込み中…</string>
+    <string name="replying">返信中…</string>
+    <string name="change_background">背景を変更</string>
+    <string name="delete_message_title">メッセージを削除</string>
+    <string name="delete_message_text">このメッセージを削除しますか？</string>
+    <string name="pin_message">ピン留め</string>
+    <string name="unpin_message">ピン留め解除</string>
+    <string name="pinned_messages">ピン留めメッセージ</string>
+    <string name="bookmarks">ブックマーク</string>
+    <string name="no_bookmarks">ブックマークされたメッセージはありません</string>
+    <string name="you">あなた</string>
+    <string name="assistant">アシスタント</string>
+    <string name="system">システム</string>
+    <string name="edit_message_title">メッセージを編集</string>
+    <string name="regenerate">再生成</string>
+    <string name="input_hint">何か言ってみて…</string>
+    <string name="continue_generation">続ける</string>
+    <string name="scroll_to_bottom">最下部へ</string>
+    <string name="empty_message">…</string>
+    <string name="typing">入力中…</string>
+    <string name="swipe_previous">前へ</string>
+    <string name="swipe_next">次へ</string>
+    <string name="branch_previous">前のブランチ</string>
+    <string name="branch_next">次のブランチ</string>
+    <string name="branch_info">ブランチ %1$d / %2$d</string>
+    <string name="resend">再送信</string>
+    <string name="create_branch">ブランチを作成</string>
+    <string name="voice_input">音声入力</string>
+    <string name="voice_permission_denied">音声入力にはマイクの許可が必要です</string>
+    <string name="add_image">画像を追加</string>
+    <string name="remove_image">画像を削除</string>
+    <string name="generate_image">画像を生成</string>
+    <string name="generating_image">画像を生成中…</string>
+    <string name="image_generation_failed">画像生成に失敗しました</string>
+    <string name="image_generation_only_openai">画像生成はOpenAI APIのみサポート</string>
+    <string name="time_just_now">たった今</string>
+    <string name="time_minutes">%d分前</string>
+    <string name="time_hours">%d時間前</string>
+    <string name="time_days">%d日前</string>
+
+    <!-- チャットリスト -->
+    <string name="chat_list">チャットリスト</string>
+    <string name="chat_count">%d件のチャット</string>
+    <string name="import_chat">チャットをインポート</string>
+    <string name="export_all_chats">すべてのチャットをエクスポート</string>
+    <string name="new_chat">新規チャット</string>
+    <string name="delete_chat_title">チャットを削除</string>
+    <string name="delete_chat_text">このチャットを削除しますか？すべてのメッセージが削除されます。</string>
+    <string name="rename_chat">チャット名を変更</string>
+    <string name="input_chat_name">チャット名を入力</string>
+    <string name="export_chat">チャットをエクスポート</string>
+    <string name="share_chat">チャットを共有</string>
+    <string name="no_chats">チャットがまだありません</string>
+    <string name="no_chats_hint">右下の + をタップして新しいチャットを開始</string>
+    <string name="chat_name_default">チャット %d</string>
+
+    <!-- エクスポート形式 -->
+    <string name="format_markdown_desc">.md — リッチテキスト、幅広く対応</string>
+    <string name="format_html_desc">.html — スタイル付きウェブページ、ダークテーマ</string>
+    <string name="format_plaintext_desc">.txt — シンプルなテキスト形式</string>
+    <string name="format_json_desc">.json — 構造化データ、再インポート可能</string>
+    <string name="format_plaintext">プレーンテキスト</string>
+
+    <!-- 設定 -->
+    <string name="api_config">API設定</string>
+    <string name="connection_test">接続テスト</string>
+    <string name="connection_test_desc">テストメッセージを送信してAPI設定を確認</string>
+    <string name="testing">テスト中…</string>
+    <string name="test">テスト</string>
+    <string name="test_reply">返信: %s</string>
+    <string name="test_error">エラー: %s</string>
+    <string name="generation_params">生成パラメータ</string>
+    <string name="user_settings">ユーザー設定</string>
+    <string name="user_persona">ユーザーペルソナ</string>
+    <string name="chat_bubble">チャットバブル</string>
+    <string name="theme">テーマ</string>
+    <string name="about">About</string>
+    <string name="about_version">バージョン 1.2.75 · SillyTavernデータ形式ベース</string>
+    <string name="about_click_hint">タップして開発ログを表示</string>
+    <string name="dev_log_title">開発ログ</string>
+    <string name="dev_log_subtitle">Tavern AIの成長記録、進歩と日常の記録</string>
+    <string name="custom_provider">カスタム</string>
+    <string name="model">モデル</string>
+    <string name="context_length">コンテキスト長</string>
+    <string name="user_name_label">あなたの名前（{{user}}プレースホルダー用）</string>
+    <string name="manage_persona">ユーザーペルソナを管理</string>
+    <string name="manage_persona_desc">会話であなたのアイデンティティを作成・管理</string>
+    <string name="bubble_color_user">ユーザーバブルの色</string>
+    <string name="bubble_color_assistant">アシスタントバブルの色</string>
+    <string name="color_deep_brown">ダークブラウン</string>
+    <string name="color_deep_blue">ダークブルー</string>
+    <string name="color_deep_purple">ダークパープル</string>
+    <string name="color_deep_green">ダークグリーン</string>
+    <string name="color_warm_brown">ウォームブラウン</string>
+    <string name="color_beige">ベージュ</string>
+    <string name="color_mint">ミント</string>
+    <string name="color_silver">シルバー</string>
+    <string name="bubble_corner_radius">角丸: %ddp</string>
+    <string name="font_size">フォントサイズ: %dsp</string>
+    <string name="material_you">Material You ダイナミックカラー</string>
+    <string name="material_you_desc">システムの壁紙カラーに連動（Android 12+）</string>
+    <string name="language_setting">言語</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_system">システムに従う</string>
+
+    <!-- バックグラウンドプロアクティブ -->
+    <string name="background_proactive">バックグラウンド会話</string>
+    <string name="background_proactive_desc">アプリがバックグラウンドでもキャラクターが自発的に会話</string>
+
+    <!-- キャラクター編集 -->
+    <string name="edit_character">キャラクターを編集</string>
+    <string name="new_character_title">新規キャラクター</string>
+    <string name="change_avatar">タップしてアバターを変更</string>
+    <string name="chat_background">チャット背景</string>
+    <string name="background_set">設定済み</string>
+    <string name="change">変更</string>
+    <string name="memory_management">メモリ管理</string>
+    <string name="memory_management_desc">キャラクターメモリの表示・追加・編集</string>
+    <string name="regex_script">正規表現スクリプト</string>
+    <string name="regex_script_desc">メッセージ置換と正規表現処理</string>
+    <string name="character_name_required">キャラクター名 *</string>
+    <string name="character_desc">説明</string>
+    <string name="character_desc_placeholder">あなたは異世界からのエルフ、優しくて好奇心旺盛…</string>
+    <string name="personality">性格</string>
+    <string name="personality_placeholder">優しく、好奇心旺盛、少し天然</string>
+    <string name="first_message">最初のメッセージ</string>
+    <string name="first_message_placeholder">*古い木のドアを押し開けると、エルフの少女が…*</string>
+    <string name="example_dialogue">会話例</string>
+    <string name="system_prompt_optional">システムプロンプト（任意）</string>
+    <string name="post_history_instructions">履歴後指示（任意）</string>
+    <string name="post_history_placeholder">会話後に従うべきルール…</string>
+    <string name="author_note">著者メモ</string>
+    <string name="author_note_desc">チャット履歴に注入される追加プロンプトで、キャラクターの行動を微調整</string>
+    <string name="author_note_content">メモ内容</string>
+    <string name="author_note_content_placeholder">著者メモを入力…</string>
+    <string name="author_note_depth">注入深度（末尾からのメッセージ数）</string>
+    <string name="author_note_position">現在位置: %s</string>
+    <string name="position_after_an">著者メモの後</string>
+    <string name="position_before_an">著者メモの前</string>
+    <string name="creator">作者</string>
+
+    <!-- ワールドブック -->
+    <string name="world_book_list">ワールドブック</string>
+    <string name="new_world_book">新規ワールドブック</string>
+    <string name="delete_world_book_title">ワールドブックを削除</string>
+    <string name="delete_world_book_text">「%s」を削除しますか？すべてのエントリも削除されます。</string>
+    <string name="no_world_books">ワールドブックがまだありません</string>
+    <string name="no_world_books_hint">ワールドブックはキャラクターの世界観設定を保存します</string>
+    <string name="import_lorebook">Lorebookをインポート</string>
+    <string name="import_lorebook_hint">SillyTavern形式のLorebook JSONを貼り付け</string>
+    <string name="import_btn">インポート</string>
+    <string name="export_lorebook">Lorebookをエクスポート</string>
+    <string name="export_copied">Lorebook JSONをクリップボードにコピーしました</string>
+    <string name="name_required">名前 *</string>
+    <string name="description">説明</string>
+    <string name="entry_count">%d件のエントリ</string>
+    <string name="add_entry">エントリを追加</string>
+    <string name="edit_entry">エントリを編集</string>
+    <string name="delete_entry_title">エントリを削除</string>
+    <string name="delete_entry_text">「%s」を削除しますか？</string>
+    <string name="no_entries_hint">右下の + をタップしてエントリを追加</string>
+    <string name="entry_comment">コメント</string>
+    <string name="entry_depth">注入深度（末尾から）</string>
+    <string name="entry_position">注入位置</string>
+    <string name="position_before_an_short">著者メモの前</string>
+    <string name="position_after_an_short">著者メモの後</string>
+    <string name="position_before_main">メインプロンプトの前</string>
+    <string name="position_after_main">メインプロンプトの後</string>
+    <string name="primary_keywords">主キーワード（カンマ区切り）</string>
+    <string name="secondary_keywords">副キーワード（カンマ区切り）</string>
+    <string name="content">内容</string>
+    <string name="constant_entry">常駐エントリ（常に注入）</string>
+    <string name="selective_match">選択的マッチ（副キーワードを使用）</string>
+    <string name="match_logic">マッチロジック</string>
+    <string name="logic_and">AND（すべて一致）</string>
+    <string name="logic_or">OR（いずれか一致）</string>
+    <string name="logic_not">NOT（一致を除外）</string>
+    <string name="keywords_label">キーワード: %s</string>
+    <string name="constant_tag">常駐</string>
+    <string name="selective_tag">選択的(%s)</string>
+
+    <!-- メモリ -->
+    <string name="memory_title">メモリ管理</string>
+    <string name="clear_all_memories">すべてのメモリを消去</string>
+    <string name="clear_all_memories_text">このキャラクターのすべてのメモリを消去しますか？この操作は元に戻せません。</string>
+    <string name="clear">消去</string>
+    <string name="add_memory">メモリを追加</string>
+    <string name="edit_memory">メモリを編集</string>
+    <string name="no_memories">メモリがまだありません</string>
+    <string name="no_memories_hint">右下の + をタップして手動追加、または会話で自動蓄積</string>
+    <string name="memory_content_placeholder">メモリの内容…</string>
+    <string name="importance">重要度: %d</string>
+    <string name="memory_tab_manual">手動メモリ</string>
+    <string name="memory_tab_auto">AIメモリ</string>
+    <string name="category_user_info">ユーザー情報</string>
+    <string name="category_character_consistency">キャラクター設定</string>
+    <string name="category_event">重要なイベント</string>
+    <string name="category_relationship">人間関係</string>
+    <string name="category_commitment">約束</string>
+    <string name="add_atom">AIメモリを追加</string>
+    <string name="edit_atom">AIメモリを編集</string>
+    <string name="superseded">廃止済み</string>
+    <string name="source_llm">AI抽出</string>
+    <string name="source_regex">自動検出</string>
+    <string name="source_manual">手動追加</string>
+    <string name="access_count">%d回アクセス</string>
+
+    <!-- メモリライブラリ -->
+    <string name="memory_library">メモリライブラリ</string>
+    <string name="memory_library_desc">キャラクターメモリの表示と管理</string>
+    <string name="memory_category_all">すべて</string>
+    <string name="memory_category_fact">事実</string>
+    <string name="memory_category_emotion">感情</string>
+    <string name="memory_category_preference">好み</string>
+    <string name="memory_category_event">イベント</string>
+    <string name="memory_category_habit">習慣</string>
+    <string name="memory_category_character">キャラクター核心</string>
+    <string name="memory_category_temporary">一時メモリ</string>
+    <string name="core_memories">コアメモリ</string>
+    <string name="temporary_memories">一時メモリ</string>
+    <string name="last_extracted">最終抽出: %s</string>
+    <string name="memory_count">%d件のメモリ</string>
+    <string name="expires_in">%s後に期限切れ</string>
+    <string name="select_character">キャラクターを選択</string>
+    <string name="sort_by_importance">重要度順</string>
+    <string name="sort_by_recency">時間順</string>
+    <string name="sort_by_access">アクセス頻度順</string>
+    <string name="search_memories">メモリを検索</string>
+    <string name="memory_recalled">メモリ呼び出し: %d件</string>
+    <string name="just_now">たった今</string>
+    <string name="minutes_ago">%d分前</string>
+    <string name="hours_ago">%d時間前</string>
+    <string name="days_ago">%d日前</string>
+    <string name="expires_hours">%d時間</string>
+
+    <!-- ペルソナ -->
+    <string name="persona_title">ユーザーペルソナ</string>
+    <string name="new_persona">新規ペルソナ</string>
+    <string name="edit_persona">ペルソナを編集</string>
+    <string name="persona_name">ペルソナ名</string>
+    <string name="persona_biography_placeholder">自己紹介、バックストーリー…</string>
+    <string name="persona_placeholders_hint">{{user}}と{{char}}プレースホルダーに対応</string>
+    <string name="set_default">デフォルトに設定</string>
+    <string name="default_tag">デフォルト</string>
+    <string name="no_personas">ペルソナがまだありません</string>
+    <string name="no_personas_hint">右下の + をタップしてアイデンティティを作成</string>
+    <string name="persona_desc">ペルソナは会話における「あなた」のアイデンティティです</string>
+
+    <!-- スクリプト -->
+    <string name="script_title">正規表現スクリプト</string>
+    <string name="add_script">スクリプトを追加</string>
+    <string name="edit_script">スクリプトを編集</string>
+    <string name="delete_script_title">スクリプトを削除</string>
+    <string name="delete_script_text">「%s」を削除しますか？</string>
+    <string name="script_count">%d件のスクリプト</string>
+    <string name="no_scripts">スクリプトがまだありません</string>
+    <string name="no_scripts_hint">右下の + をタップして正規表現スクリプトを追加</string>
+    <string name="script_name">スクリプト名</string>
+    <string name="script_comment">コメント（任意）</string>
+    <string name="execution_timing">実行タイミング</string>
+    <string name="find_pattern">検索パターン</string>
+    <string name="replace_with">置換文字列</string>
+    <string name="is_regex">正規表現</string>
+    <string name="case_sensitive">大文字小文字を区別</string>
+    <string name="type_user_message">ユーザーメッセージ</string>
+    <string name="type_ai_reply">AI返信</string>
+    <string name="type_both">両方</string>
+    <string name="regex_tag">正規表現</string>
+    <string name="disable">無効</string>
+    <string name="enable">有効</string>
+
+    <!-- ワールドブック割り当て -->
+    <string name="select_world_book">ワールドブックを選択</string>
+    <string name="no_world_book_assigned">ワールドブック未割り当て</string>
+
+    <!-- グループチャット -->
+    <string name="create_group_chat">グループチャットを作成</string>
+    <string name="group_chat_select_hint">2人以上のキャラクターを選択してグループチャットに参加</string>
+    <string name="create_group_with_count">グループチャットを作成 (%d人)</string>
+
+    <!-- 背景選択 -->
+    <string name="select_background">背景を選択</string>
+    <string name="custom_background">カスタム</string>
+    <string name="from_gallery">ギャラリーから</string>
+    <string name="remove_background">削除</string>
+    <string name="preset_backgrounds">プリセット</string>
+    <string name="bg_dark_night">深夜</string>
+    <string name="bg_warm_sunset">暖かい夕焼け</string>
+    <string name="bg_forest">森</string>
+    <string name="bg_ocean">海</string>
+    <string name="bg_lavender">ラベンダー</string>
+    <string name="bg_rose_gold">ローズゴールド</string>
+    <string name="bg_arctic">オーロラ</string>
+    <string name="bg_cherry">桜</string>
+
+    <!-- 健談度 -->
+    <string name="chattiness">健談度</string>
+    <string name="chattiness_desc">キャラクターの自発的な会話頻度を制御</string>
+    <string name="chattiness_silent">無口</string>
+    <string name="chattiness_quiet">静か</string>
+    <string name="chattiness_normal">普通</string>
+    <string name="chattiness_talkative">おしゃべり</string>
+    <string name="chattiness_very_talkative">とてもおしゃべり</string>
+    <string name="chat_settings">チャット設定</string>
+    <string name="group_chattiness">グループ健談度</string>
+    <string name="group_chattiness_desc">グループ全体の自発的な会話頻度を制御</string>
+    <string name="character_chattiness">キャラクター健談度</string>
+    <string name="scheduling_strategy">スケジューリング戦略</string>
+    <string name="scheduling_strategy_desc">グループチャットでのキャラクターの発言順序を制御</string>
+    <string name="strategy_natural">自然</string>
+    <string name="strategy_list_order">リスト順</string>
+    <string name="strategy_round_robin">ラウンドロビン</string>
+    <string name="message_interval">メッセージ間隔</string>
+    <string name="message_interval_desc">キャラクターのメッセージ間の待機時間</string>
+    <string name="message_interval_value">%.1f 秒</string>
+
+    <!-- @メンション -->
+    <string name="at_mention_hint">@ キャラクター名 で指定返信</string>
+
+    <!-- 検索 -->
+    <string name="search_messages">メッセージを検索…</string>
+    <string name="previous">前へ</string>
+    <string name="next">次へ</string>
+
+    <!-- プリセット -->
+    <string name="preset_management">プリセット管理</string>
+    <string name="preset_management_desc">システムプロンプトプリセットライブラリを管理</string>
+    <string name="add_preset">プリセットを追加</string>
+    <string name="edit_preset">プリセットを編集</string>
+    <string name="delete_preset_title">プリセットを削除</string>
+    <string name="delete_preset_text">「%s」を削除しますか？</string>
+    <string name="preset_name">プリセット名</string>
+    <string name="no_presets">プリセットがまだありません</string>
+    <string name="no_presets_hint">右下の + をタップしてシステムプロンプトプリセットを追加</string>
+    <string name="scope_all">すべて</string>
+    <string name="scope_global">グローバル</string>
+    <string name="scope_character">キャラクター</string>
+    <string name="scope_chat">チャット</string>
+    <string name="preset_scope">プリセットスコープ</string>
+
+    <!-- グループチャットリスト -->
+    <string name="group_chats">グループチャット</string>
+    <string name="no_group_chats">グループチャットがまだありません</string>
+    <string name="group_members_count">%d人</string>
+    <string name="delete_group_chat_title">グループチャットを削除</string>
+    <string name="delete_group_chat_text">このグループチャットを削除しますか？すべてのメッセージが削除されます。</string>
+
+    <!-- データ管理 -->
+    <string name="data_management">データ管理</string>
+    <string name="backup_data">データをバックアップ</string>
+    <string name="backup_data_desc">すべてのデータをJSONファイルとしてエクスポート</string>
+    <string name="backup_success">バックアップ成功: %s</string>
+    <string name="backup_failed">バックアップ失敗: %s</string>
+    <string name="restore_data">データを復元</string>
+    <string name="restore_data_desc">バックアップファイルからデータを復元</string>
+    <string name="restore_success">復元完了: キャラクター%1$d件、チャット%2$d件、メッセージ%3$d件</string>
+    <string name="restore_failed">復元失敗: %s</string>
+    <string name="share_backup">バックアップを共有</string>
+    <string name="restore_confirm_title">データを復元</string>
+    <string name="restore_confirm_text">復元は既存データとマージされ、上書きされません。続行しますか？</string>
+    <string name="storage_management">ストレージ管理</string>
+    <string name="database_size">データベースサイズ</string>
+    <string name="cache_size">キャッシュサイズ</string>
+    <string name="backup_size">バックアップサイズ</string>
+    <string name="clear_cache">キャッシュを消去</string>
+    <string name="clear_cache_desc">一時ファイルとキャッシュデータを消去</string>
+    <string name="cache_cleared">キャッシュを消去しました</string>
+
+    <!-- メッセージアクションバー -->
+    <string name="copy_message_toast">メッセージをコピーしました</string>
+
+    <!-- メッセージプレビュー -->
+    <string name="preview_user">あなた</string>
+    <string name="preview_ai">AI</string>
+
+    <!-- TTS -->
+    <string name="tts_speak">読み上げ</string>
+    <string name="tts_stop">読み上げ停止</string>
+    <string name="tts_settings">音声読み上げ</string>
+    <string name="tts_enabled">音声読み上げを有効化</string>
+    <string name="tts_enabled_desc">長押しでメッセージを読み上げ</string>
+    <string name="tts_engine">TTSエンジン</string>
+    <string name="tts_engine_system">システムTTS</string>
+    <string name="tts_engine_openai">OpenAI TTS</string>
+    <string name="tts_speed">速度: %.1fx</string>
+    <string name="tts_pitch">ピッチ: %.1f</string>
+    <string name="tts_openai_endpoint">APIエンドポイント</string>
+    <string name="tts_openai_api_key">APIキー</string>
+    <string name="tts_openai_model">モデル</string>
+    <string name="tts_openai_voice">ボイス</string>
+    <string name="tts_voice_alloy">Alloy</string>
+    <string name="tts_voice_echo">Echo</string>
+    <string name="tts_voice_fable">Fable</string>
+    <string name="tts_voice_onyx">Onyx</string>
+    <string name="tts_voice_nova">Nova</string>
+    <string name="tts_voice_shimmer">Shimmer</string>
+
+    <!-- アクセシビリティ -->
+    <string name="a11y_user_message">ユーザーメッセージ</string>
+    <string name="a11y_assistant_message">アシスタントメッセージ</string>
+    <string name="a11y_typing_indicator">入力中</string>
+    <string name="a11y_attached_image">添付画像</string>
+    <string name="a11y_swipe_hint">左スワイプで返信、右スワイプで削除</string>
+    <string name="a11y_character_card">%s、キャラクターカード</string>
+    <string name="a11y_group_chat_card">%s、グループチャット</string>
+    <string name="a11y_chat_item">%s、チャット</string>
+    <string name="a11y_chattiness_value">健談度 %d、%s</string>
+    <string name="a11y_group_icon">グループチャットアイコン</string>
+    <string name="a11y_chat_icon">チャットアイコン</string>
+    <string name="summaries">会話要約</string>
+    <string name="no_summaries">要約はまだありません</string>
+    <string name="generate_summary">要約を生成</string>
+    <string name="summary_generating">要約を生成中…</string>
+    <string name="delete_summary">要約を削除</string>
+    <string name="summary_deleted">要約を削除しました</string>
+    <string name="summary_range">%d 件のメッセージをカバー</string>
+    <string name="summary_tokens">約 %d tokens</string>
+
+    <!-- Web 検索 -->
+    <string name="web_search">Web検索</string>
+    <string name="web_search_desc">キャラクターがリアルタイム情報を検索可能に</string>
+    <string name="web_search_enabled">Web検索を有効化</string>
+    <string name="web_search_engine">検索エンジン</string>
+    <string name="web_search_engine_ddg">DuckDuckGo（無料）</string>
+    <string name="web_search_engine_bing">Bing</string>
+    <string name="web_search_engine_google">Google</string>
+    <string name="web_search_api_key">API Key</string>
+    <string name="web_search_max_results">最大結果数: %d</string>
+    <string name="web_search_auto">自動検索</string>
+    <string name="web_search_auto_desc">AIが自動で検索するか判断（トークン消費増加）</string>
+    <string name="web_search_command_hint">/search キーワード で手動検索</string>
+</resources>

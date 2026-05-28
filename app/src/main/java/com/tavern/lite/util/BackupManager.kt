@@ -75,7 +75,10 @@ class BackupManager @Inject constructor(
                     ChatBackup(
                         id = it.id, characterId = it.characterId, name = it.name,
                         backgroundPath = it.backgroundPath, isGroup = it.isGroup,
-                        groupChattiness = it.groupChattiness, createdAt = it.createdAt,
+                        groupChattiness = it.groupChattiness,
+                        schedulingStrategy = it.schedulingStrategy,
+                        messageIntervalMs = it.messageIntervalMs,
+                        createdAt = it.createdAt,
                         updatedAt = it.updatedAt
                     )
                 }
@@ -234,7 +237,10 @@ class BackupManager @Inject constructor(
                     com.tavern.lite.data.db.entity.ChatEntity(
                         id = c.id, characterId = c.characterId, name = c.name,
                         backgroundPath = c.backgroundPath, isGroup = c.isGroup,
-                        groupChattiness = c.groupChattiness, createdAt = c.createdAt,
+                        groupChattiness = c.groupChattiness,
+                        schedulingStrategy = c.schedulingStrategy,
+                        messageIntervalMs = c.messageIntervalMs,
+                        createdAt = c.createdAt,
                         updatedAt = c.updatedAt
                     )
                 )

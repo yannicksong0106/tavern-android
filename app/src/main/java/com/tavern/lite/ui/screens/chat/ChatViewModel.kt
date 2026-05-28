@@ -9,13 +9,17 @@ import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
+import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.data.repository.SummaryRepository
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
+import com.tavern.lite.domain.usecase.SummaryUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
@@ -61,6 +65,8 @@ class ChatViewModel @Inject constructor(
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
+    private val summaryUseCase: SummaryUseCase,
+    private val summaryRepository: SummaryRepository,
     private val imageGenerationService: ImageGenerationService,
     private val ttsHelper: TtsHelper,
     private val sttHelper: SttHelper,
@@ -96,6 +102,14 @@ class ChatViewModel @Inject constructor(
 
     private val _groupCharacterChattiness = MutableStateFlow<Map<Long, Int>>(emptyMap())
     val groupCharacterChattiness: StateFlow<Map<Long, Int>> = _groupCharacterChattiness.asStateFlow()
+
+    // 调度策略
+    private val _schedulingStrategy = MutableStateFlow(GroupSchedulingStrategy.NATURAL)
+    val schedulingStrategy: StateFlow<GroupSchedulingStrategy> = _schedulingStrategy.asStateFlow()
+
+    // 发言间隔
+    private val _messageIntervalMs = MutableStateFlow(1500L)
+    val messageIntervalMs: StateFlow<Long> = _messageIntervalMs.asStateFlow()
 
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .distinctUntilChanged()
@@ -161,6 +175,8 @@ class ChatViewModel @Inject constructor(
                 val chars = groupChatRepository.getCharactersForChatSync(chatId)
                 _groupCharacters.value = chars
                 _groupChattiness.value = chat.groupChattiness
+                _schedulingStrategy.value = GroupSchedulingStrategy.fromKey(chat.schedulingStrategy)
+                _messageIntervalMs.value = chat.messageIntervalMs
                 val chatChars = groupChatRepository.getChatCharacters(chatId)
                 _groupCharacterChattiness.value = chatChars.associate { it.characterId to it.chattiness }
             }
@@ -210,6 +226,9 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    // Round-robin 索引
+    private var roundRobinIndex = 0
+
     private fun sendGroupChatMessage(content: String, imagePaths: List<String> = emptyList()) {
         wasCancelled = false
         streamingJob?.cancel()
@@ -221,13 +240,10 @@ class ChatViewModel @Inject constructor(
                     if (characters.isEmpty()) return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    // 根据健谈度过滤：不是每个角色每次都回复
-                    val respondingChars = characters.filter { char ->
-                        val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
-                        val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
-                        random.nextDouble() < responseChance
-                    }.ifEmpty { listOf(characters.random()) } // 至少一个角色回复
+                    // 根据调度策略选择发言角色
+                    val respondingChars = selectRespondingCharacters(characters)
 
+                    val intervalMs = _messageIntervalMs.value
                     val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config, imagePaths)
                     for ((charId, result) in results) {
                         if (wasCancelled) break
@@ -235,16 +251,10 @@ class ChatViewModel @Inject constructor(
                         if (result.assistantMsgId != null) {
                             splitIntoMultipleMessages(result.assistantMsgId)
                         }
-                        // 角色间延迟：基于消息长度的自然延迟
+                        // 角色间延迟：基于配置间隔 + 自然抖动
                         if (charId != results.last().first && !wasCancelled) {
-                            val msgLen = result.fullResponse.length
-                            val baseDelay = when {
-                                msgLen < 30 -> 600L
-                                msgLen < 80 -> 1000L
-                                msgLen < 150 -> 1500L
-                                else -> 2000L
-                            }
-                            delay(baseDelay + random.nextLong(800))
+                            val jitter = random.nextLong((intervalMs * 0.3).toLong())
+                            delay(intervalMs + jitter)
                         }
                     }
                 } catch (e: Exception) {
@@ -258,6 +268,32 @@ class ChatViewModel @Inject constructor(
                         scheduleGroupProactiveDialogue()
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * 根据调度策略选择本轮发言的角色列表
+     */
+    private fun selectRespondingCharacters(characters: List<CharacterEntity>): List<CharacterEntity> {
+        return when (_schedulingStrategy.value) {
+            GroupSchedulingStrategy.NATURAL -> {
+                // 基于健谈度 + 随机因子
+                characters.filter { char ->
+                    val chattiness = _groupCharacterChattiness.value[char.id] ?: char.chattiness
+                    val responseChance = 0.5 + (chattiness / 100.0) * 0.5 // 50%-100%
+                    random.nextDouble() < responseChance
+                }.ifEmpty { listOf(characters.random()) }
+            }
+            GroupSchedulingStrategy.LIST_ORDER -> {
+                // 按列表顺序，所有角色依次发言
+                characters
+            }
+            GroupSchedulingStrategy.ROUND_ROBIN -> {
+                // 轮流发言：每次只选一个角色
+                val char = characters[roundRobinIndex % characters.size]
+                roundRobinIndex = (roundRobinIndex + 1) % characters.size
+                listOf(char)
             }
         }
     }
@@ -595,6 +631,14 @@ class ChatViewModel @Inject constructor(
     private val _showBookmarksOnly = MutableStateFlow(false)
     val showBookmarksOnly: StateFlow<Boolean> = _showBookmarksOnly.asStateFlow()
 
+    // 对话摘要
+    val summaries: StateFlow<List<SummaryEntity>> = summaryRepository.getSummariesForChat(chatId)
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _isGeneratingSummary = MutableStateFlow(false)
+    val isGeneratingSummary: StateFlow<Boolean> = _isGeneratingSummary.asStateFlow()
+
     fun loadBranches() {
         viewModelScope.launch {
             val branches = chatRepository.getBranchesForChatSync(chatId)
@@ -634,6 +678,31 @@ class ChatViewModel @Inject constructor(
 
     fun toggleBookmarkFilter() {
         _showBookmarksOnly.value = !_showBookmarksOnly.value
+    }
+
+    // === 对话摘要 ===
+
+    fun generateSummary() {
+        if (_isGeneratingSummary.value) return
+        viewModelScope.launch {
+            _isGeneratingSummary.value = true
+            try {
+                val character = _character.value ?: return@launch
+                val config = apiConfigStore.configFlow.first()
+                summaryUseCase.generateManualSummary(chatId, config, character.name)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _toastMessage.emit("摘要生成失败: ${e.message}")
+            } finally {
+                _isGeneratingSummary.value = false
+            }
+        }
+    }
+
+    fun deleteSummary(summary: SummaryEntity) {
+        viewModelScope.launch {
+            summaryRepository.deleteSummary(summary.id)
+        }
     }
 
     fun setChatBackground(path: String?) {
@@ -698,6 +767,20 @@ class ChatViewModel @Inject constructor(
         }
         viewModelScope.launch {
             groupChatRepository.updateCharacterChattiness(chatId, characterId, value)
+        }
+    }
+
+    fun updateSchedulingStrategy(strategy: GroupSchedulingStrategy) {
+        _schedulingStrategy.value = strategy
+        viewModelScope.launch {
+            groupChatRepository.updateSchedulingStrategy(chatId, strategy.key)
+        }
+    }
+
+    fun updateMessageInterval(intervalMs: Long) {
+        _messageIntervalMs.value = intervalMs
+        viewModelScope.launch {
+            groupChatRepository.updateMessageInterval(chatId, intervalMs)
         }
     }
 

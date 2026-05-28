@@ -45,6 +45,11 @@
     <string name="pin_message">置顶消息</string>
     <string name="unpin_message">取消置顶</string>
     <string name="pinned_messages">置顶消息</string>
+    <string name="bookmarks">书签</string>
+    <string name="no_bookmarks">暂无书签消息</string>
+    <string name="you">你</string>
+    <string name="assistant">助手</string>
+    <string name="system">系统</string>
     <string name="edit_message_title">编辑消息</string>
     <string name="regenerate">重新生成</string>
     <string name="input_hint">说点什么…</string>
@@ -136,6 +141,8 @@
     <string name="language_setting">语言</string>
     <string name="language_chinese">中文</string>
     <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_korean">한국어</string>
     <string name="language_system">跟随系统</string>
 
     <!-- 后台主动对话 / Background Proactive -->
@@ -340,6 +347,14 @@
     <string name="group_chattiness">群聊健谈度</string>
     <string name="group_chattiness_desc">控制群聊整体主动发言频率</string>
     <string name="character_chattiness">角色健谈度</string>
+    <string name="scheduling_strategy">调度策略</string>
+    <string name="scheduling_strategy_desc">控制群聊中角色发言的顺序</string>
+    <string name="strategy_natural">自然</string>
+    <string name="strategy_list_order">列表顺序</string>
+    <string name="strategy_round_robin">轮流</string>
+    <string name="message_interval">发言间隔</string>
+    <string name="message_interval_desc">角色发言之间的等待时间</string>
+    <string name="message_interval_value">%.1f 秒</string>
 
     <!-- @ 功能 / At Mention -->
     <string name="at_mention_hint">@ 角色名 指定回复</string>
@@ -423,4 +438,39 @@
     <string name="tts_voice_onyx">Onyx</string>
     <string name="tts_voice_nova">Nova</string>
     <string name="tts_voice_shimmer">Shimmer</string>
+
+    <!-- 无障碍 / Accessibility -->
+    <string name="a11y_user_message">用户消息</string>
+    <string name="a11y_assistant_message">助手消息</string>
+    <string name="a11y_typing_indicator">正在输入</string>
+    <string name="a11y_attached_image">已附加图片</string>
+    <string name="a11y_swipe_hint">左滑回复，右滑删除</string>
+    <string name="a11y_character_card">%s，角色卡片</string>
+    <string name="a11y_group_chat_card">%s，群聊</string>
+    <string name="a11y_chat_item">%s，对话</string>
+    <string name="a11y_chattiness_value">健谈度 %d，%s</string>
+    <string name="a11y_group_icon">群聊图标</string>
+    <string name="a11y_chat_icon">对话图标</string>
+    <string name="summaries">对话摘要</string>
+    <string name="no_summaries">暂无对话摘要</string>
+    <string name="generate_summary">生成摘要</string>
+    <string name="summary_generating">正在生成摘要…</string>
+    <string name="delete_summary">删除摘要</string>
+    <string name="summary_deleted">摘要已删除</string>
+    <string name="summary_range">涵盖 %d 条消息</string>
+    <string name="summary_tokens">约 %d tokens</string>
+
+    <!-- Web 搜索 / Web Search -->
+    <string name="web_search">网络搜索</string>
+    <string name="web_search_desc">角色可通过搜索引擎获取实时信息</string>
+    <string name="web_search_enabled">启用网络搜索</string>
+    <string name="web_search_engine">搜索引擎</string>
+    <string name="web_search_engine_ddg">DuckDuckGo（免费）</string>
+    <string name="web_search_engine_bing">Bing</string>
+    <string name="web_search_engine_google">Google</string>
+    <string name="web_search_api_key">API Key</string>
+    <string name="web_search_max_results">最大结果数: %d</string>
+    <string name="web_search_auto">自动搜索</string>
+    <string name="web_search_auto_desc">AI 自动判断是否需要搜索（消耗更多 token）</string>
+    <string name="web_search_command_hint">发送 /search 关键词 手动搜索</string>
 </resources>

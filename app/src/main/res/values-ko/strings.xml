@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tavern Lite</string>
+
+    <!-- 공통 -->
+    <string name="back">뒤로</string>
+    <string name="delete">삭제</string>
+    <string name="cancel">취소</string>
+    <string name="save">저장</string>
+    <string name="edit">편집</string>
+    <string name="close">닫기</string>
+    <string name="more">더보기</string>
+    <string name="send">보내기</string>
+    <string name="stop">중지</string>
+    <string name="create">생성</string>
+    <string name="enter">입장</string>
+    <string name="copy">복사</string>
+    <string name="copied">복사됨</string>
+    <string name="default_label">기본값</string>
+    <string name="untitled">제목 없음</string>
+    <string name="confirm_delete_title">삭제</string>
+    <string name="confirm_delete_text">정말 삭제하시겠습니까?</string>
+
+    <!-- 홈 -->
+    <string name="home_title">Tavern Lite</string>
+    <string name="search">검색</string>
+    <string name="import_character">캐릭터 카드 가져오기</string>
+    <string name="world_book">월드북</string>
+    <string name="settings">설정</string>
+    <string name="new_character">새 캐릭터</string>
+    <string name="search_characters">캐릭터 검색…</string>
+    <string name="delete_character_title">캐릭터 삭제</string>
+    <string name="delete_character_text">「%s」을(를) 삭제하시겠습니까? 이 캐릭터의 모든 채팅 기록도 삭제됩니다.</string>
+    <string name="export_json">JSON으로 내보내기</string>
+    <string name="export_png">PNG로 내보내기</string>
+    <string name="no_characters">캐릭터가 아직 없습니다</string>
+    <string name="no_characters_hint">우측 하단 +를 눌러 첫 캐릭터를 만드세요</string>
+
+    <!-- 채팅 -->
+    <string name="loading">로딩 중…</string>
+    <string name="replying">응답 중…</string>
+    <string name="change_background">배경 변경</string>
+    <string name="delete_message_title">메시지 삭제</string>
+    <string name="delete_message_text">이 메시지를 삭제하시겠습니까?</string>
+    <string name="pin_message">고정</string>
+    <string name="unpin_message">고정 해제</string>
+    <string name="pinned_messages">고정된 메시지</string>
+    <string name="bookmarks">북마크</string>
+    <string name="no_bookmarks">북마크된 메시지가 없습니다</string>
+    <string name="you">나</string>
+    <string name="assistant">어시스턴트</string>
+    <string name="system">시스템</string>
+    <string name="edit_message_title">메시지 편집</string>
+    <string name="regenerate">다시 생성</string>
+    <string name="input_hint">메시지를 입력하세요…</string>
+    <string name="continue_generation">계속</string>
+    <string name="scroll_to_bottom">맨 아래로</string>
+    <string name="empty_message">…</string>
+    <string name="typing">입력 중…</string>
+    <string name="swipe_previous">이전</string>
+    <string name="swipe_next">다음</string>
+    <string name="branch_previous">이전 브랜치</string>
+    <string name="branch_next">다음 브랜치</string>
+    <string name="branch_info">브랜치 %1$d / %2$d</string>
+    <string name="resend">재전송</string>
+    <string name="create_branch">브랜치 생성</string>
+    <string name="voice_input">음성 입력</string>
+    <string name="voice_permission_denied">음성 입력에는 마이크 권한이 필요합니다</string>
+    <string name="add_image">이미지 추가</string>
+    <string name="remove_image">이미지 제거</string>
+    <string name="generate_image">이미지 생성</string>
+    <string name="generating_image">이미지 생성 중…</string>
+    <string name="image_generation_failed">이미지 생성 실패</string>
+    <string name="image_generation_only_openai">이미지 생성은 OpenAI API만 지원</string>
+    <string name="time_just_now">방금</string>
+    <string name="time_minutes">%d분 전</string>
+    <string name="time_hours">%d시간 전</string>
+    <string name="time_days">%d일 전</string>
+
+    <!-- 채팅 목록 -->
+    <string name="chat_list">채팅 목록</string>
+    <string name="chat_count">%d개 채팅</string>
+    <string name="import_chat">채팅 가져오기</string>
+    <string name="export_all_chats">모든 채팅 내보내기</string>
+    <string name="new_chat">새 채팅</string>
+    <string name="delete_chat_title">채팅 삭제</string>
+    <string name="delete_chat_text">이 채팅을 삭제하시겠습니까? 모든 메시지가 삭제됩니다.</string>
+    <string name="rename_chat">채팅 이름 변경</string>
+    <string name="input_chat_name">채팅 이름 입력</string>
+    <string name="export_chat">채팅 내보내기</string>
+    <string name="share_chat">채팅 공유</string>
+    <string name="no_chats">채팅이 아직 없습니다</string>
+    <string name="no_chats_hint">우측 하단 +를 눌러 새 채팅을 시작하세요</string>
+    <string name="chat_name_default">채팅 %d</string>
+
+    <!-- 내보내기 형식 -->
+    <string name="format_markdown_desc">.md — 리치 텍스트, 널리 지원</string>
+    <string name="format_html_desc">.html — 스타일 웹페이지, 다크 테마</string>
+    <string name="format_plaintext_desc">.txt — 간단한 텍스트 형식</string>
+    <string name="format_json_desc">.json — 구조화된 데이터, 재가져오기 가능</string>
+    <string name="format_plaintext">일반 텍스트</string>
+
+    <!-- 설정 -->
+    <string name="api_config">API 설정</string>
+    <string name="connection_test">연결 테스트</string>
+    <string name="connection_test_desc">테스트 메시지를 보내 API 설정을 확인</string>
+    <string name="testing">테스트 중…</string>
+    <string name="test">테스트</string>
+    <string name="test_reply">응답: %s</string>
+    <string name="test_error">오류: %s</string>
+    <string name="generation_params">생성 파라미터</string>
+    <string name="user_settings">사용자 설정</string>
+    <string name="user_persona">사용자 페르소나</string>
+    <string name="chat_bubble">채팅 버블</string>
+    <string name="theme">테마</string>
+    <string name="about">정보</string>
+    <string name="about_version">버전 1.2.75 · SillyTavern 데이터 형식 기반</string>
+    <string name="about_click_hint">탭하여 개발 로그 보기</string>
+    <string name="dev_log_title">개발 로그</string>
+    <string name="dev_log_subtitle">Tavern AI의 성장 기록, 모든 진보와 일상의 기록</string>
+    <string name="custom_provider">사용자 정의</string>
+    <string name="model">모델</string>
+    <string name="context_length">컨텍스트 길이</string>
+    <string name="user_name_label">이름 ({{user}} 플레이스홀더용)</string>
+    <string name="manage_persona">사용자 페르소나 관리</string>
+    <string name="manage_persona_desc">대화에서 당신의 정체성을 생성하고 관리</string>
+    <string name="bubble_color_user">사용자 버블 색상</string>
+    <string name="bubble_color_assistant">어시스턴트 버블 색상</string>
+    <string name="color_deep_brown">딥 브라운</string>
+    <string name="color_deep_blue">딥 블루</string>
+    <string name="color_deep_purple">딥 퍼플</string>
+    <string name="color_deep_green">딥 그린</string>
+    <string name="color_warm_brown">웜 브라운</string>
+    <string name="color_beige">베이지</string>
+    <string name="color_mint">민트</string>
+    <string name="color_silver">실버</string>
+    <string name="bubble_corner_radius">모서리 둥글기: %ddp</string>
+    <string name="font_size">글꼴 크기: %dsp</string>
+    <string name="material_you">Material You 다이나믹 컬러</string>
+    <string name="material_you_desc">시스템 배경화면 색상 따르기 (Android 12+)</string>
+    <string name="language_setting">언어</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_system">시스템 따르기</string>
+
+    <!-- 백그라운드 프로액티브 -->
+    <string name="background_proactive">백그라운드 대화</string>
+    <string name="background_proactive_desc">앱이 백그라운드에 있어도 캐릭터가 자발적으로 대화</string>
+
+    <!-- 캐릭터 편집 -->
+    <string name="edit_character">캐릭터 편집</string>
+    <string name="new_character_title">새 캐릭터</string>
+    <string name="change_avatar">탭하여 아바타 변경</string>
+    <string name="chat_background">채팅 배경</string>
+    <string name="background_set">설정됨</string>
+    <string name="change">변경</string>
+    <string name="memory_management">메모리 관리</string>
+    <string name="memory_management_desc">캐릭터 메모리 보기, 추가, 편집</string>
+    <string name="regex_script">정규식 스크립트</string>
+    <string name="regex_script_desc">메시지 치환 및 정규식 처리</string>
+    <string name="character_name_required">캐릭터 이름 *</string>
+    <string name="character_desc">설명</string>
+    <string name="character_desc_placeholder">당신은 다른 세계에서 온 엘프, 부드럽고 호기심 많고…</string>
+    <string name="personality">성격</string>
+    <string name="personality_placeholder">부드럽고, 호기심 많고, 약간 허당</string>
+    <string name="first_message">첫 메시지</string>
+    <string name="first_message_placeholder">*오래된 나무 문을 밀어 열자, 엘프 소녀가…*</string>
+    <string name="example_dialogue">예시 대화</string>
+    <string name="system_prompt_optional">시스템 프롬프트 (선택)</string>
+    <string name="post_history_instructions">이력 후 지시 (선택)</string>
+    <string name="post_history_placeholder">대화 후 따라야 할 규칙…</string>
+    <string name="author_note">작가 노트</string>
+    <string name="author_note_desc">채팅 이력에 주입되는 추가 프롬프트로, 캐릭터 행동 미세 조정</string>
+    <string name="author_note_content">노트 내용</string>
+    <string name="author_note_content_placeholder">작가 노트를 입력하세요…</string>
+    <string name="author_note_depth">주입 깊이 (끝에서부터 메시지 수)</string>
+    <string name="author_note_position">현재 위치: %s</string>
+    <string name="position_after_an">작가 노트 뒤</string>
+    <string name="position_before_an">작가 노트 앞</string>
+    <string name="creator">제작자</string>
+
+    <!-- 월드북 -->
+    <string name="world_book_list">월드북</string>
+    <string name="new_world_book">새 월드북</string>
+    <string name="delete_world_book_title">월드북 삭제</string>
+    <string name="delete_world_book_text">「%s」을(를) 삭제하시겠습니까? 모든 항목도 삭제됩니다.</string>
+    <string name="no_world_books">월드북이 아직 없습니다</string>
+    <string name="no_world_books_hint">월드북은 캐릭터의 세계관 설정을 저장합니다</string>
+    <string name="import_lorebook">Lorebook 가져오기</string>
+    <string name="import_lorebook_hint">SillyTavern 형식의 Lorebook JSON을 붙여넣기</string>
+    <string name="import_btn">가져오기</string>
+    <string name="export_lorebook">Lorebook 내보내기</string>
+    <string name="export_copied">Lorebook JSON이 클립보드에 복사되었습니다</string>
+    <string name="name_required">이름 *</string>
+    <string name="description">설명</string>
+    <string name="entry_count">%d개 항목</string>
+    <string name="add_entry">항목 추가</string>
+    <string name="edit_entry">항목 편집</string>
+    <string name="delete_entry_title">항목 삭제</string>
+    <string name="delete_entry_text">「%s」을(를) 삭제하시겠습니까?</string>
+    <string name="no_entries_hint">우측 하단 +를 눌러 항목을 추가하세요</string>
+    <string name="entry_comment">설명</string>
+    <string name="entry_depth">주입 깊이 (끝에서부터)</string>
+    <string name="entry_position">주입 위치</string>
+    <string name="position_before_an_short">작가 노트 앞</string>
+    <string name="position_after_an_short">작가 노트 뒤</string>
+    <string name="position_before_main">메인 프롬프트 앞</string>
+    <string name="position_after_main">메인 프롬프트 뒤</string>
+    <string name="primary_keywords">주요 키워드 (쉼표 구분)</string>
+    <string name="secondary_keywords">보조 키워드 (쉼표 구분)</string>
+    <string name="content">내용</string>
+    <string name="constant_entry">상시 항목 (항상 주입)</string>
+    <string name="selective_match">선택적 매칭 (보조 키워드 사용)</string>
+    <string name="match_logic">매칭 로직</string>
+    <string name="logic_and">AND (전부 일치)</string>
+    <string name="logic_or">OR (하나라도 일치)</string>
+    <string name="logic_not">NOT (일치 제외)</string>
+    <string name="keywords_label">키워드: %s</string>
+    <string name="constant_tag">상시</string>
+    <string name="selective_tag">선택적(%s)</string>
+
+    <!-- 메모리 -->
+    <string name="memory_title">메모리 관리</string>
+    <string name="clear_all_memories">모든 메모리 삭제</string>
+    <string name="clear_all_memories_text">이 캐릭터의 모든 메모리를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="clear">삭제</string>
+    <string name="add_memory">메모리 추가</string>
+    <string name="edit_memory">메모리 편집</string>
+    <string name="no_memories">메모리가 아직 없습니다</string>
+    <string name="no_memories_hint">우측 하단 +를 눌러 수동 추가, 또는 대화에서 자동 축적</string>
+    <string name="memory_content_placeholder">메모리 내용…</string>
+    <string name="importance">중요도: %d</string>
+    <string name="memory_tab_manual">수동 메모리</string>
+    <string name="memory_tab_auto">AI 메모리</string>
+    <string name="category_user_info">사용자 정보</string>
+    <string name="category_character_consistency">캐릭터 설정</string>
+    <string name="category_event">중요 이벤트</string>
+    <string name="category_relationship">인간관계</string>
+    <string name="category_commitment">약속</string>
+    <string name="add_atom">AI 메모리 추가</string>
+    <string name="edit_atom">AI 메모리 편집</string>
+    <string name="superseded">폐기됨</string>
+    <string name="source_llm">AI 추출</string>
+    <string name="source_regex">자동 감지</string>
+    <string name="source_manual">수동 추가</string>
+    <string name="access_count">%d회 접근</string>
+
+    <!-- 메모리 라이브러리 -->
+    <string name="memory_library">메모리 라이브러리</string>
+    <string name="memory_library_desc">캐릭터 메모리 보기 및 관리</string>
+    <string name="memory_category_all">전체</string>
+    <string name="memory_category_fact">사실</string>
+    <string name="memory_category_emotion">감정</string>
+    <string name="memory_category_preference">선호</string>
+    <string name="memory_category_event">이벤트</string>
+    <string name="memory_category_habit">습관</string>
+    <string name="memory_category_character">캐릭터 핵심</string>
+    <string name="memory_category_temporary">임시 메모리</string>
+    <string name="core_memories">핵심 메모리</string>
+    <string name="temporary_memories">임시 메모리</string>
+    <string name="last_extracted">최근 추출: %s</string>
+    <string name="memory_count">%d개 메모리</string>
+    <string name="expires_in">%s 후 만료</string>
+    <string name="select_character">캐릭터 선택</string>
+    <string name="sort_by_importance">중요도순</string>
+    <string name="sort_by_recency">시간순</string>
+    <string name="sort_by_access">접근 빈도순</string>
+    <string name="search_memories">메모리 검색</string>
+    <string name="memory_recalled">메모리 호출: %d개</string>
+    <string name="just_now">방금</string>
+    <string name="minutes_ago">%d분 전</string>
+    <string name="hours_ago">%d시간 전</string>
+    <string name="days_ago">%d일 전</string>
+    <string name="expires_hours">%d시간</string>
+
+    <!-- 페르소나 -->
+    <string name="persona_title">사용자 페르소나</string>
+    <string name="new_persona">새 페르소나</string>
+    <string name="edit_persona">페르소나 편집</string>
+    <string name="persona_name">페르소나 이름</string>
+    <string name="persona_biography_placeholder">자기소개, 배경 스토리…</string>
+    <string name="persona_placeholders_hint">{{user}} 및 {{char}} 플레이스홀더 지원</string>
+    <string name="set_default">기본값으로 설정</string>
+    <string name="default_tag">기본값</string>
+    <string name="no_personas">페르소나가 아직 없습니다</string>
+    <string name="no_personas_hint">우측 하단 +를 눌러 정체성을 만드세요</string>
+    <string name="persona_desc">페르소나는 대화에서 \"당신\"을 나타냅니다</string>
+
+    <!-- 스크립트 -->
+    <string name="script_title">정규식 스크립트</string>
+    <string name="add_script">스크립트 추가</string>
+    <string name="edit_script">스크립트 편집</string>
+    <string name="delete_script_title">스크립트 삭제</string>
+    <string name="delete_script_text">「%s」을(를) 삭제하시겠습니까?</string>
+    <string name="script_count">%d개 스크립트</string>
+    <string name="no_scripts">스크립트가 아직 없습니다</string>
+    <string name="no_scripts_hint">우측 하단 +를 눌러 정규식 스크립트를 추가하세요</string>
+    <string name="script_name">스크립트 이름</string>
+    <string name="script_comment">설명 (선택)</string>
+    <string name="execution_timing">실행 타이밍</string>
+    <string name="find_pattern">찾기 패턴</string>
+    <string name="replace_with">바꾸기</string>
+    <string name="is_regex">정규식</string>
+    <string name="case_sensitive">대소문자 구분</string>
+    <string name="type_user_message">사용자 메시지</string>
+    <string name="type_ai_reply">AI 응답</string>
+    <string name="type_both">둘 다</string>
+    <string name="regex_tag">정규식</string>
+    <string name="disable">비활성화</string>
+    <string name="enable">활성화</string>
+
+    <!-- 월드북 할당 -->
+    <string name="select_world_book">월드북 선택</string>
+    <string name="no_world_book_assigned">월드북 미할당</string>
+
+    <!-- 그룹 채팅 -->
+    <string name="create_group_chat">그룹 채팅 생성</string>
+    <string name="group_chat_select_hint">2명 이상의 캐릭터를 선택하여 그룹 채팅에 참여</string>
+    <string name="create_group_with_count">그룹 채팅 생성 (%d명)</string>
+
+    <!-- 배경 선택 -->
+    <string name="select_background">배경 선택</string>
+    <string name="custom_background">사용자 정의</string>
+    <string name="from_gallery">갤러리에서</string>
+    <string name="remove_background">제거</string>
+    <string name="preset_backgrounds">프리셋</string>
+    <string name="bg_dark_night">깊은 밤</string>
+    <string name="bg_warm_sunset">따뜻한 노을</string>
+    <string name="bg_forest">숲</string>
+    <string name="bg_ocean">바다</string>
+    <string name="bg_lavender">라벤더</string>
+    <string name="bg_rose_gold">로즈골드</string>
+    <string name="bg_arctic">오로라</string>
+    <string name="bg_cherry">벚꽃</string>
+
+    <!-- 수다도 -->
+    <string name="chattiness">수다도</string>
+    <string name="chattiness_desc">캐릭터의 자발적 대화 빈도 제어</string>
+    <string name="chattiness_silent">조용함</string>
+    <string name="chattiness_quiet">차분함</string>
+    <string name="chattiness_normal">보통</string>
+    <string name="chattiness_talkative">수다스러움</string>
+    <string name="chattiness_very_talkative">매우 수다스러움</string>
+    <string name="chat_settings">채팅 설정</string>
+    <string name="group_chattiness">그룹 수다도</string>
+    <string name="group_chattiness_desc">그룹 전체의 자발적 대화 빈도 제어</string>
+    <string name="character_chattiness">캐릭터 수다도</string>
+    <string name="scheduling_strategy">스케줄링 전략</string>
+    <string name="scheduling_strategy_desc">그룹 채팅에서 캐릭터 발언 순서 제어</string>
+    <string name="strategy_natural">자연</string>
+    <string name="strategy_list_order">목록 순서</string>
+    <string name="strategy_round_robin">라운드 로빈</string>
+    <string name="message_interval">메시지 간격</string>
+    <string name="message_interval_desc">캐릭터 메시지 간 대기 시간</string>
+    <string name="message_interval_value">%.1f 초</string>
+
+    <!-- @멘션 -->
+    <string name="at_mention_hint">@ 캐릭터 이름 으로 지정 회신</string>
+
+    <!-- 검색 -->
+    <string name="search_messages">메시지 검색…</string>
+    <string name="previous">이전</string>
+    <string name="next">다음</string>
+
+    <!-- 프리셋 -->
+    <string name="preset_management">프리셋 관리</string>
+    <string name="preset_management_desc">시스템 프롬프트 프리셋 라이브러리 관리</string>
+    <string name="add_preset">프리셋 추가</string>
+    <string name="edit_preset">프리셋 편집</string>
+    <string name="delete_preset_title">프리셋 삭제</string>
+    <string name="delete_preset_text">「%s」을(를) 삭제하시겠습니까?</string>
+    <string name="preset_name">프리셋 이름</string>
+    <string name="no_presets">프리셋이 아직 없습니다</string>
+    <string name="no_presets_hint">우측 하단 +를 눌러 시스템 프롬프트 프리셋을 추가하세요</string>
+    <string name="scope_all">전체</string>
+    <string name="scope_global">글로벌</string>
+    <string name="scope_character">캐릭터</string>
+    <string name="scope_chat">채팅</string>
+    <string name="preset_scope">프리셋 범위</string>
+
+    <!-- 그룹 채팅 목록 -->
+    <string name="group_chats">그룹 채팅</string>
+    <string name="no_group_chats">그룹 채팅이 아직 없습니다</string>
+    <string name="group_members_count">%d명</string>
+    <string name="delete_group_chat_title">그룹 채팅 삭제</string>
+    <string name="delete_group_chat_text">이 그룹 채팅을 삭제하시겠습니까? 모든 메시지가 삭제됩니다.</string>
+
+    <!-- 데이터 관리 -->
+    <string name="data_management">데이터 관리</string>
+    <string name="backup_data">데이터 백업</string>
+    <string name="backup_data_desc">모든 데이터를 JSON 파일로 내보내기</string>
+    <string name="backup_success">백업 성공: %s</string>
+    <string name="backup_failed">백업 실패: %s</string>
+    <string name="restore_data">데이터 복원</string>
+    <string name="restore_data_desc">백업 파일에서 데이터 복원</string>
+    <string name="restore_success">복원 완료: 캐릭터 %1$d개, 채팅 %2$d개, 메시지 %3$d개</string>
+    <string name="restore_failed">복원 실패: %s</string>
+    <string name="share_backup">백업 공유</string>
+    <string name="restore_confirm_title">데이터 복원</string>
+    <string name="restore_confirm_text">복원은 기존 데이터와 병합되며 덮어쓰지 않습니다. 계속하시겠습니까?</string>
+    <string name="storage_management">저장소 관리</string>
+    <string name="database_size">데이터베이스 크기</string>
+    <string name="cache_size">캐시 크기</string>
+    <string name="backup_size">백업 크기</string>
+    <string name="clear_cache">캐시 삭제</string>
+    <string name="clear_cache_desc">임시 파일 및 캐시 데이터 삭제</string>
+    <string name="cache_cleared">캐시가 삭제되었습니다</string>
+
+    <!-- 메시지 액션 바 -->
+    <string name="copy_message_toast">메시지가 복사되었습니다</string>
+
+    <!-- 메시지 미리보기 -->
+    <string name="preview_user">당신</string>
+    <string name="preview_ai">AI</string>
+
+    <!-- TTS -->
+    <string name="tts_speak">읽어주기</string>
+    <string name="tts_stop">읽어주기 중지</string>
+    <string name="tts_settings">음성 읽어주기</string>
+    <string name="tts_enabled">음성 읽어주기 활성화</string>
+    <string name="tts_enabled_desc">길게 눌러 메시지를 읽어주기</string>
+    <string name="tts_engine">TTS 엔진</string>
+    <string name="tts_engine_system">시스템 TTS</string>
+    <string name="tts_engine_openai">OpenAI TTS</string>
+    <string name="tts_speed">속도: %.1fx</string>
+    <string name="tts_pitch">피치: %.1f</string>
+    <string name="tts_openai_endpoint">API 엔드포인트</string>
+    <string name="tts_openai_api_key">API 키</string>
+    <string name="tts_openai_model">모델</string>
+    <string name="tts_openai_voice">음성</string>
+    <string name="tts_voice_alloy">Alloy</string>
+    <string name="tts_voice_echo">Echo</string>
+    <string name="tts_voice_fable">Fable</string>
+    <string name="tts_voice_onyx">Onyx</string>
+    <string name="tts_voice_nova">Nova</string>
+    <string name="tts_voice_shimmer">Shimmer</string>
+
+    <!-- 접근성 -->
+    <string name="a11y_user_message">사용자 메시지</string>
+    <string name="a11y_assistant_message">어시스턴트 메시지</string>
+    <string name="a11y_typing_indicator">입력 중</string>
+    <string name="a11y_attached_image">첨부 이미지</string>
+    <string name="a11y_swipe_hint">왼쪽 스와이프로 회신, 오른쪽 스와이프로 삭제</string>
+    <string name="a11y_character_card">%s, 캐릭터 카드</string>
+    <string name="a11y_group_chat_card">%s, 그룹 채팅</string>
+    <string name="a11y_chat_item">%s, 채팅</string>
+    <string name="a11y_chattiness_value">수다도 %d, %s</string>
+    <string name="a11y_group_icon">그룹 채팅 아이콘</string>
+    <string name="a11y_chat_icon">채팅 아이콘</string>
+    <string name="summaries">대화 요약</string>
+    <string name="no_summaries">아직 요약이 없습니다</string>
+    <string name="generate_summary">요약 생성</string>
+    <string name="summary_generating">요약 생성 중…</string>
+    <string name="delete_summary">요약 삭제</string>
+    <string name="summary_deleted">요약이 삭제되었습니다</string>
+    <string name="summary_range">%d개 메시지 포함</string>
+    <string name="summary_tokens">약 %d tokens</string>
+
+    <!-- 웹 검색 -->
+    <string name="web_search">웹 검색</string>
+    <string name="web_search_desc">캐릭터가 실시간 정보를 검색할 수 있습니다</string>
+    <string name="web_search_enabled">웹 검색 활성화</string>
+    <string name="web_search_engine">검색 엔진</string>
+    <string name="web_search_engine_ddg">DuckDuckGo (무료)</string>
+    <string name="web_search_engine_bing">Bing</string>
+    <string name="web_search_engine_google">Google</string>
+    <string name="web_search_api_key">API Key</string>
+    <string name="web_search_max_results">최대 결과 수: %d</string>
+    <string name="web_search_auto">자동 검색</string>
+    <string name="web_search_auto_desc">AI가 자동으로 검색 여부 판단 (토큰 소비 증가)</string>
+    <string name="web_search_command_hint">/search 키워드로 수동 검색</string>
+</resources>

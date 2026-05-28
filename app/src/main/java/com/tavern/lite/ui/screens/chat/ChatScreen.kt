@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -78,12 +79,15 @@ import com.tavern.lite.ui.components.BackgroundPickerSheet
 import com.tavern.lite.ui.components.CharacterAvatar
 import com.tavern.lite.ui.components.LoadingDots
 import com.tavern.lite.ui.components.presetBackgrounds
+import com.tavern.lite.ui.screens.chat.components.BookmarkSheet
+import com.tavern.lite.ui.screens.chat.components.SummarySheet
 import com.tavern.lite.ui.screens.chat.components.BranchNavigationBar
 import com.tavern.lite.ui.screens.chat.components.ChattinessSheet
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
+import androidx.compose.material.icons.filled.PushPin
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -118,11 +122,17 @@ fun ChatScreen(
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
     val estimatedContextTokens by viewModel.estimatedContextTokens.collectAsStateWithLifecycle()
     val isListening by viewModel.isListening.collectAsStateWithLifecycle()
+    val summaries by viewModel.summaries.collectAsStateWithLifecycle()
+    val isGeneratingSummary by viewModel.isGeneratingSummary.collectAsStateWithLifecycle()
+    val schedulingStrategy by viewModel.schedulingStrategy.collectAsStateWithLifecycle()
+    val messageIntervalMs by viewModel.messageIntervalMs.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
     var showChattinessSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showBookmarksSheet by remember { mutableStateOf(false) }
+    var showSummarySheet by remember { mutableStateOf(false) }
 
     if (showBackgroundPicker) {
         BackgroundPickerSheet(
@@ -152,9 +162,13 @@ fun ChatScreen(
             groupChattiness = groupChattiness,
             groupCharacters = groupCharacters,
             groupCharacterChattiness = groupCharacterChattiness,
+            schedulingStrategy = schedulingStrategy,
+            messageIntervalMs = messageIntervalMs,
             onCharacterChattinessChange = { viewModel.updateCharacterChattiness(it) },
             onGroupChattinessChange = { viewModel.updateGroupChattiness(it) },
             onGroupCharacterChattinessChange = { id, value -> viewModel.updateGroupCharacterChattiness(id, value) },
+            onSchedulingStrategyChange = { viewModel.updateSchedulingStrategy(it) },
+            onMessageIntervalChange = { viewModel.updateMessageInterval(it) },
             onDismiss = { showChattinessSheet = false }
         )
     }
@@ -206,6 +220,30 @@ fun ChatScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    if (showBookmarksSheet) {
+        BookmarkSheet(
+            pinnedMessages = pinnedMessages,
+            onMessageClick = { messageId ->
+                showBookmarksSheet = false
+                val index = messages.indexOfFirst { it.id == messageId }
+                if (index >= 0) {
+                    scope.launch { listState.animateScrollToItem(index) }
+                }
+            },
+            onDismiss = { showBookmarksSheet = false }
+        )
+    }
+
+    if (showSummarySheet) {
+        SummarySheet(
+            summaries = summaries,
+            isGenerating = isGeneratingSummary,
+            onGenerate = { viewModel.generateSummary() },
+            onDelete = { viewModel.deleteSummary(it) },
+            onDismiss = { showSummarySheet = false }
+        )
+    }
 
     // 预计算消息 ID → 索引映射，避免每次 O(n) 查找
     val messageIdToIndex by remember(messages) {
@@ -359,6 +397,14 @@ fun ChatScreen(
                 actions = {
                     IconButton(onClick = { showSearch = !showSearch }) {
                         Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
+                    }
+                    if (pinnedMessages.isNotEmpty()) {
+                        IconButton(onClick = { showBookmarksSheet = true }) {
+                            Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.bookmarks))
+                        }
+                    }
+                    IconButton(onClick = { showSummarySheet = true }) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.summaries))
                     }
                     IconButton(onClick = { showChattinessSheet = true }) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.chat_settings))

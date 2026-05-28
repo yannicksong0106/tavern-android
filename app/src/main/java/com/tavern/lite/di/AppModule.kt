@@ -18,6 +18,7 @@ import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.BranchDao
+import com.tavern.lite.data.db.dao.SummaryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -59,7 +60,9 @@ object AppModule {
             TavernDatabase.MIGRATION_19_20,
             TavernDatabase.MIGRATION_20_21,
             TavernDatabase.MIGRATION_21_22,
-            TavernDatabase.MIGRATION_22_23
+            TavernDatabase.MIGRATION_22_23,
+            TavernDatabase.MIGRATION_23_24,
+            TavernDatabase.MIGRATION_24_25
         ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
          .build()
     }
@@ -103,6 +106,9 @@ object AppModule {
 
     @Provides
     fun provideBranchDao(db: TavernDatabase): BranchDao = db.branchDao()
+
+    @Provides
+    fun provideSummaryDao(db: TavernDatabase): SummaryDao = db.summaryDao()
 
     @Provides
     @Singleton

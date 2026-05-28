@@ -121,6 +121,8 @@ private class FakeGroupChatDao : ChatDao {
     override suspend fun getAllChatsForCharacter(characterId: Long): List<ChatEntity> = emptyList()
     override suspend fun getRecentChats(limit: Int): List<ChatEntity> = emptyList()
     override suspend fun getAllChatsSync(): List<ChatEntity> = inserted.toList()
+    override suspend fun updateSchedulingStrategy(chatId: Long, strategy: String) {}
+    override suspend fun updateMessageInterval(chatId: Long, intervalMs: Long) {}
 }
 
 private class FakeChatCharacterDao : ChatCharacterDao {

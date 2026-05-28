@@ -50,6 +50,8 @@ data class ChatBackup(
     val backgroundPath: String? = null,
     val isGroup: Boolean = false,
     val groupChattiness: Int = 50,
+    val schedulingStrategy: String = "natural",
+    val messageIntervalMs: Long = 1500L,
     val createdAt: Long,
     val updatedAt: Long
 )
