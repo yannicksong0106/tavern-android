@@ -17,9 +17,10 @@
 ### 进行中
 - T Web Search ✅ (代码完成，6 个测试需修复 android.util.Log mock)
 - U 群聊调度增强 ✅ (三种调度策略 + 可配置间隔 + UI)
+- V VN 模式 (立绘系统 ✅，待实现 UI)
 
 ### 待完成
-- V VN 模式 | W 图像生成 | X STscript | Y 扩展框架 | Z 发布准备
+- W 图像生成 | X STscript | Y 扩展框架 | Z 发布准备
 
 ---
 
@@ -199,13 +200,13 @@ CREATE TABLE summaries (
 
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
-| V1 | 立绘系统 | `SpriteEntity` + `SpriteRepository`，存储角色表情立绘 | ⬜ |
+| V1 | 立绘系统 | `SpriteEntity` + `SpriteRepository`，存储角色表情立绘 | ✅ |
 | V2 | 表情映射 | 根据 AI 回复情感分析自动切换立绘表情 | ⬜ |
 | V3 | VN 游戏界面 | 全屏立绘 + 底部对话框 + 背景层 | ⬜ |
 | V4 | 转场动画 | 淡入淡出、滑动等场景切换效果 | ⬜ |
 | V5 | BGM 系统 | `BgmEntity`，角色可配置背景音乐 | ⬜ |
 | V6 | VN 设置 | 角色编辑页: 上传立绘、配置表情映射、设置 BGM | ⬜ |
-| V7 | DB Migration v22 | 新增 `sprites` 表 | ⬜ |
+| V7 | DB Migration v26 | 新增 `sprites` 表 | ✅ |
 
 **差异化价值**：这是 SillyTavern 没有的移动端独有功能，可成为核心卖点
 
@@ -324,7 +325,7 @@ Week 6: Phase Z (发布准备)
 | 功能覆盖率 (vs ST) | ~52% | 65% | 75% |
 | 安全评分 | B+ | A- | A |
 | 多语言支持 | 中/英/日/韩 | 中/英/日/韩 | 中/英/日/韩 |
-| DB Schema 版本 | v24 | v25 | v26 |
+| DB Schema 版本 | v26 | v25 | v26 |
 
 ---
 

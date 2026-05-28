@@ -17,7 +17,8 @@ data class BackupData(
     val worldBookEntries: List<WorldBookEntryBackup> = emptyList(),
     val scripts: List<ScriptBackup> = emptyList(),
     val personas: List<PersonaBackup> = emptyList(),
-    val presets: List<PresetBackup> = emptyList()
+    val presets: List<PresetBackup> = emptyList(),
+    val sprites: List<SpriteBackup> = emptyList()
 )
 
 @Serializable
@@ -171,6 +172,16 @@ data class PresetBackup(
     val updatedAt: Long
 )
 
+@Serializable
+data class SpriteBackup(
+    val id: Long,
+    val characterId: Long,
+    val emotion: String = "neutral",
+    val imagePath: String,
+    val displayOrder: Int = 0,
+    val createdAt: Long
+)
+
 data class RestoreResult(
     val charactersRestored: Int,
     val chatsRestored: Int,
@@ -179,5 +190,6 @@ data class RestoreResult(
     val worldBooksRestored: Int,
     val scriptsRestored: Int,
     val personasRestored: Int,
-    val presetsRestored: Int
+    val presetsRestored: Int,
+    val spritesRestored: Int = 0
 )

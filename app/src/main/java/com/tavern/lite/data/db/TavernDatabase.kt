@@ -15,6 +15,7 @@ import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
+import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
@@ -29,6 +30,7 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.ScriptEntity
+import com.tavern.lite.data.db.entity.SpriteEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
@@ -50,8 +52,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         PresetEntity::class,
         BranchEntity::class,
         SummaryEntity::class,
+        SpriteEntity::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -68,6 +71,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun presetDao(): PresetDao
     abstract fun branchDao(): BranchDao
     abstract fun summaryDao(): SummaryDao
+    abstract fun spriteDao(): SpriteDao
 
     companion object {
         /**
@@ -413,6 +417,23 @@ abstract class TavernDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE chats ADD COLUMN scheduling_strategy TEXT NOT NULL DEFAULT 'natural'")
                 db.execSQL("ALTER TABLE chats ADD COLUMN message_interval_ms INTEGER NOT NULL DEFAULT 1500")
+            }
+        }
+
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sprites (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        emotion TEXT NOT NULL DEFAULT 'neutral',
+                        image_path TEXT NOT NULL,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id ON sprites(character_id)")
             }
         }
 

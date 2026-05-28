@@ -473,4 +473,23 @@
     <string name="web_search_auto">自动搜索</string>
     <string name="web_search_auto_desc">AI 自动判断是否需要搜索（消耗更多 token）</string>
     <string name="web_search_command_hint">发送 /search 关键词 手动搜索</string>
+
+    <!-- Visual Novel 模式 / VN Mode -->
+    <string name="vn_mode">小说模式</string>
+    <string name="vn_mode_desc">立绘 + 背景 + 对话框的沉浸式体验</string>
+    <string name="vn_enter">进入小说模式</string>
+    <string name="vn_exit">退出小说模式</string>
+    <string name="vn_sprites">角色立绘</string>
+    <string name="vn_sprites_desc">管理角色的表情立绘图片</string>
+    <string name="vn_add_sprite">添加立绘</string>
+    <string name="vn_edit_sprite">编辑立绘</string>
+    <string name="vn_delete_sprite">删除立绘</string>
+    <string name="vn_delete_sprite_text">确定要删除这个立绘吗？</string>
+    <string name="vn_emotion">表情</string>
+    <string name="vn_emotion_hint">例如: happy, sad, angry, neutral</string>
+    <string name="vn_image">立绘图片</string>
+    <string name="vn_no_sprites">暂无立绘</string>
+    <string name="vn_no_sprites_hint">点击右下角 + 为角色添加表情立绘</string>
+    <string name="vn_sprite_count">%d 个立绘</string>
+    <string name="vn_current_emotion">当前表情: %s</string>
 </resources>

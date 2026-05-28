@@ -472,4 +472,23 @@
     <string name="web_search_auto">Auto Search</string>
     <string name="web_search_auto_desc">AI automatically decides when to search (uses more tokens)</string>
     <string name="web_search_command_hint">Send /search keyword to search manually</string>
+
+    <!-- Visual Novel Mode -->
+    <string name="vn_mode">Visual Novel Mode</string>
+    <string name="vn_mode_desc">Immersive experience with sprites, backgrounds, and dialog box</string>
+    <string name="vn_enter">Enter VN Mode</string>
+    <string name="vn_exit">Exit VN Mode</string>
+    <string name="vn_sprites">Character Sprites</string>
+    <string name="vn_sprites_desc">Manage character expression sprites</string>
+    <string name="vn_add_sprite">Add Sprite</string>
+    <string name="vn_edit_sprite">Edit Sprite</string>
+    <string name="vn_delete_sprite">Delete Sprite</string>
+    <string name="vn_delete_sprite_text">Are you sure you want to delete this sprite?</string>
+    <string name="vn_emotion">Emotion</string>
+    <string name="vn_emotion_hint">e.g. happy, sad, angry, neutral</string>
+    <string name="vn_image">Sprite Image</string>
+    <string name="vn_no_sprites">No sprites yet</string>
+    <string name="vn_no_sprites_hint">Tap + to add expression sprites for this character</string>
+    <string name="vn_sprite_count">%d sprites</string>
+    <string name="vn_current_emotion">Current: %s</string>
 </resources>
