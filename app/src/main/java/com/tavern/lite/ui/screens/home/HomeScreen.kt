@@ -66,6 +66,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
@@ -308,6 +310,7 @@ private fun CharacterCard(
     var showMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
+    val cardLabel = stringResource(R.string.a11y_character_card, character.name)
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -315,6 +318,7 @@ private fun CharacterCard(
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { contentDescription = cardLabel }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -429,6 +433,7 @@ private fun GroupChatCard(
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val haptic = LocalHapticFeedback.current
 
+    val groupCardLabel = stringResource(R.string.a11y_group_chat_card, chat.name ?: "")
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -436,6 +441,7 @@ private fun GroupChatCard(
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { contentDescription = groupCardLabel }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -450,7 +456,7 @@ private fun GroupChatCard(
         ) {
             Icon(
                 Icons.Default.Group,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.a11y_group_icon),
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(40.dp)
             )

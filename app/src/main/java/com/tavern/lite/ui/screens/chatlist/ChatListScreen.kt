@@ -67,6 +67,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.tavern.lite.R
@@ -298,6 +300,8 @@ private fun ChatItem(
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val haptic = LocalHapticFeedback.current
 
+    val chatDisplayName = chat.name ?: stringResource(R.string.chat_name_default, chat.id)
+    val chatItemLabel = stringResource(R.string.a11y_chat_item, chatDisplayName)
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -306,6 +310,7 @@ private fun ChatItem(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize()
+            .semantics { contentDescription = chatItemLabel }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -320,7 +325,7 @@ private fun ChatItem(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Chat,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.a11y_chat_icon),
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                 modifier = Modifier.size(24.dp)
             )

@@ -50,6 +50,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.util.TokenEstimator
@@ -110,11 +112,15 @@ fun InputBar(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                items(imagePaths) { path ->
+                items(imagePaths, key = { it }) { path ->
                     Box(modifier = Modifier.size(64.dp)) {
                         AsyncImage(
-                            model = File(path),
-                            contentDescription = null,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(path))
+                                .memoryCacheKey(path)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = stringResource(R.string.a11y_attached_image),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(64.dp)
