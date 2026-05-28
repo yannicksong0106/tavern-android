@@ -491,4 +491,21 @@
     <string name="vn_no_sprites_hint">Tap + to add expression sprites for this character</string>
     <string name="vn_sprite_count">%d sprites</string>
     <string name="vn_current_emotion">Current: %s</string>
+
+    <!-- Background Music -->
+    <string name="bgm_title">Background Music</string>
+    <string name="bgm_desc">Manage character background music</string>
+    <string name="bgm_add">Add Music</string>
+    <string name="bgm_edit">Edit Music</string>
+    <string name="bgm_delete">Delete Music</string>
+    <string name="bgm_delete_text">Are you sure you want to delete this music?</string>
+    <string name="bgm_name">Music Name</string>
+    <string name="bgm_name_hint">e.g. Theme Song, Battle Music</string>
+    <string name="bgm_audio">Audio File</string>
+    <string name="bgm_loop">Loop</string>
+    <string name="bgm_volume">Volume</string>
+    <string name="bgm_no_bgms">No background music yet</string>
+    <string name="bgm_no_bgms_hint">Tap + to add background music for this character</string>
+    <string name="bgm_count">%d tracks</string>
+    <string name="bgm_playing">Now Playing: %s</string>
 </resources>

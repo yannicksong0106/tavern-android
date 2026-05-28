@@ -471,4 +471,40 @@
     <string name="web_search_auto">自動検索</string>
     <string name="web_search_auto_desc">AIが自動で検索するか判断（トークン消費増加）</string>
     <string name="web_search_command_hint">/search キーワード で手動検索</string>
+
+    <!-- Visual Novel モード -->
+    <string name="vn_mode">小説モード</string>
+    <string name="vn_mode_desc">立ち絵 + 背景 + 会話ボックスの没入型体験</string>
+    <string name="vn_enter">小説モードに入る</string>
+    <string name="vn_exit">小説モードを終了</string>
+    <string name="vn_sprites">キャラクター立ち絵</string>
+    <string name="vn_sprites_desc">キャラクターの表情立ち絵を管理</string>
+    <string name="vn_add_sprite">立ち絵を追加</string>
+    <string name="vn_edit_sprite">立ち絵を編集</string>
+    <string name="vn_delete_sprite">立ち絵を削除</string>
+    <string name="vn_delete_sprite_text">この立ち絵を削除しますか？</string>
+    <string name="vn_emotion">表情</string>
+    <string name="vn_emotion_hint">例: happy, sad, angry, neutral</string>
+    <string name="vn_image">立ち絵画像</string>
+    <string name="vn_no_sprites">立ち絵なし</string>
+    <string name="vn_no_sprites_hint">右下の + をタップして表情立ち絵を追加</string>
+    <string name="vn_sprite_count">%d 枚の立ち絵</string>
+    <string name="vn_current_emotion">現在の表情: %s</string>
+
+    <!-- BGM -->
+    <string name="bgm_title">BGM</string>
+    <string name="bgm_desc">キャラクターのBGMを管理</string>
+    <string name="bgm_add">音楽を追加</string>
+    <string name="bgm_edit">音楽を編集</string>
+    <string name="bgm_delete">音楽を削除</string>
+    <string name="bgm_delete_text">この音楽を削除しますか？</string>
+    <string name="bgm_name">曲名</string>
+    <string name="bgm_name_hint">例: テーマ曲、バトル音楽</string>
+    <string name="bgm_audio">音声ファイル</string>
+    <string name="bgm_loop">ループ再生</string>
+    <string name="bgm_volume">音量</string>
+    <string name="bgm_no_bgms">BGMなし</string>
+    <string name="bgm_no_bgms_hint">右下の + をタップしてBGMを追加</string>
+    <string name="bgm_count">%d 曲</string>
+    <string name="bgm_playing">再生中: %s</string>
 </resources>

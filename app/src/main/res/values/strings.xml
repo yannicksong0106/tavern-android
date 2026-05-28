@@ -492,4 +492,21 @@
     <string name="vn_no_sprites_hint">点击右下角 + 为角色添加表情立绘</string>
     <string name="vn_sprite_count">%d 个立绘</string>
     <string name="vn_current_emotion">当前表情: %s</string>
+
+    <!-- 背景音乐 / BGM -->
+    <string name="bgm_title">背景音乐</string>
+    <string name="bgm_desc">管理角色的背景音乐</string>
+    <string name="bgm_add">添加音乐</string>
+    <string name="bgm_edit">编辑音乐</string>
+    <string name="bgm_delete">删除音乐</string>
+    <string name="bgm_delete_text">确定要删除这首音乐吗？</string>
+    <string name="bgm_name">音乐名称</string>
+    <string name="bgm_name_hint">例如: 主题曲、战斗音乐</string>
+    <string name="bgm_audio">音频文件</string>
+    <string name="bgm_loop">循环播放</string>
+    <string name="bgm_volume">音量</string>
+    <string name="bgm_no_bgms">暂无背景音乐</string>
+    <string name="bgm_no_bgms_hint">点击右下角 + 为角色添加背景音乐</string>
+    <string name="bgm_count">%d 首音乐</string>
+    <string name="bgm_playing">正在播放: %s</string>
 </resources>

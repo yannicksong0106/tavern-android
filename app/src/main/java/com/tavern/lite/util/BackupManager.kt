@@ -2,6 +2,7 @@ package com.tavern.lite.util
 
 import android.content.Context
 import android.util.Log
+import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
@@ -13,6 +14,7 @@ import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.model.BackupData
+import com.tavern.lite.data.model.BgmBackup
 import com.tavern.lite.data.model.CharacterBackup
 import com.tavern.lite.data.model.ChatBackup
 import com.tavern.lite.data.model.MemoryAtomBackup
@@ -48,7 +50,8 @@ class BackupManager @Inject constructor(
     private val scriptDao: ScriptDao,
     private val personaDao: PersonaDao,
     private val presetDao: PresetDao,
-    private val spriteDao: SpriteDao
+    private val spriteDao: SpriteDao,
+    private val bgmDao: BgmDao
 ) {
     private val json = Json {
         prettyPrint = true
@@ -188,6 +191,16 @@ class BackupManager @Inject constructor(
                 }
             }
 
+            val bgmsDeferred = async {
+                bgmDao.getAllBgms().map {
+                    BgmBackup(
+                        id = it.id, characterId = it.characterId, name = it.name,
+                        audioPath = it.audioPath, loop = it.loop, volume = it.volume,
+                        displayOrder = it.displayOrder, createdAt = it.createdAt
+                    )
+                }
+            }
+
             // Await all queries and build backup data
             val backupData = BackupData(
                 characters = charactersDeferred.await(),
@@ -200,7 +213,8 @@ class BackupManager @Inject constructor(
                 scripts = scriptsDeferred.await(),
                 personas = personasDeferred.await(),
                 presets = presetsDeferred.await(),
-                sprites = spritesDeferred.await()
+                sprites = spritesDeferred.await(),
+                bgms = bgmsDeferred.await()
             )
 
             val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
@@ -229,6 +243,7 @@ class BackupManager @Inject constructor(
             var personasRestored = 0
             var presetsRestored = 0
             var spritesRestored = 0
+            var bgmsRestored = 0
 
             // Restore characters
             for (c in data.characters) {
@@ -379,6 +394,18 @@ class BackupManager @Inject constructor(
                 spritesRestored++
             }
 
+            // Restore bgms
+            for (b in data.bgms) {
+                bgmDao.insert(
+                    com.tavern.lite.data.db.entity.BgmEntity(
+                        id = b.id, characterId = b.characterId, name = b.name,
+                        audioPath = b.audioPath, loop = b.loop, volume = b.volume,
+                        displayOrder = b.displayOrder, createdAt = b.createdAt
+                    )
+                )
+                bgmsRestored++
+            }
+
             Result.success(
                 RestoreResult(
                     charactersRestored = charactersRestored,
@@ -389,7 +416,8 @@ class BackupManager @Inject constructor(
                     scriptsRestored = scriptsRestored,
                     personasRestored = personasRestored,
                     presetsRestored = presetsRestored,
-                    spritesRestored = spritesRestored
+                    spritesRestored = spritesRestored,
+                    bgmsRestored = bgmsRestored
                 )
             )
         } catch (e: Exception) {

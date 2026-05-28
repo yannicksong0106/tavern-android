@@ -15,10 +15,12 @@ import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
+import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
+import com.tavern.lite.data.db.entity.BgmEntity
 import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.CharacterPersonaEntity
@@ -53,8 +55,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         BranchEntity::class,
         SummaryEntity::class,
         SpriteEntity::class,
+        BgmEntity::class,
     ],
-    version = 26,
+    version = 27,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -72,6 +75,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun branchDao(): BranchDao
     abstract fun summaryDao(): SummaryDao
     abstract fun spriteDao(): SpriteDao
+    abstract fun bgmDao(): BgmDao
 
     companion object {
         /**
@@ -434,6 +438,25 @@ abstract class TavernDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id ON sprites(character_id)")
+            }
+        }
+
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS bgms (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        audio_path TEXT NOT NULL,
+                        loop INTEGER NOT NULL DEFAULT 1,
+                        volume REAL NOT NULL DEFAULT 0.5,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id ON bgms(character_id)")
             }
         }
 

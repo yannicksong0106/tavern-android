@@ -18,7 +18,8 @@ data class BackupData(
     val scripts: List<ScriptBackup> = emptyList(),
     val personas: List<PersonaBackup> = emptyList(),
     val presets: List<PresetBackup> = emptyList(),
-    val sprites: List<SpriteBackup> = emptyList()
+    val sprites: List<SpriteBackup> = emptyList(),
+    val bgms: List<BgmBackup> = emptyList()
 )
 
 @Serializable
@@ -182,6 +183,18 @@ data class SpriteBackup(
     val createdAt: Long
 )
 
+@Serializable
+data class BgmBackup(
+    val id: Long,
+    val characterId: Long,
+    val name: String = "",
+    val audioPath: String,
+    val loop: Boolean = true,
+    val volume: Float = 0.5f,
+    val displayOrder: Int = 0,
+    val createdAt: Long
+)
+
 data class RestoreResult(
     val charactersRestored: Int,
     val chatsRestored: Int,
@@ -191,5 +204,6 @@ data class RestoreResult(
     val scriptsRestored: Int,
     val personasRestored: Int,
     val presetsRestored: Int,
-    val spritesRestored: Int = 0
+    val spritesRestored: Int = 0,
+    val bgmsRestored: Int = 0
 )
