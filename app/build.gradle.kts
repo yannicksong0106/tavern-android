@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tavern.lite"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 35
         versionCode = 20
         versionName = "1.2.75"
