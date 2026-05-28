@@ -152,6 +152,14 @@ fun CharacterEditScreen(
                             aspectRatioX = 1
                             aspectRatioY = 1
                             outputCompressFormat = android.graphics.Bitmap.CompressFormat.PNG
+                            activityTitle = "裁剪头像"
+                            toolbarBackButtonColor = android.graphics.Color.WHITE
+                            toolbarTintColor = android.graphics.Color.WHITE
+                            toolbarColor = android.graphics.Color.parseColor("#6750A4")
+                            backgroundColor = android.graphics.Color.parseColor("#1C1B1F")
+                            showCropOverlay = true
+                            showProgressBar = true
+                            autoZoomEnabled = true
                         }
                     )
                 )
