@@ -27,6 +27,7 @@ import com.tavern.lite.ui.screens.settings.DevLogScreen
 import com.tavern.lite.ui.screens.settings.GenerationParamsScreen
 import com.tavern.lite.ui.screens.settings.SettingsScreen
 import com.tavern.lite.ui.screens.settings.TtsSettingsScreen
+import com.tavern.lite.ui.screens.vn.VnScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookEditScreen
 import com.tavern.lite.ui.screens.worldbook.WorldBookListScreen
 
@@ -50,8 +51,10 @@ object Routes {
     const val SETTINGS_CHAT_STYLE = "settings_chat_style"
     const val SETTINGS_TTS = "settings_tts"
     const val SETTINGS_DATA_MANAGEMENT = "settings_data_management"
+    const val VN = "vn/{characterId}/{chatId}"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
+    fun vn(characterId: Long, chatId: Long) = "vn/$characterId/$chatId"
     fun chat(characterId: Long, chatId: Long) = "chat/$characterId/$chatId"
     fun characterEdit(characterId: Long? = null) =
         if (characterId != null) "character_edit?characterId=$characterId"
@@ -135,7 +138,27 @@ fun TavernNavGraph() {
             ChatScreen(
                 characterId = characterId,
                 chatId = chatId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onVnMode = {
+                    navController.navigate(Routes.vn(characterId, chatId))
+                }
+            )
+        }
+
+        composable(
+            Routes.VN,
+            arguments = listOf(
+                navArgument("characterId") { type = NavType.LongType },
+                navArgument("chatId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val characterId = backStackEntry.arguments?.getLong("characterId") ?: return@composable
+            val chatId = backStackEntry.arguments?.getLong("chatId") ?: return@composable
+            VnScreen(
+                characterId = characterId,
+                chatId = chatId,
+                onBack = { navController.popBackStack() },
+                onSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
 

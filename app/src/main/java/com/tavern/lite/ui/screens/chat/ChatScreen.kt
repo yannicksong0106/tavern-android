@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -99,6 +100,7 @@ fun ChatScreen(
     characterId: Long,
     chatId: Long,
     onBack: () -> Unit,
+    onVnMode: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val character by viewModel.character.collectAsStateWithLifecycle()
@@ -411,6 +413,9 @@ fun ChatScreen(
                     }
                     IconButton(onClick = { showBackgroundPicker = true }) {
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.change_background))
+                    }
+                    IconButton(onClick = onVnMode) {
+                        Icon(Icons.Default.AutoStories, contentDescription = stringResource(R.string.vn_enter))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
