@@ -32,6 +32,8 @@ class MainActivity : ComponentActivity() {
         val localeList = when (lang) {
             "zh" -> LocaleListCompat.forLanguageTags("zh")
             "en" -> LocaleListCompat.forLanguageTags("en")
+            "ja" -> LocaleListCompat.forLanguageTags("ja")
+            "ko" -> LocaleListCompat.forLanguageTags("ko")
             else -> LocaleListCompat.getEmptyLocaleList()
         }
         AppCompatDelegate.setApplicationLocales(localeList)

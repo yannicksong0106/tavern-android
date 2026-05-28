@@ -127,6 +127,9 @@ dependencies {
     implementation(libs.markwon.html)
     implementation(libs.markwon.ext.latex)
 
+    // Template engine
+    implementation(libs.handlebars)
+
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 

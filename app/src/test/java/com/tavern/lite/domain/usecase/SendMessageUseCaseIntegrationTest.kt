@@ -10,8 +10,11 @@ import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
+import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.ChatApiService
+import com.tavern.lite.network.WebSearchConfig
+import com.tavern.lite.network.WebSearchService
 import com.tavern.lite.network.ChatMessage
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
@@ -50,6 +53,9 @@ class SendMessageUseCaseIntegrationTest {
     @MockK private lateinit var scriptRepository: ScriptRepository
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
+    @MockK private lateinit var summaryUseCase: SummaryUseCase
+    @MockK private lateinit var webSearchService: WebSearchService
+    @MockK private lateinit var settingsStore: SettingsStore
 
     private lateinit var helper: MessageExecutionHelper
     private lateinit var useCase: SendMessageUseCase
@@ -87,7 +93,10 @@ class SendMessageUseCaseIntegrationTest {
             authorNoteRepository = authorNoteRepository,
             scriptRepository = scriptRepository,
             presetRepository = presetRepository,
-            helper = helper
+            helper = helper,
+            summaryUseCase = summaryUseCase,
+            webSearchService = webSearchService,
+            settingsStore = settingsStore
         )
     }
 
@@ -109,7 +118,10 @@ class SendMessageUseCaseIntegrationTest {
         coEvery { chatRepository.updateMessageContent(any(), any()) } just runs
         coEvery { chatRepository.addSwipe(any(), any()) } just runs
         coEvery { memoryExtractionUseCase.extractIfNeeded(any(), any(), any(), any(), any()) } just runs
+        coEvery { summaryUseCase.getLatestSummaryText(any()) } returns null
+        coEvery { summaryUseCase.shouldGenerateSummary(any(), any()) } returns false
         coEvery { presetRepository.resolveEffectivePreset(any(), any()) } returns null
+        coEvery { settingsStore.webSearchConfigFlow } returns flowOf(WebSearchConfig())
         every { chatApiService.streamChat(any(), any()) } returns flowOf("")
     }
 

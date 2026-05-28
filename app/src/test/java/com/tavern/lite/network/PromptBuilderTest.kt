@@ -398,4 +398,38 @@ class PromptBuilderTest {
         assertTrue(dynamicMsg.content.contains("重要事件"))
         assertTrue(dynamicMsg.content.contains("Charlie promised to protect the village"))
     }
+
+    @Test
+    fun `build supports Handlebars if block in template`() {
+        val character = makeCharacter(
+            name = "Alice",
+            description = "{{#if personality}}Personality is {{personality}}{{/if}}"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hi",
+            chatHistory = emptyList()
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Personality is Kind"))
+    }
+
+    @Test
+    fun `build supports description and personality template variables`() {
+        val character = makeCharacter(
+            name = "Alice",
+            description = "A dragon rider",
+            personality = "Brave",
+            systemPrompt = "{{char}} is {{personality}} and {{description}}"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hi",
+            chatHistory = emptyList()
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Alice is Brave and A dragon rider"))
+    }
 }

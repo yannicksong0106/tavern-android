@@ -44,7 +44,9 @@ object PromptBuilder {
         authorNote: AuthorNoteEntity? = null,
         persona: PersonaEntity? = null,
         preset: PresetEntity? = null,
-        imageUrls: List<String> = emptyList()
+        imageUrls: List<String> = emptyList(),
+        summary: String? = null,
+        searchResults: List<WebSearchResult> = emptyList()
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -67,7 +69,7 @@ object PromptBuilder {
 
         // 3. 开场白
         if (character.firstMes.isNotBlank()) {
-            val firstMes = replacePlaceholders(character.firstMes, effectiveUserName, character.name)
+            val firstMes = replacePlaceholders(character.firstMes, effectiveUserName, character.name, character, persona)
             messages.add(ChatMessage(role = "assistant", content = firstMes))
         }
 
@@ -81,6 +83,25 @@ object PromptBuilder {
             messages.add(ChatMessage(role = role, content = msg.content))
         }
 
+        // 4.5 摘要注入（替代更早的历史消息）
+        if (!summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
+            ))
+        }
+
+        // 4.6 搜索结果注入
+        if (searchResults.isNotEmpty()) {
+            val searchText = searchResults.joinToString("\n\n") { result ->
+                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
+            }
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
+            ))
+        }
+
         // 5. 动态上下文（世界书、记忆、人格 — 每轮可能变化，放在历史之后避免破坏缓存前缀）
         val dynamicContext = buildDynamicContext(character, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
         if (dynamicContext.isNotBlank()) {
@@ -89,7 +110,7 @@ object PromptBuilder {
 
         // 5.5 Author's Note injection (at specified depth from end of history)
         if (authorNote != null && authorNote.content.isNotBlank()) {
-            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, character.name)
+            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, character.name, character, persona)
             val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
@@ -97,7 +118,7 @@ object PromptBuilder {
         // 5.5.1 预设 Author Note（追加到已有 author note 之后）
         val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
         if (presetAuthorNote != null) {
-            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, character.name)
+            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, character.name, character, persona)
             val insertIndex = (messages.size - 1).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
@@ -108,7 +129,7 @@ object PromptBuilder {
         if (!postHistory.isNullOrBlank()) {
             messages.add(ChatMessage(
                 role = "system",
-                content = replacePlaceholders(postHistory, effectiveUserName, character.name)
+                content = replacePlaceholders(postHistory, effectiveUserName, character.name, character, persona)
             ))
         }
 
@@ -143,17 +164,17 @@ object PromptBuilder {
 - 不需要每句都完整，口语化的省略和倒装很常见""".trimIndent())
 
         // 角色描述
-        val desc = replacePlaceholders(character.description, userName, character.name)
+        val desc = replacePlaceholders(character.description, userName, character.name, character)
         if (desc.isNotBlank()) parts.add(desc)
 
         // 性格
-        val personality = replacePlaceholders(character.personality, userName, character.name)
+        val personality = replacePlaceholders(character.personality, userName, character.name, character)
         if (personality.isNotBlank()) parts.add("Personality: $personality")
 
         // 角色系统 prompt
         val sysPrompt = character.systemPrompt
         if (!sysPrompt.isNullOrBlank()) {
-            parts.add(replacePlaceholders(sysPrompt, userName, character.name))
+            parts.add(replacePlaceholders(sysPrompt, userName, character.name, character))
         }
 
         return parts.joinToString("\n\n")
@@ -195,7 +216,7 @@ object PromptBuilder {
 
         // 用户角色注入
         if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, userName, character.name)
+            val bio = replacePlaceholders(persona.biography, userName, character.name, character, persona)
             parts.add("[User Persona: ${persona.name}]\n$bio")
         }
 
@@ -283,10 +304,33 @@ object PromptBuilder {
         return messages
     }
 
-    private fun replacePlaceholders(text: String, userName: String, charName: String): String {
-        return text
-            .replace("{{user}}", userName)
-            .replace("{{char}}", charName)
+    /**
+     * Replace template variables using Handlebars engine.
+     * Supports {{user}}, {{char}}, {{persona}}, {{description}}, {{personality}}, etc.
+     * Also supports {{#if ...}}, {{#each ...}}, {{#unless ...}} conditional blocks.
+     */
+    private fun replacePlaceholders(
+        text: String,
+        userName: String,
+        charName: String,
+        character: CharacterEntity? = null,
+        persona: PersonaEntity? = null
+    ): String {
+        val variables = mutableMapOf<String, Any?>(
+            "user" to userName,
+            "char" to charName
+        )
+        character?.let {
+            variables["description"] = it.description
+            variables["personality"] = it.personality
+            variables["firstMessage"] = it.firstMes
+            variables["mesExamples"] = it.mesExample
+        }
+        persona?.let {
+            variables["persona"] = it.name
+            variables["personaDescription"] = it.biography
+        }
+        return TemplateEngine.render(text, variables)
     }
 
     /**
@@ -306,7 +350,9 @@ object PromptBuilder {
         persona: PersonaEntity? = null,
         authorNote: AuthorNoteEntity? = null,
         preset: PresetEntity? = null,
-        imageUrls: List<String> = emptyList()
+        imageUrls: List<String> = emptyList(),
+        summary: String? = null,
+        searchResults: List<WebSearchResult> = emptyList()
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
 
@@ -328,7 +374,7 @@ object PromptBuilder {
         // 3. Opening messages from all characters (firstMes)
         for (char in characters) {
             if (char.firstMes.isNotBlank()) {
-                val firstMes = replacePlaceholders(char.firstMes, effectiveUserName, char.name)
+                val firstMes = replacePlaceholders(char.firstMes, effectiveUserName, char.name, char, persona)
                 messages.add(ChatMessage(
                     role = "assistant",
                     content = "[${char.name}]: $firstMes"
@@ -349,6 +395,25 @@ object PromptBuilder {
             }
         }
 
+        // 4.5 摘要注入
+        if (!summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
+            ))
+        }
+
+        // 4.6 搜索结果注入
+        if (searchResults.isNotEmpty()) {
+            val searchText = searchResults.joinToString("\n\n") { result ->
+                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
+            }
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
+            ))
+        }
+
         // 5. 动态上下文（世界书 + 记忆 + 人格）
         val dynamicContext = buildDynamicContext(respondingCharacter, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
         if (dynamicContext.isNotBlank()) {
@@ -357,7 +422,7 @@ object PromptBuilder {
 
         // 5.5 Author's Note injection
         if (authorNote != null && authorNote.content.isNotBlank()) {
-            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name)
+            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
             val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
@@ -365,7 +430,7 @@ object PromptBuilder {
         // 5.5.1 预设 Author Note
         val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
         if (presetAuthorNote != null) {
-            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name)
+            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
             val insertIndex = (messages.size - 1).coerceAtLeast(1)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
         }
@@ -397,17 +462,17 @@ object PromptBuilder {
 - 语气自然口语化，像朋友群聊""".trimIndent())
 
         // Responding character's full details (priority)
-        val desc = replacePlaceholders(respondingCharacter.description, userName, respondingCharacter.name)
+        val desc = replacePlaceholders(respondingCharacter.description, userName, respondingCharacter.name, respondingCharacter)
         if (desc.isNotBlank()) parts.add("[你的角色描述]\n$desc")
 
-        val personality = replacePlaceholders(respondingCharacter.personality, userName, respondingCharacter.name)
+        val personality = replacePlaceholders(respondingCharacter.personality, userName, respondingCharacter.name, respondingCharacter)
         if (personality.isNotBlank()) parts.add("[你的性格]\n$personality")
 
         // Other characters' brief info
         val otherChars = characters.filter { it.id != respondingCharacter.id }
         if (otherChars.isNotEmpty()) {
             val otherInfo = otherChars.joinToString("\n") { char ->
-                val briefDesc = replacePlaceholders(char.description, userName, char.name).take(200)
+                val briefDesc = replacePlaceholders(char.description, userName, char.name, char).take(200)
                 "- ${char.name}: $briefDesc"
             }
             parts.add("[群聊中的其他角色]\n$otherInfo")
@@ -416,7 +481,7 @@ object PromptBuilder {
         // Responding character's system prompt
         val sysPrompt = respondingCharacter.systemPrompt
         if (!sysPrompt.isNullOrBlank()) {
-            parts.add(replacePlaceholders(sysPrompt, userName, respondingCharacter.name))
+            parts.add(replacePlaceholders(sysPrompt, userName, respondingCharacter.name, respondingCharacter))
         }
 
         return parts.joinToString("\n\n")
@@ -431,7 +496,8 @@ object PromptBuilder {
         chatHistory: List<MessageEntity>,
         userName: String = "User",
         persona: PersonaEntity? = null,
-        preset: PresetEntity? = null
+        preset: PresetEntity? = null,
+        summary: String? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
@@ -468,9 +534,17 @@ object PromptBuilder {
             messages.add(ChatMessage(role = role, content = msg.content))
         }
 
+        // 摘要注入
+        if (!summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
+            ))
+        }
+
         // 用户人格（动态上下文）
         if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, effectiveUserName, character.name)
+            val bio = replacePlaceholders(persona.biography, effectiveUserName, character.name, character, persona)
             messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
         }
 
@@ -491,7 +565,8 @@ object PromptBuilder {
         characterMap: Map<Long, CharacterEntity>,
         userName: String = "User",
         persona: PersonaEntity? = null,
-        preset: PresetEntity? = null
+        preset: PresetEntity? = null,
+        summary: String? = null
     ): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
@@ -531,9 +606,17 @@ object PromptBuilder {
             }
         }
 
+        // 摘要注入
+        if (!summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
+            ))
+        }
+
         // 用户人格（动态上下文）
         if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, effectiveUserName, respondingCharacter.name)
+            val bio = replacePlaceholders(persona.biography, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
             messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
         }
 
