@@ -2,6 +2,9 @@ package com.tavern.lite.util
 
 import android.content.Context
 import android.util.Log
+import androidx.room.withTransaction
+import com.tavern.lite.data.db.TavernDatabase
+import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
@@ -14,6 +17,7 @@ import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.model.BackupData
+import com.tavern.lite.data.model.AuthorNoteBackup
 import com.tavern.lite.data.model.BgmBackup
 import com.tavern.lite.data.model.CharacterBackup
 import com.tavern.lite.data.model.ChatBackup
@@ -41,6 +45,7 @@ import javax.inject.Singleton
 @Singleton
 class BackupManager @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val db: TavernDatabase,
     private val characterDao: CharacterDao,
     private val chatDao: ChatDao,
     private val messageDao: MessageDao,
@@ -48,6 +53,7 @@ class BackupManager @Inject constructor(
     private val memoryAtomDao: MemoryAtomDao,
     private val worldBookDao: WorldBookDao,
     private val scriptDao: ScriptDao,
+    private val authorNoteDao: AuthorNoteDao,
     private val personaDao: PersonaDao,
     private val presetDao: PresetDao,
     private val spriteDao: SpriteDao,
@@ -201,6 +207,15 @@ class BackupManager @Inject constructor(
                 }
             }
 
+            val authorNotesDeferred = async {
+                authorNoteDao.getAllAuthorNotesSync().map {
+                    AuthorNoteBackup(
+                        id = it.id, characterId = it.characterId, content = it.content,
+                        position = it.position, depth = it.depth, updatedAt = it.updatedAt
+                    )
+                }
+            }
+
             // Await all queries and build backup data
             val backupData = BackupData(
                 characters = charactersDeferred.await(),
@@ -214,7 +229,8 @@ class BackupManager @Inject constructor(
                 personas = personasDeferred.await(),
                 presets = presetsDeferred.await(),
                 sprites = spritesDeferred.await(),
-                bgms = bgmsDeferred.await()
+                bgms = bgmsDeferred.await(),
+                authorNotes = authorNotesDeferred.await()
             )
 
             val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
@@ -234,6 +250,8 @@ class BackupManager @Inject constructor(
             val text = inputStream.bufferedReader().use { it.readText() }
             val data = json.decodeFromString(BackupData.serializer(), text)
 
+            // 在事务中执行全部恢复，失败时自动回滚
+            db.withTransaction {
             var charactersRestored = 0
             var chatsRestored = 0
             var messagesRestored = 0
@@ -244,6 +262,7 @@ class BackupManager @Inject constructor(
             var presetsRestored = 0
             var spritesRestored = 0
             var bgmsRestored = 0
+            var authorNotesRestored = 0
 
             // Restore characters
             for (c in data.characters) {
@@ -406,6 +425,17 @@ class BackupManager @Inject constructor(
                 bgmsRestored++
             }
 
+            // Restore author notes
+            for (a in data.authorNotes) {
+                authorNoteDao.insertOrUpdate(
+                    com.tavern.lite.data.db.entity.AuthorNoteEntity(
+                        id = a.id, characterId = a.characterId, content = a.content,
+                        position = a.position, depth = a.depth, updatedAt = a.updatedAt
+                    )
+                )
+                authorNotesRestored++
+            }
+
             Result.success(
                 RestoreResult(
                     charactersRestored = charactersRestored,
@@ -417,9 +447,11 @@ class BackupManager @Inject constructor(
                     personasRestored = personasRestored,
                     presetsRestored = presetsRestored,
                     spritesRestored = spritesRestored,
-                    bgmsRestored = bgmsRestored
+                    bgmsRestored = bgmsRestored,
+                    authorNotesRestored = authorNotesRestored
                 )
             )
+            } // db.withTransaction
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackupManager", "恢复失败", e)

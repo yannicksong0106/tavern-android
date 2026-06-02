@@ -189,13 +189,13 @@ class WebSearchService @Inject constructor(
      * Google Custom Search API (需要 API key + CX)
      * apiKey 格式: "API_KEY:CX_ID"
      */
-    private fun searchGoogle(apiKeyCx: String, apiKey: String, maxResults: Int): List<WebSearchResult> {
-        if (apiKey.isBlank()) {
+    private fun searchGoogle(query: String, apiKeyCx: String, maxResults: Int): List<WebSearchResult> {
+        if (apiKeyCx.isBlank()) {
             Log.w(TAG, "Google API key not configured")
             return emptyList()
         }
         return try {
-            val parts = apiKey.split(":", limit = 2)
+            val parts = apiKeyCx.split(":", limit = 2)
             val key = parts[0]
             val cx = parts.getOrElse(1) { "" }
             if (cx.isBlank()) {
@@ -203,7 +203,7 @@ class WebSearchService @Inject constructor(
                 return emptyList()
             }
 
-            val encoded = java.net.URLEncoder.encode(apiKeyCx, "UTF-8")
+            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
             val url = "https://www.googleapis.com/customsearch/v1?key=$key&cx=$cx&q=$encoded&num=$maxResults"
             val request = Request.Builder().url(url).header("User-Agent", "TavernAndroid/1.0").build()
 

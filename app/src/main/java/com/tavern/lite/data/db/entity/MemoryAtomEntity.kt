@@ -31,13 +31,13 @@ data class MemoryAtomEntity(
     @ColumnInfo(name = "character_id") val characterId: Long,
     val content: String,
     val category: String,         // fact, emotion, preference, event, habit, character_consistency, temporary
-    val importance: Int = 5,      // 1-10
-    val source: String = "llm",   // llm, regex, manual
+    @ColumnInfo(defaultValue = "5") val importance: Int = 5,
+    @ColumnInfo(defaultValue = "llm") val source: String = "llm",
     @ColumnInfo(name = "source_chat_id") val sourceChatId: Long? = null,
     @ColumnInfo(name = "source_message_id") val sourceMessageId: Long? = null,
-    val superseded: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val superseded: Boolean = false,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "last_accessed") val lastAccessed: Long = System.currentTimeMillis(),
-    @ColumnInfo(name = "access_count") val accessCount: Int = 0,
+    @ColumnInfo(name = "access_count", defaultValue = "0") val accessCount: Int = 0,
     @ColumnInfo(name = "expires_at") val expiresAt: Long? = null
 )

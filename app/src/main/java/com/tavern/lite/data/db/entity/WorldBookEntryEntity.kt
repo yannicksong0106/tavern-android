@@ -16,28 +16,27 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("world_book_id")]
+    indices = [Index("world_book_id"), Index(value = ["world_book_id", "disabled"], name = "index_world_book_entries_active")]
 )
 data class WorldBookEntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "world_book_id") val worldBookId: Long,
-    val uid: Int = 0,
-    val comment: String = "",
-    val keys: String = "[]",           // JSON array
-    @ColumnInfo(name = "keys_secondary") val keysSecondary: String = "[]",
-    val content: String = "",
-    val constant: Boolean = false,
-    val position: Int = 0,
-    @ColumnInfo(name = "order_val") val orderVal: Int = 100,
-    val probability: Int = 100,
-    val depth: Int = 4,
-    val disabled: Boolean = false,
-    // v3 高级逻辑
-    val selective: Boolean = false,
-    @ColumnInfo(name = "selective_logic") val selectiveLogic: Int = 0, // 0=AND, 1=OR, 2=NOT
-    @ColumnInfo(name = "exclude_recursion") val excludeRecursion: Boolean = false,
-    @ColumnInfo(name = "prevent_recursion") val preventRecursion: Boolean = false,
-    val group: String = "",
-    @ColumnInfo(name = "group_override") val groupOverride: Boolean = false,
-    @ColumnInfo(name = "group_weight") val groupWeight: Int = 100
+    @ColumnInfo(defaultValue = "0") val uid: Int = 0,
+    @ColumnInfo(defaultValue = "") val comment: String = "",
+    @ColumnInfo(defaultValue = "[]") val keys: String = "[]",
+    @ColumnInfo(name = "keys_secondary", defaultValue = "[]") val keysSecondary: String = "[]",
+    @ColumnInfo(defaultValue = "") val content: String = "",
+    @ColumnInfo(defaultValue = "0") val constant: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val position: Int = 0,
+    @ColumnInfo(name = "order_val", defaultValue = "100") val orderVal: Int = 100,
+    @ColumnInfo(defaultValue = "100") val probability: Int = 100,
+    @ColumnInfo(defaultValue = "4") val depth: Int = 4,
+    @ColumnInfo(defaultValue = "0") val disabled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val selective: Boolean = false,
+    @ColumnInfo(name = "selective_logic", defaultValue = "0") val selectiveLogic: Int = 0,
+    @ColumnInfo(name = "exclude_recursion", defaultValue = "0") val excludeRecursion: Boolean = false,
+    @ColumnInfo(name = "prevent_recursion", defaultValue = "0") val preventRecursion: Boolean = false,
+    @ColumnInfo(defaultValue = "") val group: String = "",
+    @ColumnInfo(name = "group_override", defaultValue = "0") val groupOverride: Boolean = false,
+    @ColumnInfo(name = "group_weight", defaultValue = "100") val groupWeight: Int = 100
 )

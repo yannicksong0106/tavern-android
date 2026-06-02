@@ -35,7 +35,7 @@ data class MessageEntity(
     @ColumnInfo(name = "character_id") val characterId: Long? = null, // null = user message, non-null = which character spoke
     @ColumnInfo(name = "parent_id") val parentId: Long? = null,
     @ColumnInfo(name = "branch_id") val branchId: Long? = null,
-    @ColumnInfo(name = "is_active") val isActive: Boolean = true,
+    @ColumnInfo(name = "is_active", defaultValue = "1") val isActive: Boolean = true,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     // Swipe alternatives: JSON array of alternative content strings
     @ColumnInfo(name = "swipe_content", defaultValue = "[]") val swipeContent: String = "[]",

@@ -21,16 +21,13 @@ import androidx.room.PrimaryKey
 data class ScriptEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
-    val name: String = "",
-    val comment: String = "",
-    // 0 = 在用户消息上执行, 1 = 在 AI 回复上执行, 2 = 在两者上执行
-    @ColumnInfo(name = "script_type") val scriptType: Int = 0,
-    @ColumnInfo(name = "find_pattern") val findPattern: String = "",
-    @ColumnInfo(name = "replace_pattern") val replacePattern: String = "",
-    // 是否使用正则表达式（false = 字面量替换）
-    @ColumnInfo(name = "is_regex") val isRegex: Boolean = true,
-    // 是否大小写敏感
-    @ColumnInfo(name = "case_sensitive") val caseSensitive: Boolean = false,
-    val enabled: Boolean = true,
-    @ColumnInfo(name = "sort_order") val sortOrder: Int = 0
+    @ColumnInfo(defaultValue = "") val name: String = "",
+    @ColumnInfo(defaultValue = "") val comment: String = "",
+    @ColumnInfo(name = "script_type", defaultValue = "0") val scriptType: Int = 0,
+    @ColumnInfo(name = "find_pattern", defaultValue = "") val findPattern: String = "",
+    @ColumnInfo(name = "replace_pattern", defaultValue = "") val replacePattern: String = "",
+    @ColumnInfo(name = "is_regex", defaultValue = "1") val isRegex: Boolean = true,
+    @ColumnInfo(name = "case_sensitive", defaultValue = "0") val caseSensitive: Boolean = false,
+    @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
+    @ColumnInfo(name = "sort_order", defaultValue = "0") val sortOrder: Int = 0
 )

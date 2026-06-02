@@ -200,8 +200,8 @@ class ChatExporter @Inject constructor(
                 else -> ""
             }
             val speaker = when (msg.role) {
-                "user" -> userName
-                "assistant" -> charName
+                "user" -> escapeHtml(userName)
+                "assistant" -> escapeHtml(charName)
                 else -> "System"
             }
             appendLine("<div class='msg $roleClass'>")
@@ -241,28 +241,30 @@ class ChatExporter @Inject constructor(
 
     // --- JSON (SillyTavern compatible) ---
 
+    @kotlinx.serialization.Serializable
+    private data class ExportMessage(
+        val role: String,
+        val content: String,
+        val timestamp: Long,
+        val speaker: String
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class ChatExport(
+        val chatName: String?,
+        val characterName: String,
+        val userName: String,
+        val createdAt: Long,
+        val messageCount: Int,
+        val messages: List<ExportMessage>
+    )
+
     private fun toJson(
         chat: ChatEntity,
         messages: List<MessageEntity>,
         charName: String,
         userName: String
     ): String {
-        data class ExportMessage(
-            val role: String,
-            val content: String,
-            val timestamp: Long,
-            val speaker: String
-        )
-
-        data class ChatExport(
-            val chatName: String?,
-            val characterName: String,
-            val userName: String,
-            val createdAt: Long,
-            val messageCount: Int,
-            val messages: List<ExportMessage>
-        )
-
         val export = ChatExport(
             chatName = chat.name,
             characterName = charName,

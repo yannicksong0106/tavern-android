@@ -21,7 +21,7 @@ import androidx.room.PrimaryKey
 data class BranchEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "chat_id") val chatId: Long,
-    val name: String = "",
-    @ColumnInfo(name = "is_default") val isDefault: Boolean = false,
+    @ColumnInfo(defaultValue = "") val name: String = "",
+    @ColumnInfo(name = "is_default", defaultValue = "0") val isDefault: Boolean = false,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

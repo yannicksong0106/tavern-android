@@ -19,6 +19,7 @@ import com.tavern.lite.util.ImageUtils
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -37,6 +38,8 @@ class SendMessageUseCase @Inject constructor(
     private val webSearchService: WebSearchService,
     private val settingsStore: SettingsStore,
 ) {
+    // Singleton 作用域，用于 fire-and-forget 后台任务（自动摘要）
+    private val summaryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /**
      * 发送单聊消息：构建 prompt → 流式 API → 保存 → 记忆提取
      */
@@ -124,7 +127,7 @@ class SendMessageUseCase @Inject constructor(
     }
 
     private fun tryTriggerSummary(chatId: Long, config: ApiConfig, characterName: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        summaryScope.launch {
             try {
                 if (summaryUseCase.shouldGenerateSummary(chatId)) {
                     summaryUseCase.generateSummary(chatId, config, characterName)

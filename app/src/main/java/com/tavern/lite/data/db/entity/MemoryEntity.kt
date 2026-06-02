@@ -22,9 +22,9 @@ data class MemoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
     val content: String,
-    val importance: Int = 5,
-    val source: String = "manual",
+    @ColumnInfo(defaultValue = "5") val importance: Int = 5,
+    @ColumnInfo(defaultValue = "manual") val source: String = "manual",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "last_accessed") val lastAccessed: Long = System.currentTimeMillis(),
-    @ColumnInfo(name = "access_count") val accessCount: Int = 0
+    @ColumnInfo(name = "access_count", defaultValue = "0") val accessCount: Int = 0
 )

@@ -28,8 +28,8 @@ data class ChatCharacterEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "chat_id") val chatId: Long,
     @ColumnInfo(name = "character_id") val characterId: Long,
-    @ColumnInfo(name = "display_order") val displayOrder: Int = 0,
-    @ColumnInfo(name = "is_active") val isActive: Boolean = true,
-    @ColumnInfo(name = "chattiness") val chattiness: Int = 50,  // 群聊中该角色的健谈度
+    @ColumnInfo(name = "display_order", defaultValue = "0") val displayOrder: Int = 0,
+    @ColumnInfo(name = "is_active", defaultValue = "1") val isActive: Boolean = true,
+    @ColumnInfo(name = "chattiness", defaultValue = "50") val chattiness: Int = 50,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

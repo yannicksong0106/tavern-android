@@ -21,7 +21,7 @@ import androidx.room.PrimaryKey
 data class AuthorNoteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
-    val content: String = "",
+    @ColumnInfo(defaultValue = "") val content: String = "",
     // Position: "before_an" = before author's note, "after_an" = after author's note
     @ColumnInfo(name = "position", defaultValue = "after_an") val position: String = "after_an",
     // Insertion depth: 0 = at the very end, N = N messages from the end

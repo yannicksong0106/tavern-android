@@ -8,8 +8,8 @@ import androidx.room.PrimaryKey
 data class PersonaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val biography: String = "",
+    @ColumnInfo(defaultValue = "") val biography: String = "",
     @ColumnInfo(name = "avatar_path") val avatarPath: String? = null,
-    @ColumnInfo(name = "is_default") val isDefault: Boolean = false,
+    @ColumnInfo(name = "is_default", defaultValue = "0") val isDefault: Boolean = false,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

@@ -21,8 +21,8 @@ import androidx.room.PrimaryKey
 data class SpriteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "character_id") val characterId: Long,
-    val emotion: String = "neutral",
+    @ColumnInfo(defaultValue = "neutral") val emotion: String = "neutral",
     @ColumnInfo(name = "image_path") val imagePath: String,
-    @ColumnInfo(name = "display_order") val displayOrder: Int = 0,
+    @ColumnInfo(name = "display_order", defaultValue = "0") val displayOrder: Int = 0,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

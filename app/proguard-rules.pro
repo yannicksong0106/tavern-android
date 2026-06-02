@@ -1,6 +1,5 @@
-# Keep data classes for serialization
--keepclassmembers class com.tavern.lite.data.model.** { *; }
--keepclassmembers class com.tavern.lite.data.store.** { *; }
+# Keep @Serializable data classes (kotlinx.serialization needs all members)
+-keepclassmembers @kotlinx.serialization.Serializable class com.tavern.lite.** { *; }
 -keepclassmembers class com.tavern.lite.data.db.entity.** { *; }
 
 # Kotlinx Serialization

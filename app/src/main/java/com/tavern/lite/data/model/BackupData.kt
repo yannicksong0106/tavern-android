@@ -19,7 +19,8 @@ data class BackupData(
     val personas: List<PersonaBackup> = emptyList(),
     val presets: List<PresetBackup> = emptyList(),
     val sprites: List<SpriteBackup> = emptyList(),
-    val bgms: List<BgmBackup> = emptyList()
+    val bgms: List<BgmBackup> = emptyList(),
+    val authorNotes: List<AuthorNoteBackup> = emptyList()
 )
 
 @Serializable
@@ -195,6 +196,16 @@ data class BgmBackup(
     val createdAt: Long
 )
 
+@Serializable
+data class AuthorNoteBackup(
+    val id: Long,
+    val characterId: Long,
+    val content: String = "",
+    val position: String = "after_an",
+    val depth: Int = 4,
+    val updatedAt: Long
+)
+
 data class RestoreResult(
     val charactersRestored: Int,
     val chatsRestored: Int,
@@ -205,5 +216,6 @@ data class RestoreResult(
     val personasRestored: Int,
     val presetsRestored: Int,
     val spritesRestored: Int = 0,
-    val bgmsRestored: Int = 0
+    val bgmsRestored: Int = 0,
+    val authorNotesRestored: Int = 0
 )

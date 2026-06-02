@@ -9,16 +9,16 @@ data class PresetEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val description: String = "",
-    @ColumnInfo(name = "system_prompt")
+    @ColumnInfo(defaultValue = "") val description: String = "",
+    @ColumnInfo(name = "system_prompt", defaultValue = "")
     val systemPrompt: String = "",
-    @ColumnInfo(name = "post_history_instructions")
+    @ColumnInfo(name = "post_history_instructions", defaultValue = "")
     val postHistoryInstructions: String = "",
-    @ColumnInfo(name = "author_note")
+    @ColumnInfo(name = "author_note", defaultValue = "")
     val authorNote: String = "",
-    @ColumnInfo(name = "is_default")
+    @ColumnInfo(name = "is_default", defaultValue = "0")
     val isDefault: Boolean = false,
-    val scope: String = "global",  // "global" / "character" / "chat"
+    @ColumnInfo(defaultValue = "global") val scope: String = "global",
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at")

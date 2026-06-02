@@ -26,7 +26,7 @@ class MessageExecutionHelper @Inject constructor(
     val memoryExtractionUseCase: MemoryExtractionUseCase,
 ) {
     // 思维链内容（DeepSeek/Qwen thinking mode），下次请求时传回
-    var lastAssistantReasoningContent: String? = null
+    @Volatile var lastAssistantReasoningContent: String? = null
 
     data class ExecutionResult(
         val assistantMsgId: Long? = null,

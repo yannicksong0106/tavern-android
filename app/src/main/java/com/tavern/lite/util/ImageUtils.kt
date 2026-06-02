@@ -10,6 +10,7 @@ object ImageUtils {
      */
     fun fileToDataUri(file: File): String? {
         if (!file.exists()) return null
+        if (file.length() > 20 * 1024 * 1024) return null // 20MB 上限，防止 OOM
         val bytes = file.readBytes()
         val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
         val mimeType = when (file.extension.lowercase()) {

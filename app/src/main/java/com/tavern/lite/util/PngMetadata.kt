@@ -1,5 +1,6 @@
 package com.tavern.lite.util
 
+import android.util.Log
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -37,6 +38,15 @@ object PngMetadata {
 
                 val crc = ByteArray(4)
                 raf.readFully(crc)
+
+                // 验证 CRC（检测文件损坏）
+                val crcCalc = CRC32()
+                crcCalc.update(type)
+                crcCalc.update(data)
+                val expectedCrc = ByteBuffer.wrap(crc).order(ByteOrder.BIG_ENDIAN).int
+                if (crcCalc.value.toInt() != expectedCrc) {
+                    Log.w("PngMetadata", "CRC mismatch for chunk '$typeName', data may be corrupted")
+                }
 
                 if (typeName == "tEXt") {
                     val nullIdx = data.indexOf(0)

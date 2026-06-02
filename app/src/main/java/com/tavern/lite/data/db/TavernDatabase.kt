@@ -57,7 +57,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         SpriteEntity::class,
         BgmEntity::class,
     ],
-    version = 27,
+    version = 28,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -456,6 +456,356 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id ON bgms(character_id)")
+            }
+        }
+
+        /**
+         * 迁移 27→28：为所有表添加 @ColumnInfo(defaultValue) 对应的 SQL DEFAULT 约束。
+         * 解决 Room schema validation 失败问题：entity 声明了 defaultValue 但实际 DB 缺少 DEFAULT。
+         * 通过 重建表 → 复制数据 → 重命名 的方式安全迁移。
+         */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. characters — 添加 description/personality/first_mes/mes_example/tags/creator/version/spec/chattiness DEFAULT
+                db.execSQL("ALTER TABLE characters RENAME TO _characters_old")
+                db.execSQL("""
+                    CREATE TABLE characters (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        personality TEXT NOT NULL DEFAULT '',
+                        first_mes TEXT NOT NULL DEFAULT '',
+                        mes_example TEXT NOT NULL DEFAULT '',
+                        avatar_path TEXT,
+                        system_prompt TEXT,
+                        post_history_instructions TEXT,
+                        tags TEXT NOT NULL DEFAULT '[]',
+                        world_book_id INTEGER,
+                        preset_id INTEGER,
+                        background_path TEXT,
+                        chattiness INTEGER NOT NULL DEFAULT 50,
+                        creator TEXT NOT NULL DEFAULT '',
+                        version TEXT NOT NULL DEFAULT '1.0',
+                        spec TEXT NOT NULL DEFAULT 'chara_card_v2',
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO characters SELECT * FROM _characters_old")
+                db.execSQL("DROP TABLE _characters_old")
+
+                // 2. chats — 添加 is_group/group_chattiness/scheduling_strategy/message_interval_ms DEFAULT
+                db.execSQL("ALTER TABLE chats RENAME TO _chats_old")
+                db.execSQL("""
+                    CREATE TABLE chats (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT,
+                        is_group INTEGER NOT NULL DEFAULT 0,
+                        group_chattiness INTEGER NOT NULL DEFAULT 50,
+                        background_path TEXT,
+                        preset_id INTEGER,
+                        scheduling_strategy TEXT NOT NULL DEFAULT 'natural',
+                        message_interval_ms INTEGER NOT NULL DEFAULT 1500,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO chats SELECT * FROM _chats_old")
+                db.execSQL("DROP TABLE _chats_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_character_id ON chats(character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_is_group ON chats(is_group)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_updated_at ON chats(updated_at)")
+
+                // 3. messages — 添加 is_active DEFAULT
+                db.execSQL("ALTER TABLE messages RENAME TO _messages_old")
+                db.execSQL("""
+                    CREATE TABLE messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        character_id INTEGER,
+                        parent_id INTEGER,
+                        branch_id INTEGER,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at INTEGER NOT NULL,
+                        swipe_content TEXT NOT NULL DEFAULT '[]',
+                        swipe_index INTEGER NOT NULL DEFAULT 0,
+                        reply_to_id INTEGER,
+                        is_pinned INTEGER NOT NULL DEFAULT 0,
+                        image_paths TEXT NOT NULL DEFAULT '[]',
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO messages SELECT * FROM _messages_old")
+                db.execSQL("DROP TABLE _messages_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_id ON messages(chat_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_parent_id ON messages(parent_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_character_id ON messages(character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_branch_id ON messages(branch_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_created ON messages(chat_id, is_active, created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_pinned ON messages(chat_id, is_active, is_pinned)")
+
+                // 4. memory_atoms — 添加 importance/source/superseded/access_count DEFAULT
+                db.execSQL("ALTER TABLE memory_atoms RENAME TO _memory_atoms_old")
+                db.execSQL("""
+                    CREATE TABLE memory_atoms (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        content TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        importance INTEGER NOT NULL DEFAULT 5,
+                        source TEXT NOT NULL DEFAULT 'llm',
+                        source_chat_id INTEGER,
+                        source_message_id INTEGER,
+                        superseded INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        last_accessed INTEGER NOT NULL,
+                        access_count INTEGER NOT NULL DEFAULT 0,
+                        expires_at INTEGER,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO memory_atoms SELECT * FROM _memory_atoms_old")
+                db.execSQL("DROP TABLE _memory_atoms_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id ON memory_atoms(character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_category ON memory_atoms(category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_category ON memory_atoms(character_id, category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded ON memory_atoms(character_id, superseded)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded_category ON memory_atoms(character_id, superseded, category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded_source ON memory_atoms(character_id, superseded, source)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_superseded_category_importance ON memory_atoms(character_id, superseded, category, importance DESC)")
+
+                // 5. memories — 添加 importance/source/access_count DEFAULT
+                db.execSQL("ALTER TABLE memories RENAME TO _memories_old")
+                db.execSQL("""
+                    CREATE TABLE memories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        content TEXT NOT NULL,
+                        importance INTEGER NOT NULL DEFAULT 5,
+                        source TEXT NOT NULL DEFAULT 'manual',
+                        created_at INTEGER NOT NULL,
+                        last_accessed INTEGER NOT NULL,
+                        access_count INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO memories SELECT * FROM _memories_old")
+                db.execSQL("DROP TABLE _memories_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_character_id ON memories(character_id)")
+
+                // 6. scripts — 添加全部 DEFAULT
+                db.execSQL("ALTER TABLE scripts RENAME TO _scripts_old")
+                db.execSQL("""
+                    CREATE TABLE scripts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        comment TEXT NOT NULL DEFAULT '',
+                        script_type INTEGER NOT NULL DEFAULT 0,
+                        find_pattern TEXT NOT NULL DEFAULT '',
+                        replace_pattern TEXT NOT NULL DEFAULT '',
+                        is_regex INTEGER NOT NULL DEFAULT 1,
+                        case_sensitive INTEGER NOT NULL DEFAULT 0,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO scripts SELECT * FROM _scripts_old")
+                db.execSQL("DROP TABLE _scripts_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_scripts_character_id ON scripts(character_id)")
+
+                // 7. world_books — 添加 description DEFAULT
+                db.execSQL("ALTER TABLE world_books RENAME TO _world_books_old")
+                db.execSQL("""
+                    CREATE TABLE world_books (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO world_books SELECT * FROM _world_books_old")
+                db.execSQL("DROP TABLE _world_books_old")
+
+                // 8. world_book_entries — 添加全部 DEFAULT + active index
+                db.execSQL("ALTER TABLE world_book_entries RENAME TO _world_book_entries_old")
+                db.execSQL("""
+                    CREATE TABLE world_book_entries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        world_book_id INTEGER NOT NULL,
+                        uid INTEGER NOT NULL DEFAULT 0,
+                        comment TEXT NOT NULL DEFAULT '',
+                        keys TEXT NOT NULL DEFAULT '[]',
+                        keys_secondary TEXT NOT NULL DEFAULT '[]',
+                        content TEXT NOT NULL DEFAULT '',
+                        constant INTEGER NOT NULL DEFAULT 0,
+                        position INTEGER NOT NULL DEFAULT 0,
+                        order_val INTEGER NOT NULL DEFAULT 100,
+                        probability INTEGER NOT NULL DEFAULT 100,
+                        depth INTEGER NOT NULL DEFAULT 4,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        selective INTEGER NOT NULL DEFAULT 0,
+                        selective_logic INTEGER NOT NULL DEFAULT 0,
+                        exclude_recursion INTEGER NOT NULL DEFAULT 0,
+                        prevent_recursion INTEGER NOT NULL DEFAULT 0,
+                        "group" TEXT NOT NULL DEFAULT '',
+                        group_override INTEGER NOT NULL DEFAULT 0,
+                        group_weight INTEGER NOT NULL DEFAULT 100,
+                        FOREIGN KEY (world_book_id) REFERENCES world_books(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO world_book_entries SELECT * FROM _world_book_entries_old")
+                db.execSQL("DROP TABLE _world_book_entries_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_world_book_id ON world_book_entries(world_book_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_active ON world_book_entries(world_book_id, disabled)")
+
+                // 9. author_notes — 添加 content DEFAULT
+                db.execSQL("ALTER TABLE author_notes RENAME TO _author_notes_old")
+                db.execSQL("""
+                    CREATE TABLE author_notes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        content TEXT NOT NULL DEFAULT '',
+                        position TEXT NOT NULL DEFAULT 'after_an',
+                        depth INTEGER NOT NULL DEFAULT 4,
+                        updated_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO author_notes SELECT * FROM _author_notes_old")
+                db.execSQL("DROP TABLE _author_notes_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_author_notes_character_id ON author_notes(character_id)")
+
+                // 10. personas — 添加 biography/is_default DEFAULT
+                db.execSQL("ALTER TABLE personas RENAME TO _personas_old")
+                db.execSQL("""
+                    CREATE TABLE personas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        biography TEXT NOT NULL DEFAULT '',
+                        avatar_path TEXT,
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO personas SELECT * FROM _personas_old")
+                db.execSQL("DROP TABLE _personas_old")
+
+                // 11. chat_characters — 添加 display_order/is_active/chattiness DEFAULT
+                db.execSQL("ALTER TABLE chat_characters RENAME TO _chat_characters_old")
+                db.execSQL("""
+                    CREATE TABLE chat_characters (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        chattiness INTEGER NOT NULL DEFAULT 50,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO chat_characters SELECT * FROM _chat_characters_old")
+                db.execSQL("DROP TABLE _chat_characters_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_characters_chat_id ON chat_characters(chat_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_characters_character_id ON chat_characters(character_id)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_chat_characters_chat_id_character_id ON chat_characters(chat_id, character_id)")
+
+                // 12. presets — 添加 description/system_prompt/post_history_instructions/author_note/is_default/scope DEFAULT
+                db.execSQL("ALTER TABLE presets RENAME TO _presets_old")
+                db.execSQL("""
+                    CREATE TABLE presets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        system_prompt TEXT NOT NULL DEFAULT '',
+                        post_history_instructions TEXT NOT NULL DEFAULT '',
+                        author_note TEXT NOT NULL DEFAULT '',
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        scope TEXT NOT NULL DEFAULT 'global',
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO presets SELECT * FROM _presets_old")
+                db.execSQL("DROP TABLE _presets_old")
+
+                // 13. branches — 添加 name/is_default DEFAULT
+                db.execSQL("ALTER TABLE branches RENAME TO _branches_old")
+                db.execSQL("""
+                    CREATE TABLE branches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO branches SELECT * FROM _branches_old")
+                db.execSQL("DROP TABLE _branches_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_branches_chat_id ON branches(chat_id)")
+
+                // 14. summaries — 添加 token_count DEFAULT
+                db.execSQL("ALTER TABLE summaries RENAME TO _summaries_old")
+                db.execSQL("""
+                    CREATE TABLE summaries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        content TEXT NOT NULL,
+                        message_range_start INTEGER NOT NULL,
+                        message_range_end INTEGER NOT NULL,
+                        token_count INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO summaries SELECT * FROM _summaries_old")
+                db.execSQL("DROP TABLE _summaries_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_summaries_chat_id ON summaries(chat_id)")
+
+                // 15. sprites — 添加 emotion/display_order DEFAULT
+                db.execSQL("ALTER TABLE sprites RENAME TO _sprites_old")
+                db.execSQL("""
+                    CREATE TABLE sprites (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        emotion TEXT NOT NULL DEFAULT 'neutral',
+                        image_path TEXT NOT NULL,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO sprites SELECT * FROM _sprites_old")
+                db.execSQL("DROP TABLE _sprites_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id ON sprites(character_id)")
+
+                // 16. bgms — 添加 name/loop/volume/display_order DEFAULT
+                db.execSQL("ALTER TABLE bgms RENAME TO _bgms_old")
+                db.execSQL("""
+                    CREATE TABLE bgms (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        character_id INTEGER NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        audio_path TEXT NOT NULL,
+                        loop INTEGER NOT NULL DEFAULT 1,
+                        volume REAL NOT NULL DEFAULT 0.5,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO bgms SELECT * FROM _bgms_old")
+                db.execSQL("DROP TABLE _bgms_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id ON bgms(character_id)")
             }
         }

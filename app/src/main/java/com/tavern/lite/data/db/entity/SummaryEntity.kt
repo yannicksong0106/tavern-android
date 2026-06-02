@@ -24,6 +24,6 @@ data class SummaryEntity(
     val content: String,
     @ColumnInfo(name = "message_range_start") val messageRangeStart: Long,
     @ColumnInfo(name = "message_range_end") val messageRangeEnd: Long,
-    @ColumnInfo(name = "token_count") val tokenCount: Int = 0,
+    @ColumnInfo(name = "token_count", defaultValue = "0") val tokenCount: Int = 0,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

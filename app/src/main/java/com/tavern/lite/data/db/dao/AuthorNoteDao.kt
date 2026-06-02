@@ -21,4 +21,7 @@ interface AuthorNoteDao {
 
     @Query("DELETE FROM author_notes WHERE character_id = :characterId")
     suspend fun delete(characterId: Long)
+
+    @Query("SELECT * FROM author_notes")
+    suspend fun getAllAuthorNotesSync(): List<AuthorNoteEntity>
 }

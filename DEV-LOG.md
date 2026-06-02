@@ -1,5 +1,83 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-05-30 — 全面质量审计修复（10 项）
+
+**背景**: 对项目进行静态代码审计，发现 21 个问题，按严重度分级后逐一修复。由于无法访问虚拟机，全部采用静态分析 + 构建验证。
+
+**Critical (4 项)**:
+
+1. **`MessageExecutionHelper` — `@Volatile` 线程安全**
+   - `lastAssistantReasoningContent` 在群聊并发调用时存在可见性问题
+   - 修复: 添加 `@Volatile` 注解
+
+2. **`ChatExporter` — HTML XSS 注入**
+   - `toHtml()` 中 `userName`/`charName` 直接拼入 HTML，恶意用户名可注入脚本
+   - 修复: speaker 名称经过 `escapeHtml()` 处理
+
+3. **`ImageUtils.fileToDataUri` — OOM 风险**
+   - 超大图片直接 `readBytes()` 可能导致 OOM
+   - 修复: 添加 20MB 文件大小上限检查
+
+4. **`BackupManager.restore` — 非原子性恢复**
+   - 恢复操作不在事务中，中途失败会导致部分数据残留
+   - 修复: 包裹在 `db.withTransaction` 中，失败自动回滚
+
+**High (3 项)**:
+
+5. **`SendMessageUseCase.tryTriggerSummary` — CoroutineScope 泄漏**
+   - 每次调用创建新 `CoroutineScope(Dispatchers.IO)`，永不取消
+   - 修复: 使用类级别 `summaryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)`
+
+6. **`WebSearchService.searchGoogle` — 参数名混淆**
+   - `query` 和 `apiKeyCx` 参数位置颠倒，导致搜索词被当作 API key 发送
+   - 修复: 交换参数名和用法
+
+7. **作者笔记备份缺失（新增功能）**
+   - `BackupData` 不包含 `AuthorNoteEntity`，备份/恢复会静默丢失作者笔记
+   - 修复:
+     - `AuthorNoteDao` 新增 `getAllAuthorNotesSync()` 查询
+     - `BackupData` 新增 `AuthorNoteBackup` 数据类和 `authorNotes` 字段
+     - `BackupManager` 新增备份/恢复逻辑
+     - `RestoreResult` 新增 `authorNotesRestored` 字段
+
+**Medium (2 项)**:
+
+8. **Proguard 规则过宽**
+   - `-keepclassmembers class com.tavern.lite.data.model.** { *; }` 保留了所有类成员，包括不需要的内部类和工具类
+   - 修复: 改为 `-keepclassmembers @kotlinx.serialization.Serializable class com.tavern.lite.** { *; }`，精确匹配序列化类
+
+9. **`PngMetadata.readTextChunks` — CRC 校验跳过**
+   - 读取 PNG chunk 时 CRC 字节被丢弃，不验证数据完整性
+   - 修复: 添加 CRC32 校验，不匹配时输出 warning 日志
+
+**Low (1 项)**:
+
+10. **`ChatExporter.toJson` — 函数体内定义 data class**
+    - `ExportMessage` 和 `ChatExport` 定义在函数体内部，每次调用创建新类
+    - 修复: 移至类级别，添加 `@Serializable` 注解
+
+**验证**: `./gradlew assembleDebug` 构建成功 (BUILD SUCCESSFUL)。
+
+---
+
+## 2026-05-28 — Room Schema 校验崩溃修复 + DB v28 全表重建
+
+**背景**: 新建角色 → 新建对话 → 点击对话 → 闪退。根因是 Room schema 校验失败：数据库中某些列有 SQL DEFAULT（由早期迁移添加），但 Entity 的 `@ColumnInfo` 缺少 `defaultValue`，Room 启动时检测到 expected/found 不匹配直接抛 `IllegalStateException`。
+
+**MIGRATION_27_28 — 全表重建**:
+- 16 张表全部 `RENAME → CREATE new → INSERT SELECT → DROP old`，确保 DEFAULT 约束与 Entity 定义完全一致
+- 同时修复索引：移除 `index_memory_atoms_sort` + `index_memory_atoms_category_importance`，替换为 Entity 定义的 `index_memory_atoms_character_id_superseded_category_importance`
+
+**16 个 Entity 补 `@ColumnInfo(defaultValue)`**:
+`CharacterEntity`, `ChatEntity`, `MessageEntity`, `MemoryAtomEntity`, `MemoryEntity`, `ScriptEntity`, `WorldBookEntity`, `WorldBookEntryEntity`, `AuthorNoteEntity`, `PersonaEntity`, `ChatCharacterEntity`, `PresetEntity`, `BranchEntity`, `SummaryEntity`, `SpriteEntity`, `BgmEntity`
+
+**验证**:
+- 模拟器：DB v27 → v28 升级成功，所有 16 表 DEFAULT + 索引对齐
+- 真机 (ab3f3234)：release APK 安装后正常运行
+- 单元测试全部通过
+
+---
+
 ## 2026-05-27 — 全面审计 + domain 层架构清理 + 测试补全
 
 **commit `3ac7b69` — CE 修复 + 测试覆盖**:

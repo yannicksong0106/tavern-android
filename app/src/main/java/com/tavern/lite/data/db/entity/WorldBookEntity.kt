@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 data class WorldBookEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val description: String = "",
+    @ColumnInfo(defaultValue = "") val description: String = "",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )
