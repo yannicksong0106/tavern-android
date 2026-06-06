@@ -1,5 +1,37 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-06-06 — P0 迁移信任度功能 ✅
+
+**背景**: 从 SillyTavern 用户迁移需要两个核心信任工具：能看到最终 Prompt、能确认导入没有丢数据。
+
+### P0-1: Prompt Inspector
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 状态数据类 | PromptInspector.kt | `PromptInspectorState` 含 messages、token 估算、注入来源统计 |
+| 构建器 | PromptInspectorBuilder.kt | 单聊/群聊预览，复用 `PromptBuilder` 路径，不写数据库/不触发搜索 |
+| UI 弹窗 | PromptInspectorDialog.kt | 统计 chips + 完整 messages 文本预览 |
+| 入口 | ChatTopBar.kt / ChatScreen.kt | 顶栏新增预览按钮，点击后构建并展示 |
+| 多语言 | strings.xml (zh/en/ja/ko) | 补齐 prompt inspector 相关字符串 |
+| 测试 | PromptInspectorTest.kt | 覆盖 formatter 格式化和 token 估算 |
+
+**测试结果**: `testDebugUnitTest` 通过。
+
+### P0-2: ST 导入完整性报告
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 报告数据类 | ImportReport.kt | 含导入数、跳过数、格式、忽略字段、警告 |
+| 导入器改造 | ChatImporter.kt | 返回 `Result<ImportReport>`，检测 swipes/attachments 等 ST 专有字段 |
+| UI 弹窗 | ImportReportDialog.kt | 展示详细报告并提供"打开对话"快捷入口 |
+| ViewModel 流 | ChatListViewModel.kt | 新增 `importReport` flow，UI 监听后弹窗 |
+| 多语言 | strings.xml (zh/en/ja/ko) | 补齐导入报告相关字符串 |
+| 测试更新 | ChatImporterTest.kt | 验证 `ImportReport` 各字段正确性 |
+
+**测试结果**: `testDebugUnitTest` 通过。
+
+---
+
 ## 2026-06-06 — ST 忠实用户迁移审计与产品方向
 
 **背景**: 从 SillyTavern 高频重度用户视角重新审视项目：目标不是“功能列表接近 ST”，而是让用户愿意把角色卡、世界书、预设、聊天记录和日常工作流长期迁移到 Android 原生客户端。
