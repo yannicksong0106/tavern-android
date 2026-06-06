@@ -23,6 +23,9 @@ interface BranchDao {
     @Query("SELECT * FROM branches WHERE id = :id")
     suspend fun getBranchById(id: Long): BranchEntity?
 
+    @Query("SELECT * FROM branches ORDER BY chat_id ASC, created_at ASC")
+    suspend fun getAllBranches(): List<BranchEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(branch: BranchEntity): Long
 

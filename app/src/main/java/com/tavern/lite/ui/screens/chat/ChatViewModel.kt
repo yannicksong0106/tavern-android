@@ -154,6 +154,10 @@ class ChatViewModel @Inject constructor(
     val promptInspectorState: StateFlow<PromptInspectorState?> = _promptInspectorState.asStateFlow()
 
     // 流式对话管理器
+    // Token estimation for context window usage
+    private val _estimatedContextTokens = MutableStateFlow(0)
+    val estimatedContextTokens: StateFlow<Int> = _estimatedContextTokens.asStateFlow()
+
     internal lateinit var streamingManager: ChatStreamingManager
         private set
 
@@ -369,10 +373,6 @@ class ChatViewModel @Inject constructor(
             chatRepository.togglePinMessage(messageId, !msg.isPinned)
         }
     }
-
-    // Token estimation for context window usage
-    private val _estimatedContextTokens = MutableStateFlow(0)
-    val estimatedContextTokens: StateFlow<Int> = _estimatedContextTokens.asStateFlow()
 
     fun estimateInputTokens(text: String): Int = TokenEstimator.estimateText(text)
 

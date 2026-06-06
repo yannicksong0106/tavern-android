@@ -132,6 +132,7 @@ private class FakePersonaDao : PersonaDao {
     override suspend fun linkCharacterPersona(link: CharacterPersonaEntity) { linkedEntity = link }
     override suspend fun unlinkCharacterPersona(characterId: Long) { unlinkedCharacterId = characterId }
     override suspend fun getLinkedPersonaId(characterId: Long): Long? = linkedPersona?.id
+    override suspend fun getAllCharacterPersonas(): List<CharacterPersonaEntity> = listOfNotNull(linkedEntity)
     override suspend fun getLinkedPersona(characterId: Long): PersonaEntity? = linkedPersona
     override suspend fun getAllPersonasSync(): List<PersonaEntity> = inserted.toList()
 }

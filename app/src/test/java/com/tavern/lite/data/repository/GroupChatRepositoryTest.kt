@@ -139,6 +139,7 @@ private class FakeChatCharacterDao : ChatCharacterDao {
     }
     override suspend fun insertAll(chatCharacters: List<ChatCharacterEntity>) { inserted.addAll(chatCharacters) }
     override suspend fun getCharactersForChat(chatId: Long): List<ChatCharacterEntity> = existingCharacters.filter { it.chatId == chatId }
+    override suspend fun getAllChatCharacters(): List<ChatCharacterEntity> = existingCharacters + inserted
     override fun getCharacterEntitiesForChat(chatId: Long): Flow<List<CharacterEntity>> = flowOf(emptyList())
     override suspend fun getCharacterEntitiesForChatSync(chatId: Long): List<CharacterEntity> = emptyList()
     override suspend fun removeCharacter(chatId: Long, characterId: Long) { removedChatId = chatId; removedCharacterId = characterId }

@@ -492,7 +492,50 @@ abstract class TavernDatabase : RoomDatabase() {
                         updated_at INTEGER NOT NULL
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO characters SELECT * FROM _characters_old")
+                db.execSQL("""
+                    INSERT INTO characters (
+                        id,
+                        name,
+                        description,
+                        personality,
+                        first_mes,
+                        mes_example,
+                        avatar_path,
+                        system_prompt,
+                        post_history_instructions,
+                        tags,
+                        world_book_id,
+                        preset_id,
+                        background_path,
+                        chattiness,
+                        creator,
+                        version,
+                        spec,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        personality,
+                        first_mes,
+                        mes_example,
+                        avatar_path,
+                        system_prompt,
+                        post_history_instructions,
+                        tags,
+                        world_book_id,
+                        preset_id,
+                        background_path,
+                        chattiness,
+                        creator,
+                        version,
+                        spec,
+                        created_at,
+                        updated_at
+                    FROM _characters_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _characters_old")
 
                 // 2. chats — 添加 is_group/group_chattiness/scheduling_strategy/message_interval_ms DEFAULT
@@ -513,7 +556,34 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO chats SELECT * FROM _chats_old")
+                db.execSQL("""
+                    INSERT INTO chats (
+                        id,
+                        character_id,
+                        name,
+                        is_group,
+                        group_chattiness,
+                        background_path,
+                        preset_id,
+                        scheduling_strategy,
+                        message_interval_ms,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        name,
+                        is_group,
+                        group_chattiness,
+                        background_path,
+                        preset_id,
+                        scheduling_strategy,
+                        message_interval_ms,
+                        created_at,
+                        updated_at
+                    FROM _chats_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _chats_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_character_id ON chats(character_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_is_group ON chats(is_group)")
@@ -540,7 +610,40 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO messages SELECT * FROM _messages_old")
+                db.execSQL("""
+                    INSERT INTO messages (
+                        id,
+                        chat_id,
+                        role,
+                        content,
+                        character_id,
+                        parent_id,
+                        branch_id,
+                        is_active,
+                        created_at,
+                        swipe_content,
+                        swipe_index,
+                        reply_to_id,
+                        is_pinned,
+                        image_paths
+                    )
+                    SELECT
+                        id,
+                        chat_id,
+                        role,
+                        content,
+                        character_id,
+                        parent_id,
+                        branch_id,
+                        is_active,
+                        created_at,
+                        swipe_content,
+                        swipe_index,
+                        reply_to_id,
+                        is_pinned,
+                        image_paths
+                    FROM _messages_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _messages_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_id ON messages(chat_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_parent_id ON messages(parent_id)")
@@ -569,7 +672,38 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO memory_atoms SELECT * FROM _memory_atoms_old")
+                db.execSQL("""
+                    INSERT INTO memory_atoms (
+                        id,
+                        character_id,
+                        content,
+                        category,
+                        importance,
+                        source,
+                        source_chat_id,
+                        source_message_id,
+                        superseded,
+                        created_at,
+                        last_accessed,
+                        access_count,
+                        expires_at
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        content,
+                        category,
+                        importance,
+                        source,
+                        source_chat_id,
+                        source_message_id,
+                        superseded,
+                        created_at,
+                        last_accessed,
+                        access_count,
+                        expires_at
+                    FROM _memory_atoms_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _memory_atoms_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id ON memory_atoms(character_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_category ON memory_atoms(category)")
@@ -594,7 +728,28 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO memories SELECT * FROM _memories_old")
+                db.execSQL("""
+                    INSERT INTO memories (
+                        id,
+                        character_id,
+                        content,
+                        importance,
+                        source,
+                        created_at,
+                        last_accessed,
+                        access_count
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        content,
+                        importance,
+                        source,
+                        created_at,
+                        last_accessed,
+                        access_count
+                    FROM _memories_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _memories_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_character_id ON memories(character_id)")
 
@@ -616,7 +771,34 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO scripts SELECT * FROM _scripts_old")
+                db.execSQL("""
+                    INSERT INTO scripts (
+                        id,
+                        character_id,
+                        name,
+                        comment,
+                        script_type,
+                        find_pattern,
+                        replace_pattern,
+                        is_regex,
+                        case_sensitive,
+                        enabled,
+                        sort_order
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        name,
+                        comment,
+                        script_type,
+                        find_pattern,
+                        replace_pattern,
+                        is_regex,
+                        case_sensitive,
+                        enabled,
+                        sort_order
+                    FROM _scripts_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _scripts_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_scripts_character_id ON scripts(character_id)")
 
@@ -631,7 +813,22 @@ abstract class TavernDatabase : RoomDatabase() {
                         updated_at INTEGER NOT NULL
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO world_books SELECT * FROM _world_books_old")
+                db.execSQL("""
+                    INSERT INTO world_books (
+                        id,
+                        name,
+                        description,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        created_at,
+                        updated_at
+                    FROM _world_books_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _world_books_old")
 
                 // 8. world_book_entries — 添加全部 DEFAULT + active index
@@ -661,7 +858,52 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (world_book_id) REFERENCES world_books(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO world_book_entries SELECT * FROM _world_book_entries_old")
+                db.execSQL("""
+                    INSERT INTO world_book_entries (
+                        id,
+                        world_book_id,
+                        uid,
+                        comment,
+                        keys,
+                        keys_secondary,
+                        content,
+                        constant,
+                        position,
+                        order_val,
+                        probability,
+                        depth,
+                        disabled,
+                        selective,
+                        selective_logic,
+                        exclude_recursion,
+                        prevent_recursion,
+                        "group",
+                        group_override,
+                        group_weight
+                    )
+                    SELECT
+                        id,
+                        world_book_id,
+                        uid,
+                        comment,
+                        keys,
+                        keys_secondary,
+                        content,
+                        constant,
+                        position,
+                        order_val,
+                        probability,
+                        depth,
+                        disabled,
+                        selective,
+                        selective_logic,
+                        exclude_recursion,
+                        prevent_recursion,
+                        "group",
+                        group_override,
+                        group_weight
+                    FROM _world_book_entries_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _world_book_entries_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_world_book_id ON world_book_entries(world_book_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_world_book_entries_active ON world_book_entries(world_book_id, disabled)")
@@ -679,7 +921,24 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO author_notes SELECT * FROM _author_notes_old")
+                db.execSQL("""
+                    INSERT INTO author_notes (
+                        id,
+                        character_id,
+                        content,
+                        position,
+                        depth,
+                        updated_at
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        content,
+                        position,
+                        depth,
+                        updated_at
+                    FROM _author_notes_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _author_notes_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_author_notes_character_id ON author_notes(character_id)")
 
@@ -695,7 +954,24 @@ abstract class TavernDatabase : RoomDatabase() {
                         created_at INTEGER NOT NULL
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO personas SELECT * FROM _personas_old")
+                db.execSQL("""
+                    INSERT INTO personas (
+                        id,
+                        name,
+                        biography,
+                        avatar_path,
+                        is_default,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        name,
+                        biography,
+                        avatar_path,
+                        is_default,
+                        created_at
+                    FROM _personas_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _personas_old")
 
                 // 11. chat_characters — 添加 display_order/is_active/chattiness DEFAULT
@@ -713,7 +989,26 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO chat_characters SELECT * FROM _chat_characters_old")
+                db.execSQL("""
+                    INSERT INTO chat_characters (
+                        id,
+                        chat_id,
+                        character_id,
+                        display_order,
+                        is_active,
+                        chattiness,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        chat_id,
+                        character_id,
+                        display_order,
+                        is_active,
+                        chattiness,
+                        created_at
+                    FROM _chat_characters_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _chat_characters_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_characters_chat_id ON chat_characters(chat_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_characters_character_id ON chat_characters(character_id)")
@@ -735,7 +1030,32 @@ abstract class TavernDatabase : RoomDatabase() {
                         updated_at INTEGER NOT NULL
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO presets SELECT * FROM _presets_old")
+                db.execSQL("""
+                    INSERT INTO presets (
+                        id,
+                        name,
+                        description,
+                        system_prompt,
+                        post_history_instructions,
+                        author_note,
+                        is_default,
+                        scope,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        system_prompt,
+                        post_history_instructions,
+                        author_note,
+                        is_default,
+                        scope,
+                        created_at,
+                        updated_at
+                    FROM _presets_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _presets_old")
 
                 // 13. branches — 添加 name/is_default DEFAULT
@@ -750,7 +1070,22 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO branches SELECT * FROM _branches_old")
+                db.execSQL("""
+                    INSERT INTO branches (
+                        id,
+                        chat_id,
+                        name,
+                        is_default,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        chat_id,
+                        name,
+                        is_default,
+                        created_at
+                    FROM _branches_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _branches_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_branches_chat_id ON branches(chat_id)")
 
@@ -768,7 +1103,26 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO summaries SELECT * FROM _summaries_old")
+                db.execSQL("""
+                    INSERT INTO summaries (
+                        id,
+                        chat_id,
+                        content,
+                        message_range_start,
+                        message_range_end,
+                        token_count,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        chat_id,
+                        content,
+                        message_range_start,
+                        message_range_end,
+                        token_count,
+                        created_at
+                    FROM _summaries_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _summaries_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_summaries_chat_id ON summaries(chat_id)")
 
@@ -785,7 +1139,24 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO sprites SELECT * FROM _sprites_old")
+                db.execSQL("""
+                    INSERT INTO sprites (
+                        id,
+                        character_id,
+                        emotion,
+                        image_path,
+                        display_order,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        emotion,
+                        image_path,
+                        display_order,
+                        created_at
+                    FROM _sprites_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _sprites_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id ON sprites(character_id)")
 
@@ -804,7 +1175,28 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                db.execSQL("INSERT INTO bgms SELECT * FROM _bgms_old")
+                db.execSQL("""
+                    INSERT INTO bgms (
+                        id,
+                        character_id,
+                        name,
+                        audio_path,
+                        loop,
+                        volume,
+                        display_order,
+                        created_at
+                    )
+                    SELECT
+                        id,
+                        character_id,
+                        name,
+                        audio_path,
+                        loop,
+                        volume,
+                        display_order,
+                        created_at
+                    FROM _bgms_old
+                """.trimIndent())
                 db.execSQL("DROP TABLE _bgms_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id ON bgms(character_id)")
             }
@@ -816,6 +1208,7 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE bgms ADD COLUMN emotion TEXT NOT NULL DEFAULT ''")
             }
         }
+
         val MIGRATION_29_30 = object : Migration(29, 30) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Phase 6.1: add composite indices for high-frequency filtered + ordered queries.

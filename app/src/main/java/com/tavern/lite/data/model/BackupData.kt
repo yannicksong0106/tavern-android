@@ -10,6 +10,7 @@ data class BackupData(
     val appVersion: String = "1.2.8",
     val characters: List<CharacterBackup> = emptyList(),
     val chats: List<ChatBackup> = emptyList(),
+    val chatCharacters: List<ChatCharacterBackup> = emptyList(),
     val messages: List<MessageBackup> = emptyList(),
     val memories: List<MemoryBackup> = emptyList(),
     val memoryAtoms: List<MemoryAtomBackup> = emptyList(),
@@ -17,7 +18,10 @@ data class BackupData(
     val worldBookEntries: List<WorldBookEntryBackup> = emptyList(),
     val scripts: List<ScriptBackup> = emptyList(),
     val personas: List<PersonaBackup> = emptyList(),
+    val characterPersonas: List<CharacterPersonaBackup> = emptyList(),
     val presets: List<PresetBackup> = emptyList(),
+    val branches: List<BranchBackup> = emptyList(),
+    val summaries: List<SummaryBackup> = emptyList(),
     val sprites: List<SpriteBackup> = emptyList(),
     val bgms: List<BgmBackup> = emptyList(),
     val authorNotes: List<AuthorNoteBackup> = emptyList()
@@ -36,6 +40,7 @@ data class CharacterBackup(
     val postHistoryInstructions: String? = null,
     val tags: String = "[]",
     val worldBookId: Long? = null,
+    val presetId: Long? = null,
     val backgroundPath: String? = null,
     val creator: String = "",
     val version: String = "1.0",
@@ -51,12 +56,24 @@ data class ChatBackup(
     val characterId: Long,
     val name: String? = null,
     val backgroundPath: String? = null,
+    val presetId: Long? = null,
     val isGroup: Boolean = false,
     val groupChattiness: Int = 50,
     val schedulingStrategy: String = "natural",
     val messageIntervalMs: Long = 1500L,
     val createdAt: Long,
     val updatedAt: Long
+)
+
+@Serializable
+data class ChatCharacterBackup(
+    val id: Long,
+    val chatId: Long,
+    val characterId: Long,
+    val displayOrder: Int = 0,
+    val isActive: Boolean = true,
+    val chattiness: Int = 50,
+    val createdAt: Long
 )
 
 @Serializable
@@ -72,6 +89,8 @@ data class MessageBackup(
     val createdAt: Long,
     val swipeContent: String = "[]",
     val swipeIndex: Int = 0,
+    val replyToId: Long? = null,
+    val isPinned: Boolean = false,
     val imagePaths: String = "[]"
 )
 
@@ -163,6 +182,12 @@ data class PersonaBackup(
 )
 
 @Serializable
+data class CharacterPersonaBackup(
+    val characterId: Long,
+    val personaId: Long
+)
+
+@Serializable
 data class PresetBackup(
     val id: Long,
     val name: String,
@@ -173,6 +198,26 @@ data class PresetBackup(
     val isDefault: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long
+)
+
+@Serializable
+data class BranchBackup(
+    val id: Long,
+    val chatId: Long,
+    val name: String = "",
+    val isDefault: Boolean = false,
+    val createdAt: Long
+)
+
+@Serializable
+data class SummaryBackup(
+    val id: Long,
+    val chatId: Long,
+    val content: String,
+    val messageRangeStart: Long,
+    val messageRangeEnd: Long,
+    val tokenCount: Int = 0,
+    val createdAt: Long
 )
 
 @Serializable
@@ -217,6 +262,10 @@ data class RestoreResult(
     val scriptsRestored: Int,
     val personasRestored: Int,
     val presetsRestored: Int,
+    val chatCharactersRestored: Int = 0,
+    val characterPersonasRestored: Int = 0,
+    val branchesRestored: Int = 0,
+    val summariesRestored: Int = 0,
     val spritesRestored: Int = 0,
     val bgmsRestored: Int = 0,
     val authorNotesRestored: Int = 0,

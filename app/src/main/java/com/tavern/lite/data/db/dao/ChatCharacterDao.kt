@@ -20,6 +20,9 @@ interface ChatCharacterDao {
     @Query("SELECT * FROM chat_characters WHERE chat_id = :chatId ORDER BY display_order ASC")
     suspend fun getCharactersForChat(chatId: Long): List<ChatCharacterEntity>
 
+    @Query("SELECT * FROM chat_characters ORDER BY chat_id ASC, display_order ASC")
+    suspend fun getAllChatCharacters(): List<ChatCharacterEntity>
+
     @Query("""
         SELECT c.* FROM characters c
         INNER JOIN chat_characters cc ON c.id = cc.character_id

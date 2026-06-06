@@ -211,6 +211,7 @@ private class FakeBranchDao : BranchDao {
     override suspend fun getBranchesForChatSync(chatId: Long): List<BranchEntity> = emptyList()
     override suspend fun getDefaultBranch(chatId: Long): BranchEntity? = null
     override suspend fun getBranchById(id: Long): BranchEntity? = null
+    override suspend fun getAllBranches(): List<BranchEntity> = emptyList()
     override suspend fun insert(branch: BranchEntity): Long = 1L
     override suspend fun update(branch: BranchEntity) {}
     override suspend fun delete(branch: BranchEntity) {}

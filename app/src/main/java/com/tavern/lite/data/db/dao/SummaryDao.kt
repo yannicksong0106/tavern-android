@@ -19,6 +19,9 @@ interface SummaryDao {
     @Query("SELECT * FROM summaries WHERE id = :id")
     suspend fun getSummaryById(id: Long): SummaryEntity?
 
+    @Query("SELECT * FROM summaries ORDER BY chat_id ASC, created_at ASC")
+    suspend fun getAllSummaries(): List<SummaryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(summary: SummaryEntity): Long
 

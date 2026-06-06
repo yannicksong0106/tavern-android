@@ -133,6 +133,9 @@ private class FakeSummaryDao : SummaryDao {
     override suspend fun getSummaryById(id: Long): SummaryEntity? =
         allSummaries.find { it.id == id } ?: inserted.find { it.id == id }
 
+    override suspend fun getAllSummaries(): List<SummaryEntity> =
+        summaries.values.flatten() + allSummaries + inserted
+
     override suspend fun insert(summary: SummaryEntity): Long {
         val id = nextId++
         val newSummary = summary.copy(id = id)

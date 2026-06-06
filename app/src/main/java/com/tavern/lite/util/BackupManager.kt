@@ -7,7 +7,9 @@ import androidx.room.withTransaction
 import com.tavern.lite.data.db.TavernDatabase
 import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.BgmDao
+import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.CharacterDao
+import com.tavern.lite.data.db.dao.ChatCharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.dao.MemoryDao
@@ -16,11 +18,15 @@ import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.SpriteDao
+import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.model.BackupData
 import com.tavern.lite.data.model.AuthorNoteBackup
 import com.tavern.lite.data.model.BgmBackup
+import com.tavern.lite.data.model.BranchBackup
+import com.tavern.lite.data.model.CharacterPersonaBackup
 import com.tavern.lite.data.model.CharacterBackup
+import com.tavern.lite.data.model.ChatCharacterBackup
 import com.tavern.lite.data.model.ChatBackup
 import com.tavern.lite.data.model.MemoryAtomBackup
 import com.tavern.lite.data.model.MemoryBackup
@@ -30,6 +36,7 @@ import com.tavern.lite.data.model.PresetBackup
 import com.tavern.lite.data.model.RestoreResult
 import com.tavern.lite.data.model.ScriptBackup
 import com.tavern.lite.data.model.SpriteBackup
+import com.tavern.lite.data.model.SummaryBackup
 import com.tavern.lite.data.model.WorldBookBackup
 import com.tavern.lite.data.model.WorldBookEntryBackup
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -49,6 +56,7 @@ class BackupManager @Inject constructor(
     private val db: TavernDatabase,
     private val characterDao: CharacterDao,
     private val chatDao: ChatDao,
+    private val chatCharacterDao: ChatCharacterDao,
     private val messageDao: MessageDao,
     private val memoryDao: MemoryDao,
     private val memoryAtomDao: MemoryAtomDao,
@@ -57,6 +65,8 @@ class BackupManager @Inject constructor(
     private val authorNoteDao: AuthorNoteDao,
     private val personaDao: PersonaDao,
     private val presetDao: PresetDao,
+    private val branchDao: BranchDao,
+    private val summaryDao: SummaryDao,
     private val spriteDao: SpriteDao,
     private val bgmDao: BgmDao
 ) {
@@ -84,7 +94,8 @@ class BackupManager @Inject constructor(
                         personality = it.personality, firstMessage = it.firstMes,
                         mesExample = it.mesExample, avatarPath = it.avatarPath,
                         systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
-                        tags = it.tags, worldBookId = it.worldBookId, backgroundPath = it.backgroundPath,
+                        tags = it.tags, worldBookId = it.worldBookId, presetId = it.presetId,
+                        backgroundPath = it.backgroundPath,
                         creator = it.creator, version = it.version, spec = it.spec,
                         chattiness = it.chattiness, createdAt = it.createdAt, updatedAt = it.updatedAt
                     )
@@ -95,7 +106,7 @@ class BackupManager @Inject constructor(
                 chatDao.getAllChatsSync().map {
                     ChatBackup(
                         id = it.id, characterId = it.characterId, name = it.name,
-                        backgroundPath = it.backgroundPath, isGroup = it.isGroup,
+                        backgroundPath = it.backgroundPath, presetId = it.presetId, isGroup = it.isGroup,
                         groupChattiness = it.groupChattiness,
                         schedulingStrategy = it.schedulingStrategy,
                         messageIntervalMs = it.messageIntervalMs,
@@ -112,7 +123,22 @@ class BackupManager @Inject constructor(
                         characterId = it.characterId, parentId = it.parentId, branchId = it.branchId,
                         isActive = it.isActive, createdAt = it.createdAt,
                         swipeContent = it.swipeContent, swipeIndex = it.swipeIndex,
+                        replyToId = it.replyToId, isPinned = it.isPinned,
                         imagePaths = it.imagePaths
+                    )
+                }
+            }
+
+            val chatCharactersDeferred = async {
+                chatCharacterDao.getAllChatCharacters().map {
+                    ChatCharacterBackup(
+                        id = it.id,
+                        chatId = it.chatId,
+                        characterId = it.characterId,
+                        displayOrder = it.displayOrder,
+                        isActive = it.isActive,
+                        chattiness = it.chattiness,
+                        createdAt = it.createdAt
                     )
                 }
             }
@@ -186,6 +212,15 @@ class BackupManager @Inject constructor(
                 }
             }
 
+            val characterPersonasDeferred = async {
+                personaDao.getAllCharacterPersonas().map {
+                    CharacterPersonaBackup(
+                        characterId = it.characterId,
+                        personaId = it.personaId
+                    )
+                }
+            }
+
             val presetsDeferred = async {
                 presetDao.getAllPresetsSync().map {
                     PresetBackup(
@@ -193,6 +228,32 @@ class BackupManager @Inject constructor(
                         systemPrompt = it.systemPrompt, postHistoryInstructions = it.postHistoryInstructions,
                         authorNote = it.authorNote, isDefault = it.isDefault,
                         createdAt = it.createdAt, updatedAt = it.updatedAt
+                    )
+                }
+            }
+
+            val branchesDeferred = async {
+                branchDao.getAllBranches().map {
+                    BranchBackup(
+                        id = it.id,
+                        chatId = it.chatId,
+                        name = it.name,
+                        isDefault = it.isDefault,
+                        createdAt = it.createdAt
+                    )
+                }
+            }
+
+            val summariesDeferred = async {
+                summaryDao.getAllSummaries().map {
+                    SummaryBackup(
+                        id = it.id,
+                        chatId = it.chatId,
+                        content = it.content,
+                        messageRangeStart = it.messageRangeStart,
+                        messageRangeEnd = it.messageRangeEnd,
+                        tokenCount = it.tokenCount,
+                        createdAt = it.createdAt
                     )
                 }
             }
@@ -231,6 +292,7 @@ class BackupManager @Inject constructor(
                 appVersion = currentAppVersion,
                 characters = charactersDeferred.await(),
                 chats = chatsDeferred.await(),
+                chatCharacters = chatCharactersDeferred.await(),
                 messages = messagesDeferred.await(),
                 memories = memoriesDeferred.await(),
                 memoryAtoms = memoryAtomsDeferred.await(),
@@ -238,7 +300,10 @@ class BackupManager @Inject constructor(
                 worldBookEntries = worldBookEntriesDeferred.await(),
                 scripts = scriptsDeferred.await(),
                 personas = personasDeferred.await(),
+                characterPersonas = characterPersonasDeferred.await(),
                 presets = presetsDeferred.await(),
+                branches = branchesDeferred.await(),
+                summaries = summariesDeferred.await(),
                 sprites = spritesDeferred.await(),
                 bgms = bgmsDeferred.await(),
                 authorNotes = authorNotesDeferred.await()
@@ -279,6 +344,10 @@ class BackupManager @Inject constructor(
             var scriptsRestored = 0
             var personasRestored = 0
             var presetsRestored = 0
+            var chatCharactersRestored = 0
+            var characterPersonasRestored = 0
+            var branchesRestored = 0
+            var summariesRestored = 0
             var spritesRestored = 0
             var bgmsRestored = 0
             var authorNotesRestored = 0
@@ -291,7 +360,8 @@ class BackupManager @Inject constructor(
                         personality = c.personality, firstMes = c.firstMessage,
                         mesExample = c.mesExample, avatarPath = c.avatarPath,
                         systemPrompt = c.systemPrompt, postHistoryInstructions = c.postHistoryInstructions,
-                        tags = c.tags, worldBookId = c.worldBookId, backgroundPath = c.backgroundPath,
+                        tags = c.tags, worldBookId = c.worldBookId, presetId = c.presetId,
+                        backgroundPath = c.backgroundPath,
                         creator = c.creator, version = c.version, spec = c.spec,
                         chattiness = c.chattiness, createdAt = c.createdAt, updatedAt = c.updatedAt
                     )
@@ -304,7 +374,7 @@ class BackupManager @Inject constructor(
                 chatDao.insert(
                     com.tavern.lite.data.db.entity.ChatEntity(
                         id = c.id, characterId = c.characterId, name = c.name,
-                        backgroundPath = c.backgroundPath, isGroup = c.isGroup,
+                        backgroundPath = c.backgroundPath, presetId = c.presetId, isGroup = c.isGroup,
                         groupChattiness = c.groupChattiness,
                         schedulingStrategy = c.schedulingStrategy,
                         messageIntervalMs = c.messageIntervalMs,
@@ -315,6 +385,36 @@ class BackupManager @Inject constructor(
                 chatsRestored++
             }
 
+            // Restore group chat membership
+            for (cc in data.chatCharacters) {
+                chatCharacterDao.insert(
+                    com.tavern.lite.data.db.entity.ChatCharacterEntity(
+                        id = cc.id,
+                        chatId = cc.chatId,
+                        characterId = cc.characterId,
+                        displayOrder = cc.displayOrder,
+                        isActive = cc.isActive,
+                        chattiness = cc.chattiness,
+                        createdAt = cc.createdAt
+                    )
+                )
+                chatCharactersRestored++
+            }
+
+            // Restore branches
+            for (b in data.branches) {
+                branchDao.insert(
+                    com.tavern.lite.data.db.entity.BranchEntity(
+                        id = b.id,
+                        chatId = b.chatId,
+                        name = b.name,
+                        isDefault = b.isDefault,
+                        createdAt = b.createdAt
+                    )
+                )
+                branchesRestored++
+            }
+
             // Restore messages
             for (m in data.messages) {
                 messageDao.insert(
@@ -323,6 +423,7 @@ class BackupManager @Inject constructor(
                         characterId = m.characterId, parentId = m.parentId, branchId = m.branchId,
                         isActive = m.isActive, createdAt = m.createdAt,
                         swipeContent = m.swipeContent, swipeIndex = m.swipeIndex,
+                        replyToId = m.replyToId, isPinned = m.isPinned,
                         imagePaths = m.imagePaths
                     )
                 )
@@ -408,6 +509,17 @@ class BackupManager @Inject constructor(
                 personasRestored++
             }
 
+            // Restore character-persona links
+            for (cp in data.characterPersonas) {
+                personaDao.linkCharacterPersona(
+                    com.tavern.lite.data.db.entity.CharacterPersonaEntity(
+                        characterId = cp.characterId,
+                        personaId = cp.personaId
+                    )
+                )
+                characterPersonasRestored++
+            }
+
             // Restore presets
             for (p in data.presets) {
                 presetDao.insertPreset(
@@ -419,6 +531,22 @@ class BackupManager @Inject constructor(
                     )
                 )
                 presetsRestored++
+            }
+
+            // Restore summaries
+            for (s in data.summaries) {
+                summaryDao.insert(
+                    com.tavern.lite.data.db.entity.SummaryEntity(
+                        id = s.id,
+                        chatId = s.chatId,
+                        content = s.content,
+                        messageRangeStart = s.messageRangeStart,
+                        messageRangeEnd = s.messageRangeEnd,
+                        tokenCount = s.tokenCount,
+                        createdAt = s.createdAt
+                    )
+                )
+                summariesRestored++
             }
 
             // Restore sprites
@@ -466,6 +594,10 @@ class BackupManager @Inject constructor(
                     scriptsRestored = scriptsRestored,
                     personasRestored = personasRestored,
                     presetsRestored = presetsRestored,
+                    chatCharactersRestored = chatCharactersRestored,
+                    characterPersonasRestored = characterPersonasRestored,
+                    branchesRestored = branchesRestored,
+                    summariesRestored = summariesRestored,
                     spritesRestored = spritesRestored,
                     bgmsRestored = bgmsRestored,
                     authorNotesRestored = authorNotesRestored,

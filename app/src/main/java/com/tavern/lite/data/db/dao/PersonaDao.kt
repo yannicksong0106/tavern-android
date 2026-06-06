@@ -48,6 +48,9 @@ interface PersonaDao {
     @Query("SELECT persona_id FROM character_personas WHERE character_id = :characterId LIMIT 1")
     suspend fun getLinkedPersonaId(characterId: Long): Long?
 
+    @Query("SELECT * FROM character_personas ORDER BY character_id ASC, persona_id ASC")
+    suspend fun getAllCharacterPersonas(): List<CharacterPersonaEntity>
+
     @Query("""
         SELECT p.* FROM personas p
         INNER JOIN character_personas cp ON p.id = cp.persona_id
