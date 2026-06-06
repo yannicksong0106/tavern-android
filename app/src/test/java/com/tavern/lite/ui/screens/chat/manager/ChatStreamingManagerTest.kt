@@ -9,12 +9,16 @@ import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
+import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ImageGenerationService
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.just
+import io.mockk.runs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -202,6 +206,41 @@ class ChatStreamingManagerTest {
     @Test
     fun `generateImage ignores whitespace prompt`() {
         manager.generateImage("   ")
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `generateImage sends generated image through single message flow once`() = runTest {
+        val character = CharacterEntity(id = characterId, name = "Test")
+        manager.characterProvider = { character }
+        coEvery { imageGenerationService.generateImage(any(), any()) } returns "/tmp/image.png"
+        coEvery {
+            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any(), any())
+        } returns MessageExecutionHelper.ExecutionResult(assistantMsgId = 99L, fullResponse = "done")
+        coEvery { chatRepository.getMessageById(99L) } returns MessageEntity(
+            id = 99L,
+            chatId = chatId,
+            role = "assistant",
+            content = "done"
+        )
+        coEvery { chatRepository.sendMessage(any(), any(), any(), any(), any()) } returns 1L
+
+        manager.generateImage("cat in tavern")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            sendMessageUseCase.sendSingleMessage(
+                chatId,
+                character,
+                "/imagine cat in tavern",
+                any(),
+                null,
+                listOf("/tmp/image.png")
+            )
+        }
+        coVerify(exactly = 0) {
+            chatRepository.sendMessage(chatId, any(), "user", any(), any())
+        }
         assertFalse(manager.isGenerating.value)
     }
 

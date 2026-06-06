@@ -201,28 +201,45 @@ class ChatStreamingManager(
     fun generateImage(prompt: String) {
         if (prompt.isBlank() || _isGenerating.value) return
 
-        scope.launch {
-            _isGenerating.value = true
-            try {
-                val config = apiConfigStore.configFlow.first()
+        wasCancelled = false
+        streamingJob?.cancel()
+        streamingJob = scope.launch {
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    val character = characterProvider() ?: return@withLock
+                    val config = apiConfigStore.configFlow.first()
 
-                val imagePath = imageGenerationService.generateImage(prompt, config)
-                if (imagePath != null) {
-                    chatRepository.sendMessage(
-                        chatId = chatId,
-                        content = "/imagine $prompt",
-                        role = "user",
-                        imagePaths = listOf(imagePath)
-                    )
-                    sendSingleChatMessage("", listOf(imagePath))
-                } else {
-                    onToast("图片生成失败，请检查 OpenAI API 配置")
+                    val imagePath = imageGenerationService.generateImage(prompt, config)
+                    if (imagePath != null && !wasCancelled) {
+                        val result = sendMessageUseCase.sendSingleMessage(
+                            chatId = chatId,
+                            character = character,
+                            userContent = "/imagine $prompt",
+                            config = config,
+                            imagePaths = listOf(imagePath)
+                        )
+                        if (result != null) {
+                            lastReasoningContent = result.reasoningContent
+                        }
+                        if (result?.assistantMsgId != null && !wasCancelled) {
+                            val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
+                            if (assistantMsg != null) {
+                                onEmotionUpdate(assistantMsg.content)
+                            }
+                            splitIntoMultipleMessages(result.assistantMsgId)
+                            scheduleProactiveDialogue()
+                        }
+                    } else if (imagePath == null) {
+                        onToast("图片生成失败，请检查 OpenAI API 配置")
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    onToast(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    streamingJob = null
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                onToast(classifyError(e))
-            } finally {
-                _isGenerating.value = false
             }
         }
     }

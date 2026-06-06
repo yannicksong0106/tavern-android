@@ -844,7 +844,7 @@ class ChatViewModelTest {
     fun `generateImage calls service with correct config`() = runTest {
         coEvery { imageGenerationService.generateImage(any(), any()) } returns "/tmp/image.png"
         coEvery {
-            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
+            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any(), any())
         } returns null
 
         viewModel.streamingManager.generateImage("a cute cat")
@@ -857,20 +857,23 @@ class ChatViewModelTest {
     fun `generateImage sends message on success`() = runTest {
         coEvery { imageGenerationService.generateImage(any(), any()) } returns "/tmp/image.png"
         coEvery {
-            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
+            sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any(), any())
         } returns null
 
         viewModel.streamingManager.generateImage("a cute cat")
         advanceUntilIdle()
 
         coVerify {
-            chatRepository.sendMessage(
-                chatId = CHAT_ID,
-                content = "/imagine a cute cat",
-                role = "user",
-                imagePaths = listOf("/tmp/image.png")
+            sendMessageUseCase.sendSingleMessage(
+                CHAT_ID,
+                testCharacter,
+                "/imagine a cute cat",
+                testConfig,
+                null,
+                listOf("/tmp/image.png")
             )
         }
+        coVerify(exactly = 0) { chatRepository.sendMessage(CHAT_ID, any(), "user", any(), any()) }
     }
 
     @Test
