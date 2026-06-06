@@ -16,7 +16,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("chat_id")]
+    indices = [
+        Index("chat_id"),
+        Index(value = ["chat_id", "created_at"], orders = [Index.Order.ASC, Index.Order.DESC])
+    ]
 )
 data class SummaryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

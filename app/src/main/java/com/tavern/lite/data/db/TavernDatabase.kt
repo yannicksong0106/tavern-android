@@ -57,7 +57,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         SpriteEntity::class,
         BgmEntity::class,
     ],
-    version = 29,
+    version = 30,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -814,6 +814,21 @@ abstract class TavernDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // bgms 添加 emotion 列：支持按情感选择 BGM
                 db.execSQL("ALTER TABLE bgms ADD COLUMN emotion TEXT NOT NULL DEFAULT ''")
+            }
+        }
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Phase 6.1: add composite indices for high-frequency filtered + ordered queries.
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_character_id_updated_at ON chats(character_id, updated_at DESC)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_is_group_updated_at ON chats(is_group, updated_at DESC)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_chat_characters_chat_id_is_active_display_order ON chat_characters(chat_id, is_active, display_order)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id_display_order_created_at ON bgms(character_id, display_order, created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id_emotion_display_order ON bgms(character_id, emotion, display_order)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id_display_order_created_at ON sprites(character_id, display_order, created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sprites_character_id_emotion ON sprites(character_id, emotion)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_summaries_chat_id_created_at ON summaries(chat_id, created_at DESC)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_branches_chat_id_is_default_created_at ON branches(chat_id, is_default DESC, created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_scripts_character_id_enabled_sort_order_id ON scripts(character_id, enabled, sort_order, id)")
             }
         }
 

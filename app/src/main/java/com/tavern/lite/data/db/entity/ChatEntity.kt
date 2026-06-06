@@ -16,7 +16,13 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("character_id"), Index("is_group"), Index("updated_at")]
+    indices = [
+        Index("character_id"),
+        Index("is_group"),
+        Index("updated_at"),
+        Index(value = ["character_id", "updated_at"], orders = [Index.Order.ASC, Index.Order.DESC]),
+        Index(value = ["is_group", "updated_at"], orders = [Index.Order.ASC, Index.Order.DESC])
+    ]
 )
 data class ChatEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

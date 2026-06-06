@@ -16,7 +16,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("chat_id")]
+    indices = [
+        Index("chat_id"),
+        Index(value = ["chat_id", "is_default", "created_at"], orders = [Index.Order.ASC, Index.Order.DESC, Index.Order.ASC])
+    ]
 )
 data class BranchEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

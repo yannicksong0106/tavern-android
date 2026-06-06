@@ -20,7 +20,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("character_id")]
+    indices = [
+        Index("character_id"),
+        Index(value = ["character_id", "display_order", "created_at"]),
+        Index(value = ["character_id", "emotion", "display_order"])
+    ]
 )
 data class BgmEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

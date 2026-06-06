@@ -16,7 +16,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("character_id")]
+    indices = [
+        Index("character_id"),
+        Index(value = ["character_id", "enabled", "sort_order", "id"])
+    ]
 )
 data class ScriptEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
