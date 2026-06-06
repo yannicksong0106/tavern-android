@@ -42,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -297,7 +298,7 @@ private fun ScriptEditDialog(
 ) {
     var name by remember { mutableStateOf(script?.name ?: "") }
     var comment by remember { mutableStateOf(script?.comment ?: "") }
-    var scriptType by remember { mutableStateOf(script?.scriptType ?: 0) }
+    var scriptType by remember { mutableIntStateOf(script?.scriptType ?: 0) }
     var findPattern by remember { mutableStateOf(script?.findPattern ?: "") }
     var replacePattern by remember { mutableStateOf(script?.replacePattern ?: "") }
     var isRegex by remember { mutableStateOf(script?.isRegex ?: true) }

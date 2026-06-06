@@ -27,6 +27,7 @@ class ContinueGenerationUseCase @Inject constructor(
 ) {
     /**
      * 继续生成：追加内容到最后一条 assistant 消息
+     * @param previousReasoningContent 上一轮的思维链内容，传回给 API 以维持上下文
      */
     suspend fun continueGeneration(
         chatId: Long,
@@ -35,6 +36,7 @@ class ContinueGenerationUseCase @Inject constructor(
         lastAssistantMsgId: Long,
         lastAssistantContent: String,
         config: ApiConfig,
+        previousReasoningContent: String? = null,
     ): MessageExecutionHelper.ExecutionResult? {
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
 
@@ -66,9 +68,12 @@ class ContinueGenerationUseCase @Inject constructor(
         )
 
         val responseBuffer = StringBuilder()
+        val reasoningBuffer = StringBuilder()
         try {
-            helper.chatApiService.streamChat(helper.attachReasoningContent(promptMessages), config).collect { chunk ->
-                responseBuffer.append(chunk)
+            val messagesWithReasoning = helper.attachReasoningContent(promptMessages, previousReasoningContent)
+            helper.chatApiService.streamChatWithMetadata(messagesWithReasoning, config).collect { chunk ->
+                responseBuffer.append(chunk.content)
+                chunk.reasoningContent?.let { reasoningBuffer.append(it) }
             }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -83,7 +88,7 @@ class ContinueGenerationUseCase @Inject constructor(
             chatRepository.appendToMessage(lastAssistantMsgId, errorMsg)
             return null
         }
-        helper.lastAssistantReasoningContent = helper.chatApiService.lastReasoningContent
+        val reasoningContent = reasoningBuffer.takeIf { it.isNotEmpty() }?.toString()
 
         val newContent = responseBuffer.toString()
         if (newContent.isBlank()) return null
@@ -101,12 +106,14 @@ class ContinueGenerationUseCase @Inject constructor(
         return MessageExecutionHelper.ExecutionResult(
             assistantMsgId = lastAssistantMsgId,
             fullResponse = newContent,
-            processedUserContent = ""
+            processedUserContent = "",
+            reasoningContent = reasoningContent
         )
     }
 
     /**
      * 重新生成：生成新回复并添加为 swipe
+     * @param previousReasoningContent 上一轮的思维链内容，传回给 API 以维持上下文
      */
     suspend fun regenerate(
         chatId: Long,
@@ -115,6 +122,7 @@ class ContinueGenerationUseCase @Inject constructor(
         messageId: Long,
         userMessageContent: String,
         config: ApiConfig,
+        previousReasoningContent: String? = null,
     ): MessageExecutionHelper.ExecutionResult? {
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
 
@@ -146,9 +154,12 @@ class ContinueGenerationUseCase @Inject constructor(
         )
 
         val responseBuffer = StringBuilder()
+        val reasoningBuffer = StringBuilder()
         try {
-            helper.chatApiService.streamChat(helper.attachReasoningContent(promptMessages), config).collect { chunk ->
-                responseBuffer.append(chunk)
+            val messagesWithReasoning = helper.attachReasoningContent(promptMessages, previousReasoningContent)
+            helper.chatApiService.streamChatWithMetadata(messagesWithReasoning, config).collect { chunk ->
+                responseBuffer.append(chunk.content)
+                chunk.reasoningContent?.let { reasoningBuffer.append(it) }
             }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -164,7 +175,7 @@ class ContinueGenerationUseCase @Inject constructor(
             chatRepository.updateMessageContent(messageId, errorMsg)
             return null
         }
-        helper.lastAssistantReasoningContent = helper.chatApiService.lastReasoningContent
+        val reasoningContent = reasoningBuffer.takeIf { it.isNotEmpty() }?.toString()
 
         val newContent = responseBuffer.toString()
         if (newContent.isBlank()) return null
@@ -180,7 +191,8 @@ class ContinueGenerationUseCase @Inject constructor(
         return MessageExecutionHelper.ExecutionResult(
             assistantMsgId = messageId,
             fullResponse = newContent,
-            processedUserContent = userMessageContent
+            processedUserContent = userMessageContent,
+            reasoningContent = reasoningContent
         )
     }
 }

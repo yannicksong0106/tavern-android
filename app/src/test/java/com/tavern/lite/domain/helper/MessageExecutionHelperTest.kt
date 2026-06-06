@@ -32,15 +32,14 @@ class MessageExecutionHelperTest {
     }
 
     @Test
-    fun `attachReasoningContent returns original messages when no reasoning`() {
-        helper.lastAssistantReasoningContent = null
+    fun `attachReasoningContent returns original messages when reasoning is null`() {
         val messages = listOf(
             ChatMessage("system", "You are a helper"),
             ChatMessage("user", "Hello"),
             ChatMessage("assistant", "Hi there")
         )
 
-        val result = helper.attachReasoningContent(messages)
+        val result = helper.attachReasoningContent(messages, null)
 
         assertEquals(messages, result)
         assertNull(result.last().reasoningContent)
@@ -48,14 +47,13 @@ class MessageExecutionHelperTest {
 
     @Test
     fun `attachReasoningContent attaches to last assistant message`() {
-        helper.lastAssistantReasoningContent = "I was thinking..."
         val messages = listOf(
             ChatMessage("system", "You are a helper"),
             ChatMessage("user", "Hello"),
             ChatMessage("assistant", "Hi there")
         )
 
-        val result = helper.attachReasoningContent(messages)
+        val result = helper.attachReasoningContent(messages, "I was thinking...")
 
         assertEquals(3, result.size)
         assertNull(result[0].reasoningContent)
@@ -65,20 +63,18 @@ class MessageExecutionHelperTest {
 
     @Test
     fun `attachReasoningContent returns original when no assistant messages`() {
-        helper.lastAssistantReasoningContent = "thinking"
         val messages = listOf(
             ChatMessage("system", "You are a helper"),
             ChatMessage("user", "Hello")
         )
 
-        val result = helper.attachReasoningContent(messages)
+        val result = helper.attachReasoningContent(messages, "thinking")
 
         assertEquals(messages, result)
     }
 
     @Test
     fun `attachReasoningContent attaches to last assistant in multi-turn`() {
-        helper.lastAssistantReasoningContent = "deep thought"
         val messages = listOf(
             ChatMessage("user", "Q1"),
             ChatMessage("assistant", "A1"),
@@ -86,7 +82,7 @@ class MessageExecutionHelperTest {
             ChatMessage("assistant", "A2")
         )
 
-        val result = helper.attachReasoningContent(messages)
+        val result = helper.attachReasoningContent(messages, "deep thought")
 
         assertNull(result[1].reasoningContent) // first assistant
         assertEquals("deep thought", result[3].reasoningContent) // last assistant
@@ -94,23 +90,13 @@ class MessageExecutionHelperTest {
 
     @Test
     fun `attachReasoningContent does not mutate original list`() {
-        helper.lastAssistantReasoningContent = "thinking"
         val messages = listOf(
             ChatMessage("user", "Hello"),
             ChatMessage("assistant", "Hi")
         )
 
-        helper.attachReasoningContent(messages)
+        helper.attachReasoningContent(messages, "thinking")
 
         assertNull(messages[1].reasoningContent)
-    }
-
-    @Test
-    fun `lastAssistantReasoningContent can be set and read`() {
-        assertNull(helper.lastAssistantReasoningContent)
-        helper.lastAssistantReasoningContent = "some reasoning"
-        assertEquals("some reasoning", helper.lastAssistantReasoningContent)
-        helper.lastAssistantReasoningContent = null
-        assertNull(helper.lastAssistantReasoningContent)
     }
 }

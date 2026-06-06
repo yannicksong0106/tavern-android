@@ -57,6 +57,9 @@ class ChatRepository @Inject constructor(
     suspend fun getRecentMessages(chatId: Long, limit: Int): List<MessageEntity> =
         messageDao.getRecentMessages(chatId, limit)
 
+    suspend fun getMessagesPage(chatId: Long, limit: Int): List<MessageEntity> =
+        messageDao.getRecentMessages(chatId, limit).reversed()
+
     suspend fun getLastMessageForChat(chatId: Long): MessageEntity? =
         messageDao.getLastMessageForChat(chatId)
 

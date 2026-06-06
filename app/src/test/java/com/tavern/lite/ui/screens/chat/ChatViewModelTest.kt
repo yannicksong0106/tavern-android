@@ -20,7 +20,9 @@ import com.tavern.lite.domain.usecase.SummaryUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.EmotionDetector
 import com.tavern.lite.network.ImageGenerationService
+import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.SpriteRepository
+import com.tavern.lite.ui.screens.vn.BgmPlayer
 import com.tavern.lite.util.ChatActiveTracker
 import com.tavern.lite.util.TtsHelper
 import com.tavern.lite.util.SttHelper
@@ -67,7 +69,9 @@ class ChatViewModelTest {
     @MockK private lateinit var summaryUseCase: SummaryUseCase
     @MockK private lateinit var summaryRepository: SummaryRepository
     @MockK private lateinit var spriteRepository: SpriteRepository
+    @MockK private lateinit var bgmRepository: BgmRepository
     @MockK private lateinit var emotionDetector: EmotionDetector
+    @MockK private lateinit var bgmPlayer: BgmPlayer
     @MockK private lateinit var imageGenerationService: ImageGenerationService
     @MockK private lateinit var ttsHelper: TtsHelper
     @MockK private lateinit var sttHelper: SttHelper
@@ -98,6 +102,7 @@ class ChatViewModelTest {
         // Default mocks for ViewModel init
         every { settingsStore.bubbleStyleFlow } returns flowOf(BubbleStyleConfig())
         every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(emptyList())
+        coEvery { chatRepository.getMessagesPage(any(), any()) } returns emptyList()
         every { chatRepository.getPinnedMessages(CHAT_ID) } returns flowOf(emptyList())
         coEvery { characterRepository.getCharacterById(CHARACTER_ID) } returns testCharacter
         coEvery { chatRepository.getChatById(CHAT_ID) } returns mockk(relaxed = true) {
@@ -109,6 +114,9 @@ class ChatViewModelTest {
         every { summaryRepository.getSummariesForChat(CHAT_ID) } returns flowOf(emptyList())
         every { spriteRepository.getSpritesForCharacter(CHARACTER_ID) } returns flowOf(emptyList())
         coEvery { spriteRepository.getAvailableEmotions(CHARACTER_ID) } returns emptyList()
+        every { bgmPlayer.isPlaying() } returns false
+        every { bgmPlayer.currentPath() } returns null
+        coEvery { bgmRepository.getDefaultBgm(any()) } returns null
         every { emotionDetector.detectEmotion(any()) } returns "neutral"
         every { emotionDetector.getSupportedEmotions() } returns listOf("happy", "sad", "angry", "surprised", "scared", "disgusted", "confused", "embarrassed", "love", "neutral")
         every { apiConfigStore.configFlow } returns MutableStateFlow(testConfig)
@@ -139,7 +147,9 @@ class ChatViewModelTest {
             summaryUseCase,
             summaryRepository,
             spriteRepository,
+            bgmRepository,
             emotionDetector,
+            bgmPlayer,
             imageGenerationService,
             ttsHelper,
             sttHelper,
@@ -157,7 +167,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage ignores blank content`() = runTest {
-        viewModel.sendMessage("")
+        viewModel.streamingManager.sendMessage("")
         advanceUntilIdle()
 
         coVerify(exactly = 0) { sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any()) }
@@ -165,7 +175,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage ignores whitespace-only content`() = runTest {
-        viewModel.sendMessage("   ")
+        viewModel.streamingManager.sendMessage("   ")
         advanceUntilIdle()
 
         coVerify(exactly = 0) { sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any()) }
@@ -177,15 +187,15 @@ class ChatViewModelTest {
             sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
         } coAnswers {
             // Verify isGenerating is true while inside the use case
-            assertTrue(viewModel.isGenerating.value)
+            assertTrue(viewModel.streamingManager.isGenerating.value)
             null
         }
         coEvery { proactiveDialogueUseCase.shouldScheduleProactive(any()) } returns null
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
-        assertFalse("isGenerating should be false after completion", viewModel.isGenerating.value)
+        assertFalse("isGenerating should be false after completion", viewModel.streamingManager.isGenerating.value)
     }
 
     @Test
@@ -199,9 +209,9 @@ class ChatViewModelTest {
         }
         coEvery { proactiveDialogueUseCase.shouldScheduleProactive(any()) } returns null
 
-        viewModel.sendMessage("First")
+        viewModel.streamingManager.sendMessage("First")
         // Second call should be ignored because isGenerating is true
-        viewModel.sendMessage("Second")
+        viewModel.streamingManager.sendMessage("Second")
         advanceUntilIdle()
 
         // sendSingleMessage should only be called once
@@ -220,13 +230,13 @@ class ChatViewModelTest {
         }
         coEvery { proactiveDialogueUseCase.shouldScheduleProactive(any()) } returns null
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
-        viewModel.stopGeneration()
+        viewModel.streamingManager.stopGeneration()
         advanceUntilIdle()
 
-        assertFalse(viewModel.isGenerating.value)
+        assertFalse(viewModel.streamingManager.isGenerating.value)
     }
 
     // ==================== editMessage / deleteMessage / togglePinMessage ====================
@@ -287,12 +297,12 @@ class ChatViewModelTest {
 
     @Test
     fun `searchMessages with blank query clears results`() {
-        viewModel.searchMessages("test")
-        viewModel.searchMessages("")
+        viewModel.searchManager.searchMessages("test")
+        viewModel.searchManager.searchMessages("")
 
-        assertEquals("", viewModel.searchQuery.value)
-        assertEquals(emptyList<Int>(), viewModel.searchResults.value)
-        assertEquals(-1, viewModel.currentSearchIndex.value)
+        assertEquals("", viewModel.searchManager.searchQuery.value)
+        assertEquals(emptyList<Int>(), viewModel.searchManager.searchResults.value)
+        assertEquals(-1, viewModel.searchManager.currentSearchIndex.value)
     }
 
     @Test
@@ -307,10 +317,10 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("hello")
+        viewModel.searchManager.searchMessages("hello")
 
-        assertEquals(listOf(0, 2), viewModel.searchResults.value)
-        assertEquals(0, viewModel.currentSearchIndex.value)
+        assertEquals(listOf(0, 2), viewModel.searchManager.searchResults.value)
+        assertEquals(0, viewModel.searchManager.currentSearchIndex.value)
     }
 
     @Test
@@ -323,9 +333,9 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("hello")
+        viewModel.searchManager.searchMessages("hello")
 
-        assertEquals(listOf(0, 1), viewModel.searchResults.value)
+        assertEquals(listOf(0, 1), viewModel.searchManager.searchResults.value)
     }
 
     @Test
@@ -337,10 +347,10 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("xyz")
+        viewModel.searchManager.searchMessages("xyz")
 
-        assertEquals(emptyList<Int>(), viewModel.searchResults.value)
-        assertEquals(-1, viewModel.currentSearchIndex.value)
+        assertEquals(emptyList<Int>(), viewModel.searchManager.searchResults.value)
+        assertEquals(-1, viewModel.searchManager.currentSearchIndex.value)
     }
 
     @Test
@@ -354,18 +364,18 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("test")
-        assertEquals(0, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.searchMessages("test")
+        assertEquals(0, viewModel.searchManager.currentSearchIndex.value)
 
-        viewModel.nextSearchResult()
-        assertEquals(1, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.nextSearchResult()
+        assertEquals(1, viewModel.searchManager.currentSearchIndex.value)
 
-        viewModel.nextSearchResult()
-        assertEquals(2, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.nextSearchResult()
+        assertEquals(2, viewModel.searchManager.currentSearchIndex.value)
 
         // Wraps around
-        viewModel.nextSearchResult()
-        assertEquals(0, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.nextSearchResult()
+        assertEquals(0, viewModel.searchManager.currentSearchIndex.value)
     }
 
     @Test
@@ -379,12 +389,12 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("test")
-        assertEquals(0, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.searchMessages("test")
+        assertEquals(0, viewModel.searchManager.currentSearchIndex.value)
 
         // Wraps to end
-        viewModel.previousSearchResult()
-        assertEquals(2, viewModel.currentSearchIndex.value)
+        viewModel.searchManager.previousSearchResult()
+        assertEquals(2, viewModel.searchManager.currentSearchIndex.value)
     }
 
     @Test
@@ -396,12 +406,12 @@ class ChatViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.searchMessages("test")
-        viewModel.clearSearch()
+        viewModel.searchManager.searchMessages("test")
+        viewModel.searchManager.clearSearch()
 
-        assertEquals("", viewModel.searchQuery.value)
-        assertEquals(emptyList<Int>(), viewModel.searchResults.value)
-        assertEquals(-1, viewModel.currentSearchIndex.value)
+        assertEquals("", viewModel.searchManager.searchQuery.value)
+        assertEquals(emptyList<Int>(), viewModel.searchManager.searchResults.value)
+        assertEquals(-1, viewModel.searchManager.currentSearchIndex.value)
     }
 
     // ==================== swipe operations ====================
@@ -476,22 +486,22 @@ class ChatViewModelTest {
         )
         coEvery { chatRepository.getBranchesForChatSync(CHAT_ID) } returns branches
 
-        viewModel.loadBranches()
+        viewModel.branchManager.loadBranches()
         advanceUntilIdle()
 
-        assertEquals(branches, viewModel.branchEntities.value)
-        assertEquals(1L, viewModel.currentBranchId.value)
+        assertEquals(branches, viewModel.branchManager.branchEntities.value)
+        assertEquals(1L, viewModel.branchManager.currentBranchId.value)
     }
 
     @Test
     fun `switchBranch delegates to chatRepository`() = runTest {
         coEvery { chatRepository.switchBranch(any(), any()) } returns Unit
 
-        viewModel.switchBranch(2L)
+        viewModel.branchManager.switchBranch(2L)
         advanceUntilIdle()
 
         coVerify { chatRepository.switchBranch(CHAT_ID, 2L) }
-        assertEquals(2L, viewModel.currentBranchId.value)
+        assertEquals(2L, viewModel.branchManager.currentBranchId.value)
     }
 
     @Test
@@ -501,7 +511,7 @@ class ChatViewModelTest {
             BranchEntity(id = 3, chatId = CHAT_ID, name = "New Branch")
         )
 
-        viewModel.createBranch("New Branch")
+        viewModel.branchManager.createBranch("New Branch")
         advanceUntilIdle()
 
         coVerify { chatRepository.createBranch(CHAT_ID, "New Branch") }
@@ -513,7 +523,7 @@ class ChatViewModelTest {
         coEvery { chatRepository.deleteBranch(any()) } returns Unit
         coEvery { chatRepository.getBranchesForChatSync(CHAT_ID) } returns emptyList()
 
-        viewModel.deleteBranch(branch)
+        viewModel.branchManager.deleteBranch(branch)
         advanceUntilIdle()
 
         coVerify { chatRepository.deleteBranch(branch) }
@@ -524,7 +534,7 @@ class ChatViewModelTest {
         coEvery { chatRepository.createBranchFromMessage(any(), any(), any()) } returns 4L
         coEvery { chatRepository.getBranchesForChatSync(CHAT_ID) } returns emptyList()
 
-        viewModel.createBranchFromMessage(10L, "Branch at msg 10")
+        viewModel.branchManager.createBranchFromMessage(10L, "Branch at msg 10")
         advanceUntilIdle()
 
         coVerify { chatRepository.createBranchFromMessage(CHAT_ID, 10L, "Branch at msg 10") }
@@ -534,13 +544,13 @@ class ChatViewModelTest {
 
     @Test
     fun `toggleBookmarkFilter toggles state`() {
-        assertFalse(viewModel.showBookmarksOnly.value)
+        assertFalse(viewModel.branchManager.showBookmarksOnly.value)
 
-        viewModel.toggleBookmarkFilter()
-        assertTrue(viewModel.showBookmarksOnly.value)
+        viewModel.branchManager.toggleBookmarkFilter()
+        assertTrue(viewModel.branchManager.showBookmarksOnly.value)
 
-        viewModel.toggleBookmarkFilter()
-        assertFalse(viewModel.showBookmarksOnly.value)
+        viewModel.branchManager.toggleBookmarkFilter()
+        assertFalse(viewModel.branchManager.showBookmarksOnly.value)
     }
 
     // ==================== background ====================
@@ -573,10 +583,10 @@ class ChatViewModelTest {
     fun `updateCharacterChattiness updates flow and persists`() = runTest {
         coEvery { characterRepository.updateCharacter(any()) } returns Unit
 
-        viewModel.updateCharacterChattiness(75)
+        viewModel.groupChatSettingsManager.updateCharacterChattiness(75)
         advanceUntilIdle()
 
-        assertEquals(75, viewModel.characterChattiness.value)
+        assertEquals(75, viewModel.groupChatSettingsManager.characterChattiness.value)
         coVerify { characterRepository.updateCharacter(match { it.chattiness == 75 }) }
     }
 
@@ -584,10 +594,10 @@ class ChatViewModelTest {
     fun `updateGroupChattiness updates flow and persists`() = runTest {
         coEvery { chatRepository.updateGroupChattiness(any(), any()) } returns Unit
 
-        viewModel.updateGroupChattiness(80)
+        viewModel.groupChatSettingsManager.updateGroupChattiness(80)
         advanceUntilIdle()
 
-        assertEquals(80, viewModel.groupChattiness.value)
+        assertEquals(80, viewModel.groupChatSettingsManager.groupChattiness.value)
         coVerify { chatRepository.updateGroupChattiness(CHAT_ID, 80) }
     }
 
@@ -595,10 +605,10 @@ class ChatViewModelTest {
     fun `updateGroupCharacterChattiness updates map and persists`() = runTest {
         coEvery { groupChatRepository.updateCharacterChattiness(any(), any(), any()) } returns Unit
 
-        viewModel.updateGroupCharacterChattiness(42L, 60)
+        viewModel.groupChatSettingsManager.updateGroupCharacterChattiness(42L, 60)
         advanceUntilIdle()
 
-        assertEquals(60, viewModel.groupCharacterChattiness.value[42L])
+        assertEquals(60, viewModel.groupChatSettingsManager.groupCharacterChattiness.value[42L])
         coVerify { groupChatRepository.updateCharacterChattiness(CHAT_ID, 42L, 60) }
     }
 
@@ -608,14 +618,14 @@ class ChatViewModelTest {
     fun `speakMessage delegates to ttsHelper`() {
         val msg = MessageEntity(id = 1, chatId = CHAT_ID, role = "assistant", content = "Hello")
 
-        viewModel.speakMessage(msg)
+        viewModel.speechManager.speakMessage(msg)
 
         io.mockk.verify { ttsHelper.speak("Hello", 1L) }
     }
 
     @Test
     fun `stopSpeaking delegates to ttsHelper`() {
-        viewModel.stopSpeaking()
+        viewModel.speechManager.stopSpeaking()
 
         io.mockk.verify { ttsHelper.stop() }
     }
@@ -631,13 +641,13 @@ class ChatViewModelTest {
         // CancellationException should propagate, not be caught as toast
         // isGenerating should still be reset in finally
         try {
-            viewModel.sendMessage("Hello")
+            viewModel.streamingManager.sendMessage("Hello")
         } catch (_: CancellationException) {
             // expected
         }
         advanceUntilIdle()
 
-        assertFalse(viewModel.isGenerating.value)
+        assertFalse(viewModel.streamingManager.isGenerating.value)
     }
 
     // ==================== classifyError (indirect) ====================
@@ -654,11 +664,11 @@ class ChatViewModelTest {
             viewModel.toastMessage.collect { toastMessage = it }
         }
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
         assertEquals("网络连接失败，请检查网络设置", toastMessage)
-        assertFalse(viewModel.isGenerating.value)
+        assertFalse(viewModel.streamingManager.isGenerating.value)
         job.cancel()
     }
 
@@ -674,7 +684,7 @@ class ChatViewModelTest {
             viewModel.toastMessage.collect { toastMessage = it }
         }
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
         assertEquals("请求超时，请稍后重试", toastMessage)
@@ -693,7 +703,7 @@ class ChatViewModelTest {
             viewModel.toastMessage.collect { toastMessage = it }
         }
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
         assertEquals("请求过于频繁，请等待后重试", toastMessage)
@@ -712,7 +722,7 @@ class ChatViewModelTest {
             viewModel.toastMessage.collect { toastMessage = it }
         }
 
-        viewModel.sendMessage("Hello")
+        viewModel.streamingManager.sendMessage("Hello")
         advanceUntilIdle()
 
         assertEquals("服务暂时不可用，请稍后重试", toastMessage)
@@ -726,11 +736,95 @@ class ChatViewModelTest {
         assertFalse(ChatActiveTracker.isActive(999L))
     }
 
+    // ==================== pagination ====================
+
+    @Test
+    fun `displayMessages shows recent messages when total exceeds page size`() = runTest {
+        val allMsgs = (1..60).map { i ->
+            MessageEntity(id = i.toLong(), chatId = CHAT_ID, role = if (i % 2 == 0) "assistant" else "user", content = "Msg $i")
+        }
+        every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(allMsgs)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 50) } returns allMsgs.takeLast(50)
+        viewModel = createViewModel()
+        // displayMessages uses WhileSubscribed — must actively collect to trigger
+        val displayJob = launch(Dispatchers.Unconfined) { viewModel.displayMessages.collect {} }
+        val loadedJob = launch(Dispatchers.Unconfined) { viewModel.allMessagesLoaded.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(60, viewModel.messages.value.size)
+        assertEquals(50, viewModel.displayMessages.value.size)
+        assertFalse(viewModel.allMessagesLoaded.value)
+        displayJob.cancel()
+        loadedJob.cancel()
+    }
+
+    @Test
+    fun `allMessagesLoaded is true when page size exceeds total`() = runTest {
+        val msgs = (1..30).map { i ->
+            MessageEntity(id = i.toLong(), chatId = CHAT_ID, role = "user", content = "Msg $i")
+        }
+        every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(msgs)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 50) } returns msgs
+        viewModel = createViewModel()
+        val displayJob = launch(Dispatchers.Unconfined) { viewModel.displayMessages.collect {} }
+        val loadedJob = launch(Dispatchers.Unconfined) { viewModel.allMessagesLoaded.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(viewModel.allMessagesLoaded.value)
+        displayJob.cancel()
+        loadedJob.cancel()
+    }
+
+    @Test
+    fun `loadMoreMessages increases page size`() = runTest {
+        val allMsgs = (1..120).map { i ->
+            MessageEntity(id = i.toLong(), chatId = CHAT_ID, role = "user", content = "Msg $i")
+        }
+        every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(allMsgs)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 50) } returns allMsgs.takeLast(50)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 100) } returns allMsgs.takeLast(100)
+        viewModel = createViewModel()
+        val displayJob = launch(Dispatchers.Unconfined) { viewModel.displayMessages.collect {} }
+        val loadedJob = launch(Dispatchers.Unconfined) { viewModel.allMessagesLoaded.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(50, viewModel.displayMessages.value.size)
+
+        viewModel.loadMoreMessages()
+        advanceUntilIdle()
+
+        assertEquals(100, viewModel.displayMessages.value.size)
+        displayJob.cancel()
+        loadedJob.cancel()
+    }
+
+    @Test
+    fun `loadMoreMessages caps at total message count`() = runTest {
+        val allMsgs = (1..70).map { i ->
+            MessageEntity(id = i.toLong(), chatId = CHAT_ID, role = "user", content = "Msg $i")
+        }
+        every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(allMsgs)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 50) } returns allMsgs.takeLast(50)
+        coEvery { chatRepository.getMessagesPage(CHAT_ID, 70) } returns allMsgs
+        viewModel = createViewModel()
+        val displayJob = launch(Dispatchers.Unconfined) { viewModel.displayMessages.collect {} }
+        val loadedJob = launch(Dispatchers.Unconfined) { viewModel.allMessagesLoaded.collect {} }
+        advanceUntilIdle()
+
+        viewModel.loadMoreMessages()
+        advanceUntilIdle()
+
+        assertEquals(70, viewModel.displayMessages.value.size)
+        assertTrue(viewModel.allMessagesLoaded.value)
+        displayJob.cancel()
+        loadedJob.cancel()
+    }
+
     // ==================== generateImage ====================
 
     @Test
     fun `generateImage ignores blank prompt`() = runTest {
-        viewModel.generateImage("")
+        viewModel.streamingManager.generateImage("")
         advanceUntilIdle()
 
         coVerify(exactly = 0) { imageGenerationService.generateImage(any(), any()) }
@@ -740,10 +834,10 @@ class ChatViewModelTest {
     fun `generateImage handles CancellationException correctly`() = runTest {
         coEvery { imageGenerationService.generateImage(any(), any()) } throws CancellationException()
 
-        viewModel.generateImage("a cat")
+        viewModel.streamingManager.generateImage("a cat")
         advanceUntilIdle()
 
-        assertFalse(viewModel.isGenerating.value)
+        assertFalse(viewModel.streamingManager.isGenerating.value)
     }
 
     @Test
@@ -753,7 +847,7 @@ class ChatViewModelTest {
             sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
         } returns null
 
-        viewModel.generateImage("a cute cat")
+        viewModel.streamingManager.generateImage("a cute cat")
         advanceUntilIdle()
 
         coVerify { imageGenerationService.generateImage("a cute cat", testConfig) }
@@ -766,7 +860,7 @@ class ChatViewModelTest {
             sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any())
         } returns null
 
-        viewModel.generateImage("a cute cat")
+        viewModel.streamingManager.generateImage("a cute cat")
         advanceUntilIdle()
 
         coVerify {
@@ -786,7 +880,7 @@ class ChatViewModelTest {
         val toasts = mutableListOf<String>()
         val job = launch { viewModel.toastMessage.collect { toasts.add(it) } }
 
-        viewModel.generateImage("a cat")
+        viewModel.streamingManager.generateImage("a cat")
         advanceUntilIdle()
 
         assertTrue(toasts.any { it.contains("图片生成失败") })
@@ -819,7 +913,9 @@ class ChatViewModelTest {
             summaryUseCase,
             summaryRepository,
             spriteRepository,
+            bgmRepository,
             emotionDetector,
+            bgmPlayer,
             imageGenerationService,
             ttsHelper,
             sttHelper,

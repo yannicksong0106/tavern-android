@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.tavern.lite.data.db.entity.BgmEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -25,6 +26,9 @@ interface BgmDao {
     @Query("SELECT * FROM bgms WHERE character_id = :characterId ORDER BY display_order ASC LIMIT 1")
     suspend fun getDefaultBgm(characterId: Long): BgmEntity?
 
+    @Query("SELECT * FROM bgms WHERE character_id = :characterId AND emotion = :emotion ORDER BY display_order ASC LIMIT 1")
+    suspend fun getBgmByEmotion(characterId: Long, emotion: String): BgmEntity?
+
     @Query("SELECT * FROM bgms")
     suspend fun getAllBgms(): List<BgmEntity>
 
@@ -33,6 +37,9 @@ interface BgmDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(bgms: List<BgmEntity>)
+
+    @Update
+    suspend fun update(bgm: BgmEntity)
 
     @Delete
     suspend fun delete(bgm: BgmEntity)

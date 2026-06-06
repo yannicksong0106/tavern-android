@@ -12,6 +12,7 @@ data class ApiConfig(
     val presencePenalty: Float = 0f,
     val topP: Float = 1f,
     val userName: String = "User",
+    val readTimeoutSeconds: Long = 300L, // reasoning 模型可能长时间无输出
 )
 
 @Serializable

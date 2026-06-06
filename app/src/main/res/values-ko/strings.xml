@@ -15,11 +15,8 @@
     <string name="create">생성</string>
     <string name="enter">입장</string>
     <string name="copy">복사</string>
-    <string name="copied">복사됨</string>
     <string name="default_label">기본값</string>
     <string name="untitled">제목 없음</string>
-    <string name="confirm_delete_title">삭제</string>
-    <string name="confirm_delete_text">정말 삭제하시겠습니까?</string>
 
     <!-- 홈 -->
     <string name="home_title">Tavern Lite</string>
@@ -44,7 +41,6 @@
     <string name="delete_message_text">이 메시지를 삭제하시겠습니까?</string>
     <string name="pin_message">고정</string>
     <string name="unpin_message">고정 해제</string>
-    <string name="pinned_messages">고정된 메시지</string>
     <string name="bookmarks">북마크</string>
     <string name="no_bookmarks">북마크된 메시지가 없습니다</string>
     <string name="you">나</string>
@@ -55,6 +51,7 @@
     <string name="input_hint">메시지를 입력하세요…</string>
     <string name="continue_generation">계속</string>
     <string name="scroll_to_bottom">맨 아래로</string>
+    <string name="load_more_messages">이전 메시지 불러오기</string>
     <string name="empty_message">…</string>
     <string name="typing">입력 중…</string>
     <string name="swipe_previous">이전</string>
@@ -68,10 +65,6 @@
     <string name="voice_permission_denied">음성 입력에는 마이크 권한이 필요합니다</string>
     <string name="add_image">이미지 추가</string>
     <string name="remove_image">이미지 제거</string>
-    <string name="generate_image">이미지 생성</string>
-    <string name="generating_image">이미지 생성 중…</string>
-    <string name="image_generation_failed">이미지 생성 실패</string>
-    <string name="image_generation_only_openai">이미지 생성은 OpenAI API만 지원</string>
     <string name="time_just_now">방금</string>
     <string name="time_minutes">%d분 전</string>
     <string name="time_hours">%d시간 전</string>
@@ -109,6 +102,8 @@
     <string name="test_reply">응답: %s</string>
     <string name="test_error">오류: %s</string>
     <string name="generation_params">생성 파라미터</string>
+    <string name="api_timeout">API 타임아웃</string>
+    <string name="api_timeout_desc">읽기 타임아웃: %d 초 (추론 모델은 300+ 권장)</string>
     <string name="user_settings">사용자 설정</string>
     <string name="user_persona">사용자 페르소나</string>
     <string name="chat_bubble">채팅 버블</string>
@@ -118,7 +113,6 @@
     <string name="about_click_hint">탭하여 개발 로그 보기</string>
     <string name="dev_log_title">개발 로그</string>
     <string name="dev_log_subtitle">Tavern AI의 성장 기록, 모든 진보와 일상의 기록</string>
-    <string name="custom_provider">사용자 정의</string>
     <string name="model">모델</string>
     <string name="context_length">컨텍스트 길이</string>
     <string name="user_name_label">이름 ({{user}} 플레이스홀더용)</string>
@@ -218,11 +212,14 @@
     <string name="logic_or">OR (하나라도 일치)</string>
     <string name="logic_not">NOT (일치 제외)</string>
     <string name="keywords_label">키워드: %s</string>
+    <string name="world_book_match_preview">매칭 미리보기</string>
+    <string name="world_book_match_preview_hint">대화 예시를 입력해 어떤 항목이 발동되는지 확인</string>
+    <string name="matched_tag">매칭됨</string>
+    <string name="secondary_keyword_chip">보조: %s</string>
     <string name="constant_tag">상시</string>
     <string name="selective_tag">선택적(%s)</string>
 
     <!-- 메모리 -->
-    <string name="memory_title">메모리 관리</string>
     <string name="clear_all_memories">모든 메모리 삭제</string>
     <string name="clear_all_memories_text">이 캐릭터의 모든 메모리를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</string>
     <string name="clear">삭제</string>
@@ -232,16 +229,6 @@
     <string name="no_memories_hint">우측 하단 +를 눌러 수동 추가, 또는 대화에서 자동 축적</string>
     <string name="memory_content_placeholder">메모리 내용…</string>
     <string name="importance">중요도: %d</string>
-    <string name="memory_tab_manual">수동 메모리</string>
-    <string name="memory_tab_auto">AI 메모리</string>
-    <string name="category_user_info">사용자 정보</string>
-    <string name="category_character_consistency">캐릭터 설정</string>
-    <string name="category_event">중요 이벤트</string>
-    <string name="category_relationship">인간관계</string>
-    <string name="category_commitment">약속</string>
-    <string name="add_atom">AI 메모리 추가</string>
-    <string name="edit_atom">AI 메모리 편집</string>
-    <string name="superseded">폐기됨</string>
     <string name="source_llm">AI 추출</string>
     <string name="source_regex">자동 감지</string>
     <string name="source_manual">수동 추가</string>
@@ -251,28 +238,12 @@
     <string name="memory_library">메모리 라이브러리</string>
     <string name="memory_library_desc">캐릭터 메모리 보기 및 관리</string>
     <string name="memory_category_all">전체</string>
-    <string name="memory_category_fact">사실</string>
-    <string name="memory_category_emotion">감정</string>
-    <string name="memory_category_preference">선호</string>
-    <string name="memory_category_event">이벤트</string>
-    <string name="memory_category_habit">습관</string>
-    <string name="memory_category_character">캐릭터 핵심</string>
-    <string name="memory_category_temporary">임시 메모리</string>
     <string name="core_memories">핵심 메모리</string>
     <string name="temporary_memories">임시 메모리</string>
     <string name="last_extracted">최근 추출: %s</string>
     <string name="memory_count">%d개 메모리</string>
     <string name="expires_in">%s 후 만료</string>
-    <string name="select_character">캐릭터 선택</string>
-    <string name="sort_by_importance">중요도순</string>
-    <string name="sort_by_recency">시간순</string>
-    <string name="sort_by_access">접근 빈도순</string>
     <string name="search_memories">메모리 검색</string>
-    <string name="memory_recalled">메모리 호출: %d개</string>
-    <string name="just_now">방금</string>
-    <string name="minutes_ago">%d분 전</string>
-    <string name="hours_ago">%d시간 전</string>
-    <string name="days_ago">%d일 전</string>
     <string name="expires_hours">%d시간</string>
 
     <!-- 페르소나 -->
@@ -357,10 +328,10 @@
     <string name="message_interval_value">%.1f 초</string>
 
     <!-- @멘션 -->
-    <string name="at_mention_hint">@ 캐릭터 이름 으로 지정 회신</string>
 
     <!-- 검색 -->
     <string name="search_messages">메시지 검색…</string>
+    <string name="no_results">결과 없음</string>
     <string name="previous">이전</string>
     <string name="next">다음</string>
 
@@ -379,11 +350,14 @@
     <string name="scope_character">캐릭터</string>
     <string name="scope_chat">채팅</string>
     <string name="preset_scope">프리셋 범위</string>
+    <string name="preset_template_preview">템플릿 미리보기</string>
+    <string name="preset_template_preview_sample">예시 변수: char=Alice, user=You</string>
+    <string name="preset_template_preview_empty">템플릿 내용을 입력하면 치환 결과가 표시됩니다</string>
+    <string name="expand">펼치기</string>
+    <string name="collapse">접기</string>
 
     <!-- 그룹 채팅 목록 -->
     <string name="group_chats">그룹 채팅</string>
-    <string name="no_group_chats">그룹 채팅이 아직 없습니다</string>
-    <string name="group_members_count">%d명</string>
     <string name="delete_group_chat_title">그룹 채팅 삭제</string>
     <string name="delete_group_chat_text">이 그룹 채팅을 삭제하시겠습니까? 모든 메시지가 삭제됩니다.</string>
 
@@ -391,15 +365,9 @@
     <string name="data_management">데이터 관리</string>
     <string name="backup_data">데이터 백업</string>
     <string name="backup_data_desc">모든 데이터를 JSON 파일로 내보내기</string>
-    <string name="backup_success">백업 성공: %s</string>
-    <string name="backup_failed">백업 실패: %s</string>
     <string name="restore_data">데이터 복원</string>
     <string name="restore_data_desc">백업 파일에서 데이터 복원</string>
-    <string name="restore_success">복원 완료: 캐릭터 %1$d개, 채팅 %2$d개, 메시지 %3$d개</string>
-    <string name="restore_failed">복원 실패: %s</string>
     <string name="share_backup">백업 공유</string>
-    <string name="restore_confirm_title">데이터 복원</string>
-    <string name="restore_confirm_text">복원은 기존 데이터와 병합되며 덮어쓰지 않습니다. 계속하시겠습니까?</string>
     <string name="storage_management">저장소 관리</string>
     <string name="database_size">데이터베이스 크기</string>
     <string name="cache_size">캐시 크기</string>
@@ -442,7 +410,6 @@
     <string name="a11y_assistant_message">어시스턴트 메시지</string>
     <string name="a11y_typing_indicator">입력 중</string>
     <string name="a11y_attached_image">첨부 이미지</string>
-    <string name="a11y_swipe_hint">왼쪽 스와이프로 회신, 오른쪽 스와이프로 삭제</string>
     <string name="a11y_character_card">%s, 캐릭터 카드</string>
     <string name="a11y_group_chat_card">%s, 그룹 채팅</string>
     <string name="a11y_chat_item">%s, 채팅</string>
@@ -454,8 +421,6 @@
     <string name="generate_summary">요약 생성</string>
     <string name="summary_generating">요약 생성 중…</string>
     <string name="delete_summary">요약 삭제</string>
-    <string name="summary_deleted">요약이 삭제되었습니다</string>
-    <string name="summary_range">%d개 메시지 포함</string>
     <string name="summary_tokens">약 %d tokens</string>
 
     <!-- 웹 검색 -->
@@ -473,38 +438,26 @@
     <string name="web_search_command_hint">/search 키워드로 수동 검색</string>
 
     <!-- 비주얼 노벨 모드 -->
-    <string name="vn_mode">소설 모드</string>
-    <string name="vn_mode_desc">일러스트 + 배경 + 대화 상자의 몰입형 경험</string>
-    <string name="vn_enter">소설 모드 진입</string>
-    <string name="vn_exit">소설 모드 종료</string>
     <string name="vn_sprites">캐릭터 일러스트</string>
     <string name="vn_sprites_desc">캐릭터 표정 일러스트 관리</string>
     <string name="vn_add_sprite">일러스트 추가</string>
-    <string name="vn_edit_sprite">일러스트 편집</string>
     <string name="vn_delete_sprite">일러스트 삭제</string>
     <string name="vn_delete_sprite_text">이 일러스트를 삭제하시겠습니까?</string>
     <string name="vn_emotion">표정</string>
     <string name="vn_emotion_hint">예: happy, sad, angry, neutral</string>
-    <string name="vn_image">일러스트 이미지</string>
     <string name="vn_no_sprites">일러스트 없음</string>
     <string name="vn_no_sprites_hint">우하단 +를 눌러 표정 일러스트 추가</string>
-    <string name="vn_sprite_count">%d개 일러스트</string>
-    <string name="vn_current_emotion">현재 표정: %s</string>
 
     <!-- BGM -->
     <string name="bgm_title">배경 음악</string>
     <string name="bgm_desc">캐릭터 배경 음악 관리</string>
     <string name="bgm_add">음악 추가</string>
-    <string name="bgm_edit">음악 편집</string>
     <string name="bgm_delete">음악 삭제</string>
     <string name="bgm_delete_text">이 음악을 삭제하시겠습니까?</string>
     <string name="bgm_name">곡 이름</string>
     <string name="bgm_name_hint">예: 테마곡, 전투 음악</string>
-    <string name="bgm_audio">오디오 파일</string>
     <string name="bgm_loop">반복 재생</string>
     <string name="bgm_volume">음량</string>
     <string name="bgm_no_bgms">배경 음악 없음</string>
     <string name="bgm_no_bgms_hint">우하단 +를 눌러 배경 음악 추가</string>
-    <string name="bgm_count">%d곡</string>
-    <string name="bgm_playing">재생 중: %s</string>
 </resources>

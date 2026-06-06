@@ -24,6 +24,8 @@ local.properties
 *~
 .idea/
 *.iml
+.claude/
+.kotlin/
 
 # OS
 .DS_Store

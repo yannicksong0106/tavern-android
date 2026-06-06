@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.flowOn
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,14 +26,19 @@ class ChatApiService @Inject constructor(
     private val client: OkHttpClient
 ) {
     // 最近一次流式响应中的 reasoning_content（思维链），用于传回给 API
-    @Volatile
-    var lastReasoningContent: String? = null
-        private set
-
     fun streamChat(
         messages: List<ChatMessage>,
         config: ApiConfig
     ): Flow<String> = flow {
+        streamChatWithMetadata(messages, config).collect { chunk ->
+            if (chunk.content.isNotEmpty()) emit(chunk.content)
+        }
+    }
+
+    fun streamChatWithMetadata(
+        messages: List<ChatMessage>,
+        config: ApiConfig
+    ): Flow<ChatStreamChunk> = flow {
         when (val provider = config.provider) {
             is ApiProvider.OpenAI -> emitAll(streamOpenAI(messages, provider, config))
             is ApiProvider.Claude -> emitAll(streamClaude(messages, provider, config))
@@ -62,9 +68,10 @@ class ChatApiService @Inject constructor(
         messages: List<ChatMessage>,
         provider: ApiProvider.OpenAI,
         config: ApiConfig
-    ): Flow<String> = flow {
-        lastReasoningContent = null
-        val reasoningBuffer = StringBuilder()
+    ): Flow<ChatStreamChunk> = flow {
+        val effectiveClient = if (config.readTimeoutSeconds != 300L) {
+            client.newBuilder().readTimeout(config.readTimeoutSeconds, TimeUnit.SECONDS).build()
+        } else client
 
         val body = JSONObject().apply {
             put("model", provider.model)
@@ -85,11 +92,12 @@ class ChatApiService @Inject constructor(
             .build()
 
         val response = retryWithBackoff {
-            val resp = client.newCall(request).execute()
+            val resp = effectiveClient.newCall(request).execute()
             if (!resp.isSuccessful) {
                 val errorBody = resp.body?.string() ?: "Unknown error"
+                val retryAfter = parseRetryAfterHeader(resp.header("Retry-After"))
                 resp.close()
-                throw ApiException(resp.code, errorBody)
+                throw ApiException(resp.code, errorBody, retryAfter)
             }
             resp
         }
@@ -102,12 +110,13 @@ class ChatApiService @Inject constructor(
         val reader = BufferedReader(InputStreamReader(body2.byteStream()))
 
         try {
+            var completedNormally = false
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 val l = line ?: continue
                 if (!l.startsWith("data: ")) continue
                 val data = l.removePrefix("data: ").trim()
-                if (data == "[DONE]") break
+                if (data == "[DONE]") { completedNormally = true; break }
 
                 try {
                     val chunk = JSONObject(data)
@@ -118,14 +127,14 @@ class ChatApiService @Inject constructor(
                     // 收集 reasoning_content（思维链），不 emit 给用户
                     val reasoningObj = delta?.opt("reasoning_content")
                     if (reasoningObj != null && reasoningObj != JSONObject.NULL) {
-                        reasoningBuffer.append(reasoningObj.toString())
+                        emit(ChatStreamChunk(reasoningContent = reasoningObj.toString()))
                     }
 
                     val contentObj = delta?.opt("content")
                     if (contentObj != null && contentObj != JSONObject.NULL) {
                         val content = contentObj.toString()
                         if (content.isNotEmpty()) {
-                            emit(content)
+                            emit(ChatStreamChunk(content = content))
                         }
                     }
                 } catch (e: Exception) {
@@ -133,23 +142,26 @@ class ChatApiService @Inject constructor(
                     Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
             }
+            if (!completedNormally) {
+                throw java.io.IOException("SSE stream ended without [DONE] marker")
+            }
         } finally {
             reader.close()
             response.close()
         }
 
-        if (reasoningBuffer.isNotEmpty()) {
-            lastReasoningContent = reasoningBuffer.toString()
-        }
     }
 
     private fun streamClaude(
         messages: List<ChatMessage>,
         provider: ApiProvider.Claude,
         config: ApiConfig
-    ): Flow<String> = flow {
+    ): Flow<ChatStreamChunk> = flow {
         val systemMsg = messages.firstOrNull { it.role == "system" }
         val nonSystemMessages = messages.filter { it.role != "system" }
+        val effectiveClient = if (config.readTimeoutSeconds != 300L) {
+            client.newBuilder().readTimeout(config.readTimeoutSeconds, TimeUnit.SECONDS).build()
+        } else client
 
         val body = JSONObject().apply {
             put("model", provider.model)
@@ -175,11 +187,12 @@ class ChatApiService @Inject constructor(
             .build()
 
         val response = retryWithBackoff {
-            val resp = client.newCall(request).execute()
+            val resp = effectiveClient.newCall(request).execute()
             if (!resp.isSuccessful) {
                 val errorBody = resp.body?.string() ?: "Unknown error"
+                val retryAfter = parseRetryAfterHeader(resp.header("Retry-After"))
                 resp.close()
-                throw ApiException(resp.code, errorBody)
+                throw ApiException(resp.code, errorBody, retryAfter)
             }
             resp
         }
@@ -192,6 +205,7 @@ class ChatApiService @Inject constructor(
         val reader = BufferedReader(InputStreamReader(body2.byteStream()))
 
         try {
+            var completedNormally = false
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 val l = line ?: continue
@@ -204,14 +218,17 @@ class ChatApiService @Inject constructor(
                         "content_block_delta" -> {
                             val delta = chunk.optJSONObject("delta")
                             val text = delta?.optString("text")
-                            if (!text.isNullOrEmpty()) emit(text)
+                            if (!text.isNullOrEmpty()) emit(ChatStreamChunk(content = text))
                         }
-                        "message_stop" -> break
+                        "message_stop" -> { completedNormally = true; break }
                     }
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.w("ChatApiService", "SSE chunk parse error", e)
                 }
+            }
+            if (!completedNormally) {
+                throw java.io.IOException("SSE stream ended without message_stop event")
             }
         } finally {
             reader.close()
@@ -223,10 +240,13 @@ class ChatApiService @Inject constructor(
         messages: List<ChatMessage>,
         provider: ApiProvider.Gemini,
         config: ApiConfig
-    ): Flow<String> = flow {
+    ): Flow<ChatStreamChunk> = flow {
         // Gemini API: 分离 system 消息和对话消息
         val systemMsg = messages.firstOrNull { it.role == "system" }
         val nonSystemMessages = messages.filter { it.role != "system" }
+        val effectiveClient = if (config.readTimeoutSeconds != 300L) {
+            client.newBuilder().readTimeout(config.readTimeoutSeconds, TimeUnit.SECONDS).build()
+        } else client
 
         val contents = JSONArray()
         nonSystemMessages.forEach { msg ->
@@ -267,11 +287,12 @@ class ChatApiService @Inject constructor(
             .build()
 
         val response = retryWithBackoff {
-            val resp = client.newCall(request).execute()
+            val resp = effectiveClient.newCall(request).execute()
             if (!resp.isSuccessful) {
                 val errorBody = resp.body?.string() ?: "Unknown error"
+                val retryAfter = parseRetryAfterHeader(resp.header("Retry-After"))
                 resp.close()
-                throw ApiException(resp.code, errorBody)
+                throw ApiException(resp.code, errorBody, retryAfter)
             }
             resp
         }
@@ -300,7 +321,7 @@ class ChatApiService @Inject constructor(
                         if (parts != null && parts.length() > 0) {
                             val text = parts.getJSONObject(0).optString("text")
                             if (!text.isNullOrEmpty()) {
-                                emit(text)
+                                emit(ChatStreamChunk(content = text))
                             }
                         }
                     }
@@ -315,7 +336,7 @@ class ChatApiService @Inject constructor(
         }
     }
 
-    private fun buildMessagesArray(messages: List<ChatMessage>): JSONArray {
+    internal fun buildMessagesArray(messages: List<ChatMessage>): JSONArray {
         return JSONArray().apply {
             messages.forEach { msg ->
                 put(JSONObject().apply {
@@ -357,10 +378,20 @@ data class ChatMessage(
     val imageUrls: List<String> = emptyList()
 )
 
-class ApiException(val code: Int, override val message: String) : Exception(message)
+data class ChatStreamChunk(
+    val content: String = "",
+    val reasoningContent: String? = null,
+)
+
+class ApiException(
+    val code: Int,
+    override val message: String,
+    val retryAfterSeconds: Long? = null
+) : Exception(message)
 
 /**
  * 带指数退避的重试，仅重试网络错误和 5xx 服务端错误，不重试 4xx 客户端错误。
+ * 429 响应优先使用 Retry-After 头部指定的等待时间。
  */
 private suspend fun <T> retryWithBackoff(
     maxRetries: Int = 3,
@@ -375,15 +406,16 @@ private suspend fun <T> retryWithBackoff(
         } catch (e: ApiException) {
             when (e.code) {
                 429, 502, 503, 504 -> {
-                    // 可重试的状态码：限流、网关错误、服务不可用
                     lastException = e
+                    // 429 限流：优先使用服务器返回的 Retry-After 时间
+                    if (e.code == 429 && e.retryAfterSeconds != null) {
+                        delayMs = (e.retryAfterSeconds * 1000).coerceIn(delayMs, 60_000L)
+                    }
                 }
                 in 400..499 -> {
-                    // 其他 4xx 客户端错误不重试
                     throw e
                 }
                 else -> {
-                    // 5xx 服务端错误可重试
                     lastException = e
                 }
             }
@@ -397,4 +429,13 @@ private suspend fun <T> retryWithBackoff(
         }
     }
     throw lastException ?: Exception("Unknown retry error")
+}
+
+/**
+ * 解析 Retry-After 头部，支持秒数格式（如 "30"）。
+ * 返回等待秒数，解析失败返回 null。
+ */
+internal fun parseRetryAfterHeader(value: String?): Long? {
+    if (value.isNullOrBlank()) return null
+    return value.trim().toLongOrNull()
 }

@@ -86,6 +86,7 @@ class HomeViewModel @Inject constructor(
             (0 until arr.length()).map { arr.getString(it) }
         } catch (e: Exception) {
             // Fallback: comma-separated or plain text
+            Log.w("HomeViewModel", "Failed to parse tags JSON, using plain text fallback", e)
             tagsJson.removeSurrounding("[", "]").replace("\"", "").split(",").map { it.trim() }.filter { it.isNotBlank() }
         }
     }

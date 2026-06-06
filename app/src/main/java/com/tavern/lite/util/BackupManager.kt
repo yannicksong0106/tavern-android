@@ -2,6 +2,7 @@ package com.tavern.lite.util
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import androidx.room.withTransaction
 import com.tavern.lite.data.db.TavernDatabase
 import com.tavern.lite.data.db.dao.AuthorNoteDao
@@ -65,6 +66,14 @@ class BackupManager @Inject constructor(
         encodeDefaults = true
     }
 
+    private val currentAppVersion: String by lazy {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        } catch (_: Exception) {
+            "unknown"
+        }
+    }
+
     suspend fun backup(): Result<File> = withContext(Dispatchers.IO) {
         try {
             // Run all DB queries in parallel for faster backup
@@ -102,7 +111,8 @@ class BackupManager @Inject constructor(
                         id = it.id, chatId = it.chatId, role = it.role, content = it.content,
                         characterId = it.characterId, parentId = it.parentId, branchId = it.branchId,
                         isActive = it.isActive, createdAt = it.createdAt,
-                        swipeContent = it.swipeContent, swipeIndex = it.swipeIndex
+                        swipeContent = it.swipeContent, swipeIndex = it.swipeIndex,
+                        imagePaths = it.imagePaths
                     )
                 }
             }
@@ -202,7 +212,7 @@ class BackupManager @Inject constructor(
                     BgmBackup(
                         id = it.id, characterId = it.characterId, name = it.name,
                         audioPath = it.audioPath, loop = it.loop, volume = it.volume,
-                        displayOrder = it.displayOrder, createdAt = it.createdAt
+                        emotion = it.emotion, displayOrder = it.displayOrder, createdAt = it.createdAt
                     )
                 }
             }
@@ -218,6 +228,7 @@ class BackupManager @Inject constructor(
 
             // Await all queries and build backup data
             val backupData = BackupData(
+                appVersion = currentAppVersion,
                 characters = charactersDeferred.await(),
                 chats = chatsDeferred.await(),
                 messages = messagesDeferred.await(),
@@ -249,6 +260,14 @@ class BackupManager @Inject constructor(
         try {
             val text = inputStream.bufferedReader().use { it.readText() }
             val data = json.decodeFromString(BackupData.serializer(), text)
+
+            // 版本兼容性检查：拒绝来自更高版本的备份
+            val backupVersion = data.appVersion
+            if (isVersionNewer(backupVersion, currentAppVersion)) {
+                return@withContext Result.failure(
+                    IllegalStateException("备份来自更高版本 ($backupVersion)，当前版本 ($currentAppVersion) 无法恢复。请先更新应用。")
+                )
+            }
 
             // 在事务中执行全部恢复，失败时自动回滚
             db.withTransaction {
@@ -303,7 +322,8 @@ class BackupManager @Inject constructor(
                         id = m.id, chatId = m.chatId, role = m.role, content = m.content,
                         characterId = m.characterId, parentId = m.parentId, branchId = m.branchId,
                         isActive = m.isActive, createdAt = m.createdAt,
-                        swipeContent = m.swipeContent, swipeIndex = m.swipeIndex
+                        swipeContent = m.swipeContent, swipeIndex = m.swipeIndex,
+                        imagePaths = m.imagePaths
                     )
                 )
                 messagesRestored++
@@ -419,7 +439,7 @@ class BackupManager @Inject constructor(
                     com.tavern.lite.data.db.entity.BgmEntity(
                         id = b.id, characterId = b.characterId, name = b.name,
                         audioPath = b.audioPath, loop = b.loop, volume = b.volume,
-                        displayOrder = b.displayOrder, createdAt = b.createdAt
+                        emotion = b.emotion, displayOrder = b.displayOrder, createdAt = b.createdAt
                     )
                 )
                 bgmsRestored++
@@ -448,7 +468,8 @@ class BackupManager @Inject constructor(
                     presetsRestored = presetsRestored,
                     spritesRestored = spritesRestored,
                     bgmsRestored = bgmsRestored,
-                    authorNotesRestored = authorNotesRestored
+                    authorNotesRestored = authorNotesRestored,
+                    backupAppVersion = backupVersion
                 )
             )
             } // db.withTransaction
@@ -456,6 +477,30 @@ class BackupManager @Inject constructor(
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("BackupManager", "恢复失败", e)
             Result.failure(e)
+        }
+    }
+
+    companion object {
+        /**
+         * 比较两个版本号，判断 backupVersion 是否比 currentVersion 更新。
+         * 支持 "major.minor.patch" 格式，如 "1.2.8"。
+         */
+        @VisibleForTesting
+        internal fun isVersionNewer(backupVersion: String, currentVersion: String): Boolean {
+            val bParts = parseVersion(backupVersion)
+            val cParts = parseVersion(currentVersion)
+            for (i in 0 until maxOf(bParts.size, cParts.size)) {
+                val b = bParts.getOrElse(i) { 0 }
+                val c = cParts.getOrElse(i) { 0 }
+                if (b > c) return true
+                if (b < c) return false
+            }
+            return false
+        }
+
+        @VisibleForTesting
+        internal fun parseVersion(version: String): List<Int> {
+            return version.split(".").mapNotNull { it.toIntOrNull() }
         }
     }
 }

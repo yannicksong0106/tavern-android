@@ -25,17 +25,16 @@ class MessageExecutionHelper @Inject constructor(
     val scriptRepository: ScriptRepository,
     val memoryExtractionUseCase: MemoryExtractionUseCase,
 ) {
-    // 思维链内容（DeepSeek/Qwen thinking mode），下次请求时传回
-    @Volatile var lastAssistantReasoningContent: String? = null
-
     data class ExecutionResult(
         val assistantMsgId: Long? = null,
         val fullResponse: String = "",
         val processedUserContent: String = "",
+        val reasoningContent: String? = null,
     )
 
     /**
      * 核心执行流程：流式 API → 清理前缀 → 保存 → 正则脚本 → 记忆提取
+     * @param previousReasoningContent 上一轮的思维链内容，传回给 API 以维持上下文
      */
     suspend fun executeAndSave(
         chatId: Long,
@@ -44,11 +43,15 @@ class MessageExecutionHelper @Inject constructor(
         promptMessages: List<ChatMessage>,
         config: ApiConfig,
         processedUserContent: String,
+        previousReasoningContent: String? = null,
     ): ExecutionResult? {
         val responseBuffer = StringBuilder()
+        val reasoningBuffer = StringBuilder()
         try {
-            chatApiService.streamChat(attachReasoningContent(promptMessages), config).collect { chunk ->
-                responseBuffer.append(chunk)
+            val messagesWithReasoning = attachReasoningContent(promptMessages, previousReasoningContent)
+            chatApiService.streamChatWithMetadata(messagesWithReasoning, config).collect { chunk ->
+                responseBuffer.append(chunk.content)
+                chunk.reasoningContent?.let { reasoningBuffer.append(it) }
             }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -62,7 +65,7 @@ class MessageExecutionHelper @Inject constructor(
             chatRepository.sendMessage(chatId, errorMsg, "assistant", characterId)
             return null
         }
-        lastAssistantReasoningContent = chatApiService.lastReasoningContent
+        val reasoningContent = reasoningBuffer.takeIf { it.isNotEmpty() }?.toString()
 
         var fullResponse = responseBuffer.toString()
         if (fullResponse.isBlank()) return null
@@ -82,15 +85,17 @@ class MessageExecutionHelper @Inject constructor(
         return ExecutionResult(
             assistantMsgId = assistantMsgId,
             fullResponse = cleanContent,
-            processedUserContent = processedUserContent
+            processedUserContent = processedUserContent,
+            reasoningContent = reasoningContent
         )
     }
 
     /**
      * 为 promptMessages 中最后一条 assistant 消息附加 reasoning_content
+     * @param reasoning 上一轮的思维链内容，通过 ExecutionResult 传递，避免全局可变状态
      */
-    fun attachReasoningContent(messages: List<ChatMessage>): List<ChatMessage> {
-        val reasoning = lastAssistantReasoningContent ?: return messages
+    fun attachReasoningContent(messages: List<ChatMessage>, reasoning: String?): List<ChatMessage> {
+        if (reasoning == null) return messages
         for (i in messages.indices.reversed()) {
             if (messages[i].role == "assistant") {
                 return messages.toMutableList().also {

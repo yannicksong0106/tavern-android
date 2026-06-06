@@ -25,12 +25,19 @@ class BgmRepository @Inject constructor(
     suspend fun getDefaultBgm(characterId: Long): BgmEntity? =
         bgmDao.getDefaultBgm(characterId)
 
+    suspend fun getBgmByEmotion(characterId: Long, emotion: String): BgmEntity? =
+        bgmDao.getBgmByEmotion(characterId, emotion)
+
+    suspend fun getBgmForEmotion(characterId: Long, emotion: String): BgmEntity? =
+        bgmDao.getBgmByEmotion(characterId, emotion) ?: bgmDao.getDefaultBgm(characterId)
+
     suspend fun addBgm(
         characterId: Long,
         name: String,
         audioPath: String,
         loop: Boolean = true,
         volume: Float = 0.5f,
+        emotion: String = "",
         displayOrder: Int = 0
     ): Long {
         val bgm = BgmEntity(
@@ -39,13 +46,14 @@ class BgmRepository @Inject constructor(
             audioPath = audioPath,
             loop = loop,
             volume = volume,
+            emotion = emotion,
             displayOrder = displayOrder
         )
         return bgmDao.insert(bgm)
     }
 
     suspend fun updateBgm(bgm: BgmEntity) {
-        bgmDao.insert(bgm)
+        bgmDao.update(bgm)
     }
 
     suspend fun deleteBgm(id: Long) =

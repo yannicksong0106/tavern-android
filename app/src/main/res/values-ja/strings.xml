@@ -15,11 +15,8 @@
     <string name="create">作成</string>
     <string name="enter">入室</string>
     <string name="copy">コピー</string>
-    <string name="copied">コピーしました</string>
     <string name="default_label">デフォルト</string>
     <string name="untitled">無題</string>
-    <string name="confirm_delete_title">削除</string>
-    <string name="confirm_delete_text">本当に削除しますか？</string>
 
     <!-- ホーム -->
     <string name="home_title">Tavern Lite</string>
@@ -44,7 +41,6 @@
     <string name="delete_message_text">このメッセージを削除しますか？</string>
     <string name="pin_message">ピン留め</string>
     <string name="unpin_message">ピン留め解除</string>
-    <string name="pinned_messages">ピン留めメッセージ</string>
     <string name="bookmarks">ブックマーク</string>
     <string name="no_bookmarks">ブックマークされたメッセージはありません</string>
     <string name="you">あなた</string>
@@ -55,6 +51,7 @@
     <string name="input_hint">何か言ってみて…</string>
     <string name="continue_generation">続ける</string>
     <string name="scroll_to_bottom">最下部へ</string>
+    <string name="load_more_messages">過去のメッセージを読み込む</string>
     <string name="empty_message">…</string>
     <string name="typing">入力中…</string>
     <string name="swipe_previous">前へ</string>
@@ -68,10 +65,6 @@
     <string name="voice_permission_denied">音声入力にはマイクの許可が必要です</string>
     <string name="add_image">画像を追加</string>
     <string name="remove_image">画像を削除</string>
-    <string name="generate_image">画像を生成</string>
-    <string name="generating_image">画像を生成中…</string>
-    <string name="image_generation_failed">画像生成に失敗しました</string>
-    <string name="image_generation_only_openai">画像生成はOpenAI APIのみサポート</string>
     <string name="time_just_now">たった今</string>
     <string name="time_minutes">%d分前</string>
     <string name="time_hours">%d時間前</string>
@@ -109,6 +102,8 @@
     <string name="test_reply">返信: %s</string>
     <string name="test_error">エラー: %s</string>
     <string name="generation_params">生成パラメータ</string>
+    <string name="api_timeout">APIタイムアウト</string>
+    <string name="api_timeout_desc">読み取りタイムアウト: %d 秒（推論モデルは300以上推奨）</string>
     <string name="user_settings">ユーザー設定</string>
     <string name="user_persona">ユーザーペルソナ</string>
     <string name="chat_bubble">チャットバブル</string>
@@ -118,7 +113,6 @@
     <string name="about_click_hint">タップして開発ログを表示</string>
     <string name="dev_log_title">開発ログ</string>
     <string name="dev_log_subtitle">Tavern AIの成長記録、進歩と日常の記録</string>
-    <string name="custom_provider">カスタム</string>
     <string name="model">モデル</string>
     <string name="context_length">コンテキスト長</string>
     <string name="user_name_label">あなたの名前（{{user}}プレースホルダー用）</string>
@@ -218,11 +212,14 @@
     <string name="logic_or">OR（いずれか一致）</string>
     <string name="logic_not">NOT（一致を除外）</string>
     <string name="keywords_label">キーワード: %s</string>
+    <string name="world_book_match_preview">マッチプレビュー</string>
+    <string name="world_book_match_preview_hint">会話文を入力して、発火するエントリを確認</string>
+    <string name="matched_tag">一致</string>
+    <string name="secondary_keyword_chip">副: %s</string>
     <string name="constant_tag">常駐</string>
     <string name="selective_tag">選択的(%s)</string>
 
     <!-- メモリ -->
-    <string name="memory_title">メモリ管理</string>
     <string name="clear_all_memories">すべてのメモリを消去</string>
     <string name="clear_all_memories_text">このキャラクターのすべてのメモリを消去しますか？この操作は元に戻せません。</string>
     <string name="clear">消去</string>
@@ -232,16 +229,6 @@
     <string name="no_memories_hint">右下の + をタップして手動追加、または会話で自動蓄積</string>
     <string name="memory_content_placeholder">メモリの内容…</string>
     <string name="importance">重要度: %d</string>
-    <string name="memory_tab_manual">手動メモリ</string>
-    <string name="memory_tab_auto">AIメモリ</string>
-    <string name="category_user_info">ユーザー情報</string>
-    <string name="category_character_consistency">キャラクター設定</string>
-    <string name="category_event">重要なイベント</string>
-    <string name="category_relationship">人間関係</string>
-    <string name="category_commitment">約束</string>
-    <string name="add_atom">AIメモリを追加</string>
-    <string name="edit_atom">AIメモリを編集</string>
-    <string name="superseded">廃止済み</string>
     <string name="source_llm">AI抽出</string>
     <string name="source_regex">自動検出</string>
     <string name="source_manual">手動追加</string>
@@ -251,28 +238,12 @@
     <string name="memory_library">メモリライブラリ</string>
     <string name="memory_library_desc">キャラクターメモリの表示と管理</string>
     <string name="memory_category_all">すべて</string>
-    <string name="memory_category_fact">事実</string>
-    <string name="memory_category_emotion">感情</string>
-    <string name="memory_category_preference">好み</string>
-    <string name="memory_category_event">イベント</string>
-    <string name="memory_category_habit">習慣</string>
-    <string name="memory_category_character">キャラクター核心</string>
-    <string name="memory_category_temporary">一時メモリ</string>
     <string name="core_memories">コアメモリ</string>
     <string name="temporary_memories">一時メモリ</string>
     <string name="last_extracted">最終抽出: %s</string>
     <string name="memory_count">%d件のメモリ</string>
     <string name="expires_in">%s後に期限切れ</string>
-    <string name="select_character">キャラクターを選択</string>
-    <string name="sort_by_importance">重要度順</string>
-    <string name="sort_by_recency">時間順</string>
-    <string name="sort_by_access">アクセス頻度順</string>
     <string name="search_memories">メモリを検索</string>
-    <string name="memory_recalled">メモリ呼び出し: %d件</string>
-    <string name="just_now">たった今</string>
-    <string name="minutes_ago">%d分前</string>
-    <string name="hours_ago">%d時間前</string>
-    <string name="days_ago">%d日前</string>
     <string name="expires_hours">%d時間</string>
 
     <!-- ペルソナ -->
@@ -357,10 +328,10 @@
     <string name="message_interval_value">%.1f 秒</string>
 
     <!-- @メンション -->
-    <string name="at_mention_hint">@ キャラクター名 で指定返信</string>
 
     <!-- 検索 -->
     <string name="search_messages">メッセージを検索…</string>
+    <string name="no_results">結果なし</string>
     <string name="previous">前へ</string>
     <string name="next">次へ</string>
 
@@ -379,11 +350,14 @@
     <string name="scope_character">キャラクター</string>
     <string name="scope_chat">チャット</string>
     <string name="preset_scope">プリセットスコープ</string>
+    <string name="preset_template_preview">テンプレートプレビュー</string>
+    <string name="preset_template_preview_sample">サンプル変数：char=Alice、user=You</string>
+    <string name="preset_template_preview_empty">テンプレートを入力すると置換結果を表示します</string>
+    <string name="expand">展開</string>
+    <string name="collapse">折りたたむ</string>
 
     <!-- グループチャットリスト -->
     <string name="group_chats">グループチャット</string>
-    <string name="no_group_chats">グループチャットがまだありません</string>
-    <string name="group_members_count">%d人</string>
     <string name="delete_group_chat_title">グループチャットを削除</string>
     <string name="delete_group_chat_text">このグループチャットを削除しますか？すべてのメッセージが削除されます。</string>
 
@@ -391,15 +365,9 @@
     <string name="data_management">データ管理</string>
     <string name="backup_data">データをバックアップ</string>
     <string name="backup_data_desc">すべてのデータをJSONファイルとしてエクスポート</string>
-    <string name="backup_success">バックアップ成功: %s</string>
-    <string name="backup_failed">バックアップ失敗: %s</string>
     <string name="restore_data">データを復元</string>
     <string name="restore_data_desc">バックアップファイルからデータを復元</string>
-    <string name="restore_success">復元完了: キャラクター%1$d件、チャット%2$d件、メッセージ%3$d件</string>
-    <string name="restore_failed">復元失敗: %s</string>
     <string name="share_backup">バックアップを共有</string>
-    <string name="restore_confirm_title">データを復元</string>
-    <string name="restore_confirm_text">復元は既存データとマージされ、上書きされません。続行しますか？</string>
     <string name="storage_management">ストレージ管理</string>
     <string name="database_size">データベースサイズ</string>
     <string name="cache_size">キャッシュサイズ</string>
@@ -442,7 +410,6 @@
     <string name="a11y_assistant_message">アシスタントメッセージ</string>
     <string name="a11y_typing_indicator">入力中</string>
     <string name="a11y_attached_image">添付画像</string>
-    <string name="a11y_swipe_hint">左スワイプで返信、右スワイプで削除</string>
     <string name="a11y_character_card">%s、キャラクターカード</string>
     <string name="a11y_group_chat_card">%s、グループチャット</string>
     <string name="a11y_chat_item">%s、チャット</string>
@@ -454,8 +421,6 @@
     <string name="generate_summary">要約を生成</string>
     <string name="summary_generating">要約を生成中…</string>
     <string name="delete_summary">要約を削除</string>
-    <string name="summary_deleted">要約を削除しました</string>
-    <string name="summary_range">%d 件のメッセージをカバー</string>
     <string name="summary_tokens">約 %d tokens</string>
 
     <!-- Web 検索 -->
@@ -473,38 +438,26 @@
     <string name="web_search_command_hint">/search キーワード で手動検索</string>
 
     <!-- Visual Novel モード -->
-    <string name="vn_mode">小説モード</string>
-    <string name="vn_mode_desc">立ち絵 + 背景 + 会話ボックスの没入型体験</string>
-    <string name="vn_enter">小説モードに入る</string>
-    <string name="vn_exit">小説モードを終了</string>
     <string name="vn_sprites">キャラクター立ち絵</string>
     <string name="vn_sprites_desc">キャラクターの表情立ち絵を管理</string>
     <string name="vn_add_sprite">立ち絵を追加</string>
-    <string name="vn_edit_sprite">立ち絵を編集</string>
     <string name="vn_delete_sprite">立ち絵を削除</string>
     <string name="vn_delete_sprite_text">この立ち絵を削除しますか？</string>
     <string name="vn_emotion">表情</string>
     <string name="vn_emotion_hint">例: happy, sad, angry, neutral</string>
-    <string name="vn_image">立ち絵画像</string>
     <string name="vn_no_sprites">立ち絵なし</string>
     <string name="vn_no_sprites_hint">右下の + をタップして表情立ち絵を追加</string>
-    <string name="vn_sprite_count">%d 枚の立ち絵</string>
-    <string name="vn_current_emotion">現在の表情: %s</string>
 
     <!-- BGM -->
     <string name="bgm_title">BGM</string>
     <string name="bgm_desc">キャラクターのBGMを管理</string>
     <string name="bgm_add">音楽を追加</string>
-    <string name="bgm_edit">音楽を編集</string>
     <string name="bgm_delete">音楽を削除</string>
     <string name="bgm_delete_text">この音楽を削除しますか？</string>
     <string name="bgm_name">曲名</string>
     <string name="bgm_name_hint">例: テーマ曲、バトル音楽</string>
-    <string name="bgm_audio">音声ファイル</string>
     <string name="bgm_loop">ループ再生</string>
     <string name="bgm_volume">音量</string>
     <string name="bgm_no_bgms">BGMなし</string>
     <string name="bgm_no_bgms_hint">右下の + をタップしてBGMを追加</string>
-    <string name="bgm_count">%d 曲</string>
-    <string name="bgm_playing">再生中: %s</string>
 </resources>

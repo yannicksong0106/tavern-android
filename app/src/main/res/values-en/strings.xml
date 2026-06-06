@@ -15,11 +15,8 @@
     <string name="create">Create</string>
     <string name="enter">Enter</string>
     <string name="copy">Copy</string>
-    <string name="copied">Copied</string>
     <string name="default_label">Default</string>
     <string name="untitled">Untitled</string>
-    <string name="confirm_delete_title">Delete</string>
-    <string name="confirm_delete_text">Are you sure you want to delete?</string>
 
     <!-- Home -->
     <string name="home_title">Tavern Lite</string>
@@ -44,7 +41,6 @@
     <string name="delete_message_text">Are you sure you want to delete this message?</string>
     <string name="pin_message">Pin message</string>
     <string name="unpin_message">Unpin message</string>
-    <string name="pinned_messages">Pinned messages</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="no_bookmarks">No bookmarked messages</string>
     <string name="you">You</string>
@@ -55,6 +51,7 @@
     <string name="input_hint">Say something…</string>
     <string name="continue_generation">Continue</string>
     <string name="scroll_to_bottom">Scroll to bottom</string>
+    <string name="load_more_messages">Load earlier messages</string>
     <string name="empty_message">…</string>
     <string name="typing">Typing…</string>
     <string name="swipe_previous">Previous</string>
@@ -67,14 +64,11 @@
     <string name="time_hours">%d hr ago</string>
     <string name="time_days">%d days ago</string>
     <string name="resend">Resend</string>
+    <string name="create_branch">Create Branch</string>
     <string name="voice_input">Voice Input</string>
     <string name="voice_permission_denied">Microphone permission is required for voice input</string>
     <string name="add_image">Add Image</string>
     <string name="remove_image">Remove Image</string>
-    <string name="generate_image">Generate Image</string>
-    <string name="generating_image">Generating image…</string>
-    <string name="image_generation_failed">Image generation failed</string>
-    <string name="image_generation_only_openai">Image generation only supports OpenAI API</string>
 
     <!-- Chat List -->
     <string name="chat_list">Chat List</string>
@@ -108,6 +102,8 @@
     <string name="test_reply">Reply: %s</string>
     <string name="test_error">Error: %s</string>
     <string name="generation_params">Generation Parameters</string>
+    <string name="api_timeout">API Timeout</string>
+    <string name="api_timeout_desc">Read timeout: %d seconds (reasoning models recommend 300+)</string>
     <string name="user_settings">User Settings</string>
     <string name="user_persona">User Persona</string>
     <string name="chat_bubble">Chat Bubbles</string>
@@ -117,7 +113,6 @@
     <string name="about_click_hint">Tap to view dev log</string>
     <string name="dev_log_title">Dev Log</string>
     <string name="dev_log_subtitle">The growth journey of Tavern AI, recording every progress and life moments</string>
-    <string name="custom_provider">Custom</string>
     <string name="model">Model</string>
     <string name="context_length">Context Length</string>
     <string name="user_name_label">Your name (for {{user}} placeholder)</string>
@@ -211,6 +206,10 @@
     <string name="logic_or">OR (match any)</string>
     <string name="logic_not">NOT (exclude match)</string>
     <string name="keywords_label">Keywords: %s</string>
+    <string name="world_book_match_preview">Match Preview</string>
+    <string name="world_book_match_preview_hint">Enter sample chat text to see which entries trigger</string>
+    <string name="matched_tag">Matched</string>
+    <string name="secondary_keyword_chip">Alt: %s</string>
     <string name="constant_tag">Constant</string>
     <string name="selective_tag">Selective(%s)</string>
     <string name="entry_depth">Injection Depth (from end)</string>
@@ -221,7 +220,6 @@
     <string name="position_after_main">After Main Prompt</string>
 
     <!-- Memory -->
-    <string name="memory_title">Memory Management</string>
     <string name="clear_all_memories">Clear All Memories</string>
     <string name="clear_all_memories_text">Clear all memories for this character? This action cannot be undone.</string>
     <string name="clear">Clear</string>
@@ -231,16 +229,6 @@
     <string name="no_memories_hint">Tap + to add manually, or accumulate through conversations</string>
     <string name="memory_content_placeholder">Memory content…</string>
     <string name="importance">Importance: %d</string>
-    <string name="memory_tab_manual">Manual</string>
-    <string name="memory_tab_auto">AI Memory</string>
-    <string name="category_user_info">User Info</string>
-    <string name="category_character_consistency">Character</string>
-    <string name="category_event">Events</string>
-    <string name="category_relationship">Relationships</string>
-    <string name="category_commitment">Commitments</string>
-    <string name="add_atom">Add AI Memory</string>
-    <string name="edit_atom">Edit AI Memory</string>
-    <string name="superseded">Superseded</string>
     <string name="source_llm">AI Extracted</string>
     <string name="source_regex">Auto-detected</string>
     <string name="source_manual">Manual</string>
@@ -250,28 +238,12 @@
     <string name="memory_library">Memory Library</string>
     <string name="memory_library_desc">View and manage character memories</string>
     <string name="memory_category_all">All</string>
-    <string name="memory_category_fact">Facts</string>
-    <string name="memory_category_emotion">Emotions</string>
-    <string name="memory_category_preference">Preferences</string>
-    <string name="memory_category_event">Events</string>
-    <string name="memory_category_habit">Habits</string>
-    <string name="memory_category_character">Character Core</string>
-    <string name="memory_category_temporary">Temporary</string>
     <string name="core_memories">Core Memories</string>
     <string name="temporary_memories">Temporary Memories</string>
     <string name="last_extracted">Last extracted: %s</string>
     <string name="memory_count">%d memories</string>
     <string name="expires_in">Expires in %s</string>
-    <string name="select_character">Select Character</string>
-    <string name="sort_by_importance">Sort by importance</string>
-    <string name="sort_by_recency">Sort by time</string>
-    <string name="sort_by_access">Sort by access frequency</string>
     <string name="search_memories">Search memories</string>
-    <string name="memory_recalled">Memory recalled: %d</string>
-    <string name="just_now">Just now</string>
-    <string name="minutes_ago">%d minutes ago</string>
-    <string name="hours_ago">%d hours ago</string>
-    <string name="days_ago">%d days ago</string>
     <string name="expires_hours">%d hours</string>
 
     <!-- Persona -->
@@ -356,10 +328,10 @@
     <string name="message_interval_value">%.1f sec</string>
 
     <!-- At Mention -->
-    <string name="at_mention_hint">@ character name for targeted reply</string>
 
     <!-- Search -->
     <string name="search_messages">Search messages…</string>
+    <string name="no_results">No results</string>
     <string name="previous">Previous</string>
     <string name="next">Next</string>
 
@@ -378,11 +350,14 @@
     <string name="scope_character">Character</string>
     <string name="scope_chat">Chat</string>
     <string name="preset_scope">Preset Scope</string>
+    <string name="preset_template_preview">Template Preview</string>
+    <string name="preset_template_preview_sample">Sample variables: char=Alice, user=You</string>
+    <string name="preset_template_preview_empty">Fill in template content to preview replacements</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
 
     <!-- Group Chat List -->
     <string name="group_chats">Group Chats</string>
-    <string name="no_group_chats">No group chats yet</string>
-    <string name="group_members_count">%d members</string>
     <string name="delete_group_chat_title">Delete Group Chat</string>
     <string name="delete_group_chat_text">Are you sure you want to delete this group chat? All messages will be deleted.</string>
 
@@ -390,15 +365,9 @@
     <string name="data_management">Data Management</string>
     <string name="backup_data">Backup Data</string>
     <string name="backup_data_desc">Export all data as a JSON file</string>
-    <string name="backup_success">Backup successful: %s</string>
-    <string name="backup_failed">Backup failed: %s</string>
     <string name="restore_data">Restore Data</string>
     <string name="restore_data_desc">Restore data from a backup file</string>
-    <string name="restore_success">Restored: %1$d characters, %2$d chats, %3$d messages</string>
-    <string name="restore_failed">Restore failed: %s</string>
     <string name="share_backup">Share Backup</string>
-    <string name="restore_confirm_title">Restore Data</string>
-    <string name="restore_confirm_text">Restore will merge with existing data without overwriting. Continue?</string>
     <string name="storage_management">Storage Management</string>
     <string name="database_size">Database size</string>
     <string name="cache_size">Cache size</string>
@@ -443,7 +412,6 @@
     <string name="a11y_assistant_message">Assistant message</string>
     <string name="a11y_typing_indicator">Typing</string>
     <string name="a11y_attached_image">Attached image</string>
-    <string name="a11y_swipe_hint">Swipe left to reply, swipe right to delete</string>
     <string name="a11y_character_card">%s, character card</string>
     <string name="a11y_group_chat_card">%s, group chat</string>
     <string name="a11y_chat_item">%s, chat</string>
@@ -455,8 +423,6 @@
     <string name="generate_summary">Generate Summary</string>
     <string name="summary_generating">Generating summary…</string>
     <string name="delete_summary">Delete Summary</string>
-    <string name="summary_deleted">Summary deleted</string>
-    <string name="summary_range">Covers %d messages</string>
     <string name="summary_tokens">~%d tokens</string>
 
     <!-- Web Search -->
@@ -474,38 +440,26 @@
     <string name="web_search_command_hint">Send /search keyword to search manually</string>
 
     <!-- Visual Novel Mode -->
-    <string name="vn_mode">Visual Novel Mode</string>
-    <string name="vn_mode_desc">Immersive experience with sprites, backgrounds, and dialog box</string>
-    <string name="vn_enter">Enter VN Mode</string>
-    <string name="vn_exit">Exit VN Mode</string>
     <string name="vn_sprites">Character Sprites</string>
     <string name="vn_sprites_desc">Manage character expression sprites</string>
     <string name="vn_add_sprite">Add Sprite</string>
-    <string name="vn_edit_sprite">Edit Sprite</string>
     <string name="vn_delete_sprite">Delete Sprite</string>
     <string name="vn_delete_sprite_text">Are you sure you want to delete this sprite?</string>
     <string name="vn_emotion">Emotion</string>
     <string name="vn_emotion_hint">e.g. happy, sad, angry, neutral</string>
-    <string name="vn_image">Sprite Image</string>
     <string name="vn_no_sprites">No sprites yet</string>
     <string name="vn_no_sprites_hint">Tap + to add expression sprites for this character</string>
-    <string name="vn_sprite_count">%d sprites</string>
-    <string name="vn_current_emotion">Current: %s</string>
 
     <!-- Background Music -->
     <string name="bgm_title">Background Music</string>
     <string name="bgm_desc">Manage character background music</string>
     <string name="bgm_add">Add Music</string>
-    <string name="bgm_edit">Edit Music</string>
     <string name="bgm_delete">Delete Music</string>
     <string name="bgm_delete_text">Are you sure you want to delete this music?</string>
     <string name="bgm_name">Music Name</string>
     <string name="bgm_name_hint">e.g. Theme Song, Battle Music</string>
-    <string name="bgm_audio">Audio File</string>
     <string name="bgm_loop">Loop</string>
     <string name="bgm_volume">Volume</string>
     <string name="bgm_no_bgms">No background music yet</string>
     <string name="bgm_no_bgms_hint">Tap + to add background music for this character</string>
-    <string name="bgm_count">%d tracks</string>
-    <string name="bgm_playing">Now Playing: %s</string>
 </resources>

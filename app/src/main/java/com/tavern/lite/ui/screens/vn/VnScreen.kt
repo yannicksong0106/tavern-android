@@ -24,14 +24,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,11 +53,12 @@ import coil.compose.rememberAsyncImagePainter
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.ui.screens.chat.ChatViewModel
+import com.tavern.lite.ui.screens.chat.components.InputBar
 import java.io.File
 
 /**
  * Visual Novel 模式界面
- * 全屏立绘 + 底部对话框 + 背景层
+ * 全屏立绘 + 底部对话框 + 背景层 + 输入框
  */
 @Composable
 fun VnScreen(
@@ -61,10 +68,23 @@ fun VnScreen(
     onSettings: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
-    val currentEmotion by viewModel.currentEmotion.collectAsState()
-    val currentSpritePath by viewModel.currentSpritePath.collectAsState()
+    val currentEmotion by viewModel.vnModeManager.currentEmotion.collectAsState()
+    val currentSpritePath by viewModel.vnModeManager.currentSpritePath.collectAsState()
+    val isBgmPlaying by viewModel.vnModeManager.isBgmPlaying.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val character by viewModel.character.collectAsState()
+    val isGenerating by viewModel.streamingManager.isGenerating.collectAsState()
+
+    // 输入框状态
+    var inputText by remember { mutableStateOf("") }
+
+    // BGM 生命周期管理：进入时加载默认 BGM，离开时停止
+    DisposableEffect(Unit) {
+        viewModel.vnModeManager.loadDefaultBgm()
+        onDispose {
+            viewModel.vnModeManager.stopBgm()
+        }
+    }
 
     // 获取最新的 AI 回复消息
     val lastAssistantMessage = messages.lastOrNull { it.role == "assistant" }
@@ -91,13 +111,32 @@ fun VnScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 80.dp)
+        )
+
+        // 输入框层
+        InputBar(
+            value = inputText,
+            onValueChange = { inputText = it },
+            onSend = {
+                if (inputText.isNotBlank()) {
+                    viewModel.streamingManager.sendMessage(inputText)
+                    inputText = ""
+                }
+            },
+            onStop = { viewModel.streamingManager.stopGeneration() },
+            isGenerating = isGenerating,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
         )
 
         // 顶部工具栏
         VnToolbar(
             onBack = onBack,
             onSettings = onSettings,
+            isBgmPlaying = isBgmPlaying,
+            onToggleBgm = { viewModel.vnModeManager.toggleBgmPause() },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(8.dp)
@@ -234,6 +273,8 @@ private fun VnDialogueBox(
 private fun VnToolbar(
     onBack: () -> Unit,
     onSettings: () -> Unit,
+    isBgmPlaying: Boolean,
+    onToggleBgm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -265,6 +306,20 @@ private fun VnToolbar(
                 imageVector = Icons.Default.Settings,
                 contentDescription = stringResource(R.string.settings),
                 tint = Color.White
+            )
+        }
+
+        IconButton(
+            onClick = onToggleBgm,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.Black.copy(alpha = 0.5f))
+        ) {
+            Icon(
+                imageVector = if (isBgmPlaying) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                contentDescription = stringResource(R.string.bgm_title),
+                tint = if (isBgmPlaying) Color(0xFF4fc3f7) else Color.White
             )
         }
     }

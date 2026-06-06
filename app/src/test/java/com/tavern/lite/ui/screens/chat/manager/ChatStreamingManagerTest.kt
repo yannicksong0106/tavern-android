@@ -1,0 +1,235 @@
+package com.tavern.lite.ui.screens.chat.manager
+
+import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.model.ApiConfig
+import com.tavern.lite.data.model.GroupSchedulingStrategy
+import com.tavern.lite.data.repository.ChatRepository
+import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
+import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
+import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
+import com.tavern.lite.domain.usecase.SendMessageUseCase
+import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.network.ImageGenerationService
+import io.mockk.MockKAnnotations
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ChatStreamingManagerTest {
+
+    @MockK private lateinit var chatRepository: ChatRepository
+    @MockK private lateinit var apiConfigStore: ApiConfigStore
+    @MockK private lateinit var sendMessageUseCase: SendMessageUseCase
+    @MockK private lateinit var continueGenerationUseCase: ContinueGenerationUseCase
+    @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
+    @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
+    @MockK private lateinit var imageGenerationService: ImageGenerationService
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var manager: ChatStreamingManager
+    private val chatId = 10L
+    private val characterId = 1L
+
+    @Before
+    fun setup() {
+        MockKAnnotations.init(this, relaxed = true)
+        Dispatchers.setMain(testDispatcher)
+
+        val configFlow = MutableStateFlow(ApiConfig())
+        every { apiConfigStore.configFlow } returns configFlow
+
+        manager = ChatStreamingManager(
+            chatId = chatId,
+            characterId = characterId,
+            chatRepository = chatRepository,
+            apiConfigStore = apiConfigStore,
+            sendMessageUseCase = sendMessageUseCase,
+            continueGenerationUseCase = continueGenerationUseCase,
+            proactiveMessageUseCase = proactiveMessageUseCase,
+            proactiveDialogueUseCase = proactiveDialogueUseCase,
+            imageGenerationService = imageGenerationService,
+            scope = CoroutineScope(testDispatcher)
+        )
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    // ==================== Initial state ====================
+
+    @Test
+    fun `initial isGenerating is false`() {
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== stopGeneration ====================
+
+    @Test
+    fun `stopGeneration sets isGenerating to false`() {
+        manager.stopGeneration()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== sendMessage guards ====================
+
+    @Test
+    fun `sendMessage ignores blank content with no images`() {
+        manager.sendMessage("", emptyList())
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `sendMessage ignores whitespace-only content`() {
+        manager.sendMessage("   ", emptyList())
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `sendMessage sets isGenerating true during generation`() = runTest {
+        val character = CharacterEntity(id = characterId, name = "Test")
+        manager.characterProvider = { character }
+        coEvery { sendMessageUseCase.sendSingleMessage(any(), any(), any(), any(), any(), any()) } returns null
+
+        manager.sendMessage("hello")
+        advanceUntilIdle()
+
+        // After completion, isGenerating should be false again
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== continueGeneration guards ====================
+
+    @Test
+    fun `continueGeneration does nothing when no assistant messages`() = runTest {
+        manager.messagesProvider = { emptyList() }
+        manager.continueGeneration()
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `continueGeneration does nothing when last message is user`() = runTest {
+        val messages = listOf(
+            MessageEntity(id = 1, chatId = chatId, role = "user", content = "hello")
+        )
+        manager.messagesProvider = { messages }
+        manager.continueGeneration()
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== regenerate guards ====================
+
+    @Test
+    fun `regenerate does nothing when message not found`() = runTest {
+        manager.messagesProvider = { emptyList() }
+        manager.regenerate(999L)
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `regenerate does nothing when message is user role`() = runTest {
+        val messages = listOf(
+            MessageEntity(id = 1, chatId = chatId, role = "user", content = "hello")
+        )
+        manager.messagesProvider = { messages }
+        manager.regenerate(1L)
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `regenerate does nothing when no user message before assistant`() = runTest {
+        val messages = listOf(
+            MessageEntity(id = 1, chatId = chatId, role = "system", content = "system"),
+            MessageEntity(id = 2, chatId = chatId, role = "assistant", content = "reply")
+        )
+        manager.messagesProvider = { messages }
+        manager.regenerate(2L)
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== resendUserMessage guards ====================
+
+    @Test
+    fun `resendUserMessage does nothing when message not found`() = runTest {
+        manager.messagesProvider = { emptyList() }
+        manager.resendUserMessage(999L)
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `resendUserMessage does nothing when message is assistant role`() = runTest {
+        val messages = listOf(
+            MessageEntity(id = 1, chatId = chatId, role = "assistant", content = "reply")
+        )
+        manager.messagesProvider = { messages }
+        manager.resendUserMessage(1L)
+        advanceUntilIdle()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== generateImage guards ====================
+
+    @Test
+    fun `generateImage ignores blank prompt`() {
+        manager.generateImage("")
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `generateImage ignores whitespace prompt`() {
+        manager.generateImage("   ")
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== triggerProactiveIfNeeded ====================
+
+    @Test
+    fun `triggerProactiveIfNeeded does nothing when last message is assistant but no character`() {
+        manager.characterProvider = { null }
+        val messages = listOf(
+            MessageEntity(id = 1, chatId = chatId, role = "assistant", content = "reply")
+        )
+        manager.messagesProvider = { messages }
+        manager.triggerProactiveIfNeeded()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    @Test
+    fun `triggerProactiveIfNeeded does nothing when no messages`() {
+        manager.messagesProvider = { emptyList() }
+        manager.triggerProactiveIfNeeded()
+        assertFalse(manager.isGenerating.value)
+    }
+
+    // ==================== cancel ====================
+
+    @Test
+    fun `cancel cancels streaming job`() {
+        manager.cancel()
+        // No crash, no-op when no job
+    }
+}

@@ -1,9 +1,12 @@
 package com.tavern.lite.network
 
+import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.PersonaEntity
+import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -13,6 +16,7 @@ import org.junit.Test
 class PromptBuilderTest {
 
     private fun makeCharacter(
+        id: Long = 1,
         name: String = "Alice",
         description: String = "A friendly AI",
         personality: String = "Kind",
@@ -21,7 +25,7 @@ class PromptBuilderTest {
         systemPrompt: String? = null,
         postHistoryInstructions: String? = null
     ) = CharacterEntity(
-        id = 1,
+        id = id,
         name = name,
         description = description,
         personality = personality,
@@ -34,12 +38,14 @@ class PromptBuilderTest {
     private fun makeMessage(
         chatId: Long = 1,
         role: String = "user",
-        content: String = "hi"
+        content: String = "hi",
+        characterId: Long? = null
     ) = MessageEntity(
         id = 1,
         chatId = chatId,
         role = role,
-        content = content
+        content = content,
+        characterId = characterId
     )
 
     @Test
@@ -431,5 +437,319 @@ class PromptBuilderTest {
 
         val systemMsg = messages.first { it.role == "system" }
         assertTrue(systemMsg.content.contains("Alice is Brave and A dragon rider"))
+    }
+
+    // ========== buildGroupChat 测试 ==========
+
+    @Test
+    fun `buildGroupChat includes group chat style guide`() {
+        val alice = makeCharacter(id = 1, name = "Alice", description = "A friendly AI")
+        val bob = makeCharacter(id = 2, name = "Bob", description = "A wise wizard")
+        val messages = PromptBuilder.buildGroupChat(
+            characters = listOf(alice, bob),
+            respondingCharacter = alice,
+            userMessage = "Hello everyone",
+            chatHistory = emptyList(),
+            characterMap = mapOf(1L to alice, 2L to bob)
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("群聊回复风格"))
+        assertTrue(systemMsg.content.contains("Alice"))
+    }
+
+    @Test
+    fun `buildGroupChat includes other characters brief info`() {
+        val alice = makeCharacter(id = 1, name = "Alice", description = "A friendly AI who loves chatting")
+        val bob = makeCharacter(id = 2, name = "Bob", description = "A wise wizard who studies magic")
+        val messages = PromptBuilder.buildGroupChat(
+            characters = listOf(alice, bob),
+            respondingCharacter = alice,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            characterMap = mapOf(1L to alice, 2L to bob)
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Bob"))
+        assertTrue(systemMsg.content.contains("wise wizard"))
+    }
+
+    @Test
+    fun `buildGroupChat formats chat history with character attribution`() {
+        val alice = makeCharacter(id = 1, name = "Alice")
+        val bob = makeCharacter(id = 2, name = "Bob")
+        val history = listOf(
+            makeMessage(role = "user", content = "Hi all"),
+            makeMessage(role = "assistant", content = "Hello!", characterId = 1),
+            makeMessage(role = "assistant", content = "Hey there!", characterId = 2)
+        )
+        val messages = PromptBuilder.buildGroupChat(
+            characters = listOf(alice, bob),
+            respondingCharacter = alice,
+            userMessage = "What's up?",
+            chatHistory = history,
+            characterMap = mapOf(1L to alice, 2L to bob)
+        )
+
+        val assistantMsgs = messages.filter { it.role == "assistant" }
+        assertTrue(assistantMsgs.any { it.content.contains("[Alice]: Hello!") })
+        assertTrue(assistantMsgs.any { it.content.contains("[Bob]: Hey there!") })
+    }
+
+    @Test
+    fun `buildGroupChat includes opening messages from all characters`() {
+        val alice = makeCharacter(id = 1, name = "Alice", firstMes = "Welcome!")
+        val bob = makeCharacter(id = 2, name = "Bob", firstMes = "Greetings!")
+        val messages = PromptBuilder.buildGroupChat(
+            characters = listOf(alice, bob),
+            respondingCharacter = alice,
+            userMessage = "Hi",
+            chatHistory = emptyList(),
+            characterMap = mapOf(1L to alice, 2L to bob)
+        )
+
+        val assistantMsgs = messages.filter { it.role == "assistant" }
+        assertTrue(assistantMsgs.any { it.content.contains("[Alice]: Welcome!") })
+        assertTrue(assistantMsgs.any { it.content.contains("[Bob]: Greetings!") })
+    }
+
+    // ========== buildProactive 测试 ==========
+
+    @Test
+    fun `buildProactive includes proactive dialogue instruction`() {
+        val character = makeCharacter()
+        val messages = PromptBuilder.buildProactive(
+            character = character,
+            chatHistory = listOf(makeMessage(role = "user", content = "Bye!"))
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        assertTrue(systemMsgs.any { it.content.contains("主动对话指令") })
+        assertTrue(systemMsgs.any { it.content.contains("延伸话题") })
+    }
+
+    @Test
+    fun `buildProactive ends with empty user message`() {
+        val character = makeCharacter()
+        val messages = PromptBuilder.buildProactive(
+            character = character,
+            chatHistory = emptyList()
+        )
+
+        assertEquals("user", messages.last().role)
+        assertEquals("...", messages.last().content)
+    }
+
+    @Test
+    fun `buildGroupProactive includes proactive group instruction`() {
+        val alice = makeCharacter(id = 1, name = "Alice")
+        val bob = makeCharacter(id = 2, name = "Bob")
+        val messages = PromptBuilder.buildGroupProactive(
+            characters = listOf(alice, bob),
+            respondingCharacter = alice,
+            chatHistory = listOf(makeMessage(role = "user", content = "Hi")),
+            characterMap = mapOf(1L to alice, 2L to bob)
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        assertTrue(systemMsgs.any { it.content.contains("主动发言指令") })
+        assertTrue(systemMsgs.any { it.content.contains("插话") })
+    }
+
+    // ========== Author Note 测试 ==========
+
+    @Test
+    fun `build injects author note at specified depth`() {
+        val character = makeCharacter(firstMes = "")
+        val authorNote = AuthorNoteEntity(
+            id = 1, characterId = 1,
+            content = "Remember: stay in character",
+            depth = 2
+        )
+        val history = listOf(
+            makeMessage(role = "user", content = "msg1"),
+            makeMessage(role = "assistant", content = "reply1"),
+            makeMessage(role = "user", content = "msg2")
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "current",
+            chatHistory = history,
+            authorNote = authorNote
+        )
+
+        // Author note should be injected at depth 2 from end
+        val noteMsg = messages.find { it.content.contains("Remember: stay in character") }
+        assertTrue(noteMsg != null)
+        assertEquals("system", noteMsg!!.role)
+    }
+
+    @Test
+    fun `build includes preset author note`() {
+        val character = makeCharacter(firstMes = "")
+        val preset = PresetEntity(
+            id = 1, name = "Test Preset",
+            authorNote = "Preset author note content"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            preset = preset
+        )
+
+        val noteMsg = messages.find { it.content.contains("Preset author note content") }
+        assertTrue(noteMsg != null)
+        assertEquals("system", noteMsg!!.role)
+    }
+
+    // ========== 预设合并逻辑测试 ==========
+
+    @Test
+    fun `build uses preset systemPrompt when provided`() {
+        val character = makeCharacter()
+        val preset = PresetEntity(
+            id = 1, name = "Test Preset",
+            systemPrompt = "Custom system prompt from preset"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            preset = preset
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Custom system prompt from preset"))
+    }
+
+    @Test
+    fun `build uses preset postHistoryInstructions over character built-in`() {
+        val character = makeCharacter(
+            firstMes = "",
+            postHistoryInstructions = "Character's instruction"
+        )
+        val preset = PresetEntity(
+            id = 1, name = "Test Preset",
+            postHistoryInstructions = "Preset's instruction"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            preset = preset
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        assertTrue(systemMsgs.any { it.content.contains("Preset's instruction") })
+        assertFalse(systemMsgs.any { it.content.contains("Character's instruction") })
+    }
+
+    // ========== 搜索结果注入测试 ==========
+
+    @Test
+    fun `build includes search results`() {
+        val character = makeCharacter(firstMes = "")
+        val searchResults = listOf(
+            WebSearchResult(
+                title = "Dragon Facts",
+                snippet = "Dragons breathe fire",
+                url = "https://example.com/dragons"
+            )
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Tell me about dragons",
+            chatHistory = emptyList(),
+            searchResults = searchResults
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        val searchMsg = systemMsgs.find { it.content.contains("Web Search Results") }
+        assertTrue(searchMsg != null)
+        assertTrue(searchMsg!!.content.contains("Dragon Facts"))
+        assertTrue(searchMsg.content.contains("Dragons breathe fire"))
+        assertTrue(searchMsg.content.contains("https://example.com/dragons"))
+    }
+
+    // ========== 摘要注入测试 ==========
+
+    @Test
+    fun `build includes summary`() {
+        val character = makeCharacter(firstMes = "")
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Continue",
+            chatHistory = emptyList(),
+            summary = "Previously: user asked about dragons"
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        val summaryMsg = systemMsgs.find { it.content.contains("对话摘要") }
+        assertTrue(summaryMsg != null)
+        assertTrue(summaryMsg!!.content.contains("Previously: user asked about dragons"))
+    }
+
+    // ========== 用户人格测试 ==========
+
+    @Test
+    fun `build includes persona biography in dynamic context`() {
+        val character = makeCharacter(firstMes = "")
+        val persona = PersonaEntity(
+            id = 1, name = "Bob",
+            biography = "A software engineer who loves gaming"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            persona = persona
+        )
+
+        val systemMsgs = messages.filter { it.role == "system" }
+        val dynamicMsg = systemMsgs.last()
+        assertTrue(dynamicMsg.content.contains("[User Persona: Bob]"))
+        assertTrue(dynamicMsg.content.contains("A software engineer who loves gaming"))
+    }
+
+    @Test
+    fun `build uses persona name as effectiveUserName`() {
+        val character = makeCharacter(
+            description = "{{user}} is my friend",
+            firstMes = ""
+        )
+        val persona = PersonaEntity(
+            id = 1, name = "Bob",
+            biography = "A gamer"
+        )
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            persona = persona
+        )
+
+        val systemMsg = messages.first { it.role == "system" }
+        assertTrue(systemMsg.content.contains("Bob is my friend"))
+    }
+
+    // ========== 图片 URL 测试 ==========
+
+    @Test
+    fun `build includes imageUrls in user message`() {
+        val character = makeCharacter(firstMes = "")
+        val imageUrls = listOf("https://example.com/image1.jpg", "https://example.com/image2.png")
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "Look at these",
+            chatHistory = emptyList(),
+            imageUrls = imageUrls
+        )
+
+        val userMsg = messages.last()
+        assertEquals("user", userMsg.role)
+        assertEquals("Look at these", userMsg.content)
+        assertEquals(imageUrls, userMsg.imageUrls)
     }
 }

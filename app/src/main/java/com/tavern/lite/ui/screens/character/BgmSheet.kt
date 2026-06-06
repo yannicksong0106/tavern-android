@@ -23,7 +23,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +124,7 @@ fun BgmSheet(
                 showAddDialog = false
                 pendingAudioPath = null
             },
-            onConfirm = { name, loop, volume ->
+            onConfirm = { name, loop, volume, emotion ->
                 val path = pendingAudioPath
                 if (path != null) {
                     scope.launch {
@@ -130,7 +133,8 @@ fun BgmSheet(
                             name = name,
                             audioPath = path,
                             loop = loop,
-                            volume = volume
+                            volume = volume,
+                            emotion = emotion
                         )
                     }
                 }
@@ -251,6 +255,7 @@ private fun BgmItem(
                 )
                 Text(
                     text = buildString {
+                        if (bgm.emotion.isNotBlank()) append("${bgm.emotion} · ")
                         if (bgm.loop) append("Loop")
                         else append("Once")
                         append(" · Vol: ${(bgm.volume * 100).toInt()}%")
@@ -271,14 +276,31 @@ private fun BgmItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddBgmDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, loop: Boolean, volume: Float) -> Unit
+    onConfirm: (name: String, loop: Boolean, volume: Float, emotion: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var loop by remember { mutableStateOf(true) }
     var volume by remember { mutableFloatStateOf(0.5f) }
+    var emotion by remember { mutableStateOf("") }
+    var emotionExpanded by remember { mutableStateOf(false) }
+
+    val emotionOptions = listOf(
+        "" to "无 (默认)",
+        "happy" to "开心",
+        "sad" to "悲伤",
+        "angry" to "愤怒",
+        "surprised" to "惊讶",
+        "scared" to "恐惧",
+        "disgusted" to "厌恶",
+        "confused" to "困惑",
+        "embarrassed" to "害羞",
+        "love" to "爱慕",
+        "neutral" to "平静"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -293,6 +315,39 @@ private fun AddBgmDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 情感选择
+                ExposedDropdownMenuBox(
+                    expanded = emotionExpanded,
+                    onExpandedChange = { emotionExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = emotionOptions.find { it.first == emotion }?.second ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("关联情感") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = emotionExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = emotionExpanded,
+                        onDismissRequest = { emotionExpanded = false }
+                    ) {
+                        emotionOptions.forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    emotion = value
+                                    emotionExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -330,7 +385,7 @@ private fun AddBgmDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name, loop, volume) }
+                onClick = { onConfirm(name, loop, volume, emotion) }
             ) {
                 Text(stringResource(R.string.save))
             }

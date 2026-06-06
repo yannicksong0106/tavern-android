@@ -1,5 +1,6 @@
 package com.tavern.lite.network
 
+import android.util.Log
 import com.github.jknack.handlebars.Context
 import com.github.jknack.handlebars.Handlebars
 import com.github.jknack.handlebars.Template
@@ -13,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Templates are compiled and cached for performance.
  */
 object TemplateEngine {
+
+    private const val TAG = "TemplateEngine"
 
     private val handlebars = Handlebars()
 
@@ -38,6 +41,7 @@ object TemplateEngine {
             compiled.apply(context)
         } catch (e: Exception) {
             // Fallback: simple replacement if Handlebars parsing fails
+            Log.w(TAG, "Handlebars render failed, using simple replacement", e)
             fallbackReplace(template, variables)
         }
     }

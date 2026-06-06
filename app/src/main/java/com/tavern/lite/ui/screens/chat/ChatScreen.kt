@@ -7,15 +7,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.InfiniteRepeatableSpec
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,28 +26,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -62,10 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -73,22 +56,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.tavern.lite.R
 import com.tavern.lite.ui.components.BackgroundPickerSheet
-import com.tavern.lite.ui.components.CharacterAvatar
 import com.tavern.lite.ui.components.LoadingDots
-import com.tavern.lite.ui.components.presetBackgrounds
 import com.tavern.lite.ui.screens.chat.components.BookmarkSheet
 import com.tavern.lite.ui.screens.chat.components.SummarySheet
 import com.tavern.lite.ui.screens.chat.components.BranchNavigationBar
 import com.tavern.lite.ui.screens.chat.components.ChattinessSheet
+import com.tavern.lite.ui.screens.chat.components.ChatBackground
+import com.tavern.lite.ui.screens.chat.components.ChatSearchBar
+import com.tavern.lite.ui.screens.chat.components.ChatTopBar
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
-import androidx.compose.material.icons.filled.PushPin
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -104,30 +85,31 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val character by viewModel.character.collectAsStateWithLifecycle()
-    val messages by viewModel.messages.collectAsStateWithLifecycle()
-    val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
-    val branchEntities by viewModel.branchEntities.collectAsStateWithLifecycle()
-    val currentBranchId by viewModel.currentBranchId.collectAsStateWithLifecycle()
-    val showBookmarksOnly by viewModel.showBookmarksOnly.collectAsStateWithLifecycle()
+    val messages by viewModel.displayMessages.collectAsStateWithLifecycle()
+    val allMessagesLoaded by viewModel.allMessagesLoaded.collectAsStateWithLifecycle()
+    val isGenerating by viewModel.streamingManager.isGenerating.collectAsStateWithLifecycle()
+    val branchEntities by viewModel.branchManager.branchEntities.collectAsStateWithLifecycle()
+    val currentBranchId by viewModel.branchManager.currentBranchId.collectAsStateWithLifecycle()
+    val showBookmarksOnly by viewModel.branchManager.showBookmarksOnly.collectAsStateWithLifecycle()
     val backgroundPath by viewModel.backgroundPath.collectAsStateWithLifecycle()
     val bubbleStyle by viewModel.bubbleStyle.collectAsStateWithLifecycle()
     val isGroupChat by viewModel.isGroupChat.collectAsStateWithLifecycle()
     val groupCharacters by viewModel.groupCharacters.collectAsStateWithLifecycle()
     val respondingCharacter by viewModel.respondingCharacter.collectAsStateWithLifecycle()
-    val characterChattiness by viewModel.characterChattiness.collectAsStateWithLifecycle()
-    val groupChattiness by viewModel.groupChattiness.collectAsStateWithLifecycle()
-    val groupCharacterChattiness by viewModel.groupCharacterChattiness.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
-    val currentSearchIndex by viewModel.currentSearchIndex.collectAsStateWithLifecycle()
-    val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
-    val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
+    val characterChattiness by viewModel.groupChatSettingsManager.characterChattiness.collectAsStateWithLifecycle()
+    val groupChattiness by viewModel.groupChatSettingsManager.groupChattiness.collectAsStateWithLifecycle()
+    val groupCharacterChattiness by viewModel.groupChatSettingsManager.groupCharacterChattiness.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchManager.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchManager.searchResults.collectAsStateWithLifecycle()
+    val currentSearchIndex by viewModel.searchManager.currentSearchIndex.collectAsStateWithLifecycle()
+    val isSpeaking by viewModel.speechManager.isSpeaking.collectAsStateWithLifecycle()
+    val speakingMessageId by viewModel.speechManager.speakingMessageId.collectAsStateWithLifecycle()
     val estimatedContextTokens by viewModel.estimatedContextTokens.collectAsStateWithLifecycle()
-    val isListening by viewModel.isListening.collectAsStateWithLifecycle()
+    val isListening by viewModel.speechManager.isListening.collectAsStateWithLifecycle()
     val summaries by viewModel.summaries.collectAsStateWithLifecycle()
     val isGeneratingSummary by viewModel.isGeneratingSummary.collectAsStateWithLifecycle()
-    val schedulingStrategy by viewModel.schedulingStrategy.collectAsStateWithLifecycle()
-    val messageIntervalMs by viewModel.messageIntervalMs.collectAsStateWithLifecycle()
+    val schedulingStrategy by viewModel.groupChatSettingsManager.schedulingStrategy.collectAsStateWithLifecycle()
+    val messageIntervalMs by viewModel.groupChatSettingsManager.messageIntervalMs.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -166,17 +148,20 @@ fun ChatScreen(
             groupCharacterChattiness = groupCharacterChattiness,
             schedulingStrategy = schedulingStrategy,
             messageIntervalMs = messageIntervalMs,
-            onCharacterChattinessChange = { viewModel.updateCharacterChattiness(it) },
-            onGroupChattinessChange = { viewModel.updateGroupChattiness(it) },
-            onGroupCharacterChattinessChange = { id, value -> viewModel.updateGroupCharacterChattiness(id, value) },
-            onSchedulingStrategyChange = { viewModel.updateSchedulingStrategy(it) },
-            onMessageIntervalChange = { viewModel.updateMessageInterval(it) },
+            onCharacterChattinessChange = { viewModel.groupChatSettingsManager.updateCharacterChattiness(it) },
+            onGroupChattinessChange = { viewModel.groupChatSettingsManager.updateGroupChattiness(it) },
+            onGroupCharacterChattinessChange = { id, value -> viewModel.groupChatSettingsManager.updateGroupCharacterChattiness(id, value) },
+            onSchedulingStrategyChange = { viewModel.groupChatSettingsManager.updateSchedulingStrategy(it) },
+            onMessageIntervalChange = { viewModel.groupChatSettingsManager.updateMessageInterval(it) },
             onDismiss = { showChattinessSheet = false }
         )
     }
 
     LaunchedEffect(Unit) {
-        viewModel.loadBranches()
+        viewModel.branchManager.loadBranches()
+        viewModel.toastMessage.collect { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
     }
 
     val listState = rememberLazyListState()
@@ -185,7 +170,7 @@ fun ChatScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            viewModel.startVoiceInput { result ->
+            viewModel.speechManager.startVoiceInput { result ->
                 inputText = if (inputText.isBlank()) result else "$inputText $result"
             }
         } else {
@@ -215,7 +200,37 @@ fun ChatScreen(
     val pinnedMessages by viewModel.pinnedMessages.collectAsStateWithLifecycle()
     // O(1) 查找集合，避免在 LazyColumn items 中重复 O(n) 扫描
     val pinnedMessageIds by remember { derivedStateOf { pinnedMessages.map { it.id }.toSet() } }
-    val searchResultSet by remember { derivedStateOf { searchResults.toSet() } }
+    // 全量消息（用于引用跳转、搜索索引映射等需要完整列表的场景）
+    val allMessages by viewModel.messages.collectAsStateWithLifecycle()
+    // 预计算消息 ID → 索引映射（基于全量消息，用于引用跳转）
+    val messageIdToIndex by remember(allMessages) {
+        derivedStateOf { allMessages.mapIndexed { i, m -> m.id to i }.toMap() }
+    }
+    // displayMessages 的 ID → 索引映射（用于搜索高亮和分页跳转）
+    val displayIdToIndex by remember(messages) {
+        derivedStateOf { messages.mapIndexed { i, m -> m.id to i }.toMap() }
+    }
+    // 全量消息 ID 集合，用于快速判断搜索结果是否在当前显示范围内
+    val displayMessageIds by remember(messages) {
+        derivedStateOf { messages.map { it.id }.toSet() }
+    }
+    // 搜索结果映射到 displayMessages 索引
+    val searchResultSet by remember(searchResults, displayIdToIndex, allMessages) {
+        derivedStateOf {
+            searchResults.mapNotNull { fullIdx ->
+                if (fullIdx < allMessages.size) displayIdToIndex[allMessages[fullIdx].id] else null
+            }.toSet()
+        }
+    }
+    val currentSearchDisplayIndex by remember(searchResults, currentSearchIndex, displayIdToIndex, allMessages) {
+        derivedStateOf {
+            if (currentSearchIndex < 0 || currentSearchIndex >= searchResults.size) -1
+            else {
+                val fullIdx = searchResults[currentSearchIndex]
+                if (fullIdx < allMessages.size) displayIdToIndex[allMessages[fullIdx].id] ?: -1 else -1
+            }
+        }
+    }
     // 群聊角色 O(1) 查找
     val groupCharacterMap by remember(groupCharacters) {
         derivedStateOf { groupCharacters.associateBy { it.id } }
@@ -228,9 +243,11 @@ fun ChatScreen(
             pinnedMessages = pinnedMessages,
             onMessageClick = { messageId ->
                 showBookmarksSheet = false
-                val index = messages.indexOfFirst { it.id == messageId }
-                if (index >= 0) {
+                val index = displayIdToIndex[messageId]
+                if (index != null) {
                     scope.launch { listState.animateScrollToItem(index) }
+                } else {
+                    viewModel.loadMoreMessages()
                 }
             },
             onDismiss = { showBookmarksSheet = false }
@@ -247,26 +264,19 @@ fun ChatScreen(
         )
     }
 
-    // 预计算消息 ID → 索引映射，避免每次 O(n) 查找
-    val messageIdToIndex by remember(messages) {
-        derivedStateOf { messages.mapIndexed { i, m -> m.id to i }.toMap() }
-    }
-    // 引用消息点击跳转
-    val scrollToMessage: (Long) -> Unit = remember(messageIdToIndex) {
+    // 引用消息点击跳转（基于 displayMessages 索引）
+    val scrollToMessage: (Long) -> Unit = remember(displayIdToIndex) {
         { messageId: Long ->
-            val index = messageIdToIndex[messageId]
+            val index = displayIdToIndex[messageId]
             if (index != null) {
                 scope.launch { listState.animateScrollToItem(index) }
+            } else {
+                // 消息不在当前显示范围，加载更多
+                viewModel.loadMoreMessages()
             }
         }
     }
     val markwon = viewModel.markwon
-
-    LaunchedEffect(Unit) {
-        viewModel.toastMessage.collect { msg ->
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-        }
-    }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -278,9 +288,10 @@ fun ChatScreen(
             }
         }
     }
-    // 自动滚动到底部：只在有新消息且已在底部时触发，用 snapshotFlow 避免多余重组
-    LaunchedEffect(messages.size, isAtBottom) {
-        if (messages.isNotEmpty() && isAtBottom) {
+    // 自动滚动到底部：使用 totalMessageCount 检测新消息（不受分页影响）
+    val totalCount = remember { derivedStateOf { viewModel.totalMessageCount } }
+    LaunchedEffect(totalCount.value, isAtBottom) {
+        if (totalCount.value > 0 && isAtBottom && messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
@@ -292,17 +303,26 @@ fun ChatScreen(
         }
     }
 
-    // 搜索结果滚动
+    // 搜索结果滚动：映射全量索引到 displayMessages 索引
     LaunchedEffect(currentSearchIndex) {
         if (currentSearchIndex >= 0 && searchResults.isNotEmpty()) {
-            val messageIndex = searchResults[currentSearchIndex]
-            listState.animateScrollToItem(messageIndex)
+            val fullIndex = searchResults[currentSearchIndex]
+            if (fullIndex < allMessages.size) {
+                val messageId = allMessages[fullIndex].id
+                val displayIndex = displayIdToIndex[messageId]
+                if (displayIndex != null) {
+                    listState.animateScrollToItem(displayIndex)
+                } else {
+                    // 消息不在当前显示范围，加载更多直到包含它
+                    viewModel.loadMoreMessages()
+                }
+            }
         }
     }
 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(PROACTIVE_TRIGGER_DELAY_MS)
-        viewModel.triggerProactiveIfNeeded()
+        viewModel.streamingManager.triggerProactiveIfNeeded()
     }
 
     var editingMessage by remember { mutableStateOf<com.tavern.lite.data.db.entity.MessageEntity?>(null) }
@@ -331,96 +351,20 @@ fun ChatScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isGroupChat) {
-                            Box(modifier = Modifier.size(36.dp)) {
-                                val chars = groupCharacters.take(2)
-                                chars.forEachIndexed { index, char ->
-                                    CharacterAvatar(
-                                        name = char.name,
-                                        avatarPath = char.avatarPath,
-                                        size = 24.dp,
-                                        modifier = Modifier
-                                            .align(if (index == 0) Alignment.TopStart else Alignment.BottomEnd)
-                                            .padding(if (index == 0) 0.dp else 4.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            CharacterAvatar(
-                                name = character?.name ?: "?",
-                                avatarPath = character?.avatarPath,
-                                size = 36.dp
-                            )
-                        }
-                        Column(modifier = Modifier.padding(start = 12.dp)) {
-                            Text(
-                                text = if (isGroupChat) {
-                                    groupCharacters.joinToString(", ") { it.name }
-                                } else {
-                                    character?.name ?: stringResource(R.string.loading)
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1
-                            )
-                            if (isGenerating) {
-                                val infiniteTransition = rememberInfiniteTransition(label = "topBar")
-                                val alpha by infiniteTransition.animateFloat(
-                                    initialValue = 1f,
-                                    targetValue = 0.4f,
-                                    animationSpec = InfiniteRepeatableSpec(
-                                        animation = androidx.compose.animation.core.tween(800),
-                                        repeatMode = RepeatMode.Reverse
-                                    ),
-                                    label = "typingAlpha"
-                                )
-                                val typingName = if (isGroupChat) {
-                                    respondingCharacter?.name ?: stringResource(R.string.typing)
-                                } else {
-                                    stringResource(R.string.typing)
-                                }
-                                Text(
-                                    text = typingName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSearch = !showSearch }) {
-                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
-                    }
-                    if (pinnedMessages.isNotEmpty()) {
-                        IconButton(onClick = { showBookmarksSheet = true }) {
-                            Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.bookmarks))
-                        }
-                    }
-                    IconButton(onClick = { showSummarySheet = true }) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.summaries))
-                    }
-                    IconButton(onClick = { showChattinessSheet = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.chat_settings))
-                    }
-                    IconButton(onClick = { showBackgroundPicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.change_background))
-                    }
-                    IconButton(onClick = onVnMode) {
-                        Icon(Icons.Default.AutoStories, contentDescription = stringResource(R.string.vn_enter))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            ChatTopBar(
+                character = character,
+                isGroupChat = isGroupChat,
+                groupCharacters = groupCharacters,
+                isGenerating = isGenerating,
+                respondingCharacter = respondingCharacter,
+                pinnedMessages = pinnedMessages,
+                onBack = onBack,
+                onVnMode = onVnMode,
+                onToggleSearch = { showSearch = !showSearch },
+                onShowBookmarksSheet = { showBookmarksSheet = true },
+                onShowSummarySheet = { showSummarySheet = true },
+                onShowChattinessSheet = { showChattinessSheet = true },
+                onShowBackgroundPicker = { showBackgroundPicker = true }
             )
         }
     ) { padding ->
@@ -429,86 +373,24 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val bgPath = backgroundPath
-            if (bgPath != null) {
-                if (bgPath.startsWith("preset:")) {
-                    val presetId = bgPath.removePrefix("preset:")
-                    val preset = presetBackgrounds.find { it.id == presetId }
-                    if (preset != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Brush.verticalGradient(preset.colors))
-                        )
-                    }
-                } else {
-                    val file = File(bgPath)
-                    val fileExists = remember(bgPath) { file.exists() }
-                    if (fileExists) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(file)
-                                .memoryCacheKey(bgPath)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        LaunchedEffect(bgPath) {
-                            viewModel.clearChatBackground()
-                        }
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.35f))
-                )
-            }
+            ChatBackground(
+                backgroundPath = backgroundPath,
+                onBackgroundMissing = { viewModel.clearChatBackground() }
+            )
 
-            // 搜索栏
-            AnimatedVisibility(
+            ChatSearchBar(
                 visible = showSearch,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.searchMessages(it) },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text(stringResource(R.string.search_messages)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    if (searchResults.isNotEmpty()) {
-                        Text(
-                            text = "${currentSearchIndex + 1}/${searchResults.size}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        IconButton(onClick = { viewModel.previousSearchResult() }) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.previous))
-                        }
-                        IconButton(onClick = { viewModel.nextSearchResult() }) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.next))
-                        }
-                    }
-                    IconButton(onClick = {
-                        showSearch = false
-                        viewModel.clearSearch()
-                    }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
-                    }
+                searchQuery = searchQuery,
+                searchResults = searchResults,
+                currentSearchIndex = currentSearchIndex,
+                onQueryChange = { viewModel.searchManager.searchMessages(it) },
+                onPreviousResult = { viewModel.searchManager.previousSearchResult() },
+                onNextResult = { viewModel.searchManager.nextSearchResult() },
+                onClose = {
+                    showSearch = false
+                    viewModel.searchManager.clearSearch()
                 }
-            }
+            )
 
             Column(modifier = Modifier.fillMaxSize().imePadding()) {
                 val haptic = LocalHapticFeedback.current
@@ -518,11 +400,11 @@ fun ChatScreen(
                         totalBranches = branchEntities.size,
                         onPrevious = {
                             val idx = branchEntities.indexOfFirst { it.id == currentBranchId }
-                            if (idx > 0) viewModel.switchBranch(branchEntities[idx - 1].id)
+                            if (idx > 0) viewModel.branchManager.switchBranch(branchEntities[idx - 1].id)
                         },
                         onNext = {
                             val idx = branchEntities.indexOfFirst { it.id == currentBranchId }
-                            if (idx < branchEntities.size - 1) viewModel.switchBranch(branchEntities[idx + 1].id)
+                            if (idx < branchEntities.size - 1) viewModel.branchManager.switchBranch(branchEntities[idx + 1].id)
                         }
                     )
                 }
@@ -533,6 +415,27 @@ fun ChatScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        if (!allMessagesLoaded) {
+                            item(key = "load_more") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.load_more_messages),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .clip(MaterialTheme.shapes.small)
+                                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                                            .clickable { viewModel.loadMoreMessages() }
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
                         items(
                             messages.size,
                             key = { messages[it].id },
@@ -585,7 +488,7 @@ fun ChatScreen(
                                     avatarPath = msgAvatarPath,
                                     showAvatar = isGroupChat && message.role == "assistant" && !isSameRoleAsPrev,
                                     isSearchResult = index in searchResultSet,
-                                    isCurrentSearchResult = currentSearchIndex >= 0 && searchResults.getOrNull(currentSearchIndex) == index,
+                                    isCurrentSearchResult = currentSearchDisplayIndex == index,
                                     isSpeaking = speakingMessageId == message.id,
                                     showActionBar = selectedMessageId == message.id,
                                     isPinned = message.id in pinnedMessageIds,
@@ -593,21 +496,21 @@ fun ChatScreen(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         selectedMessageId = if (selectedMessageId == message.id) null else message.id
                                     },
-                                    onRegenerate = { viewModel.regenerate(message.id) },
+                                    onRegenerate = { viewModel.streamingManager.regenerate(message.id) },
                                     onEdit = { editingMessage = message },
                                     onDelete = { deletingMessageId = message.id },
                                     onSwipeLeft = { viewModel.swipeLeft(message.id) },
                                     onSwipeRight = { viewModel.swipeRight(message.id) },
-                                    onReply = { viewModel.regenerate(message.id) },
-                                    onSpeak = { viewModel.speakMessage(message) },
-                                    onStopSpeak = { viewModel.stopSpeaking() },
+                                    onReply = { viewModel.streamingManager.regenerate(message.id) },
+                                    onSpeak = { viewModel.speechManager.speakMessage(message) },
+                                    onStopSpeak = { viewModel.speechManager.stopSpeaking() },
                                     onPinToggle = { viewModel.togglePinMessage(message.id) },
                                     onCopy = {
                                         viewModel.copyMessage(context, message.id)
                                         Toast.makeText(context, context.getString(R.string.copy_message_toast), Toast.LENGTH_SHORT).show()
                                     },
-                                    onResend = { viewModel.resendUserMessage(message.id) },
-                                    onBranch = { viewModel.createBranchFromMessage(message.id, "分支 ${message.id}") },
+                                    onResend = { viewModel.streamingManager.resendUserMessage(message.id) },
+                                    onBranch = { viewModel.branchManager.createBranchFromMessage(message.id, "分支 ${message.id}") },
                                     quotedMessage = quotedMsg,
                                     quotedMessageName = quotedName,
                                     onQuoteClick = scrollToMessage
@@ -646,6 +549,8 @@ fun ChatScreen(
                             onClick = {
                                 scope.launch {
                                     if (messages.isNotEmpty()) {
+                                        // 先加载全部消息再滚动到底部
+                                        if (!allMessagesLoaded) viewModel.loadMoreMessages()
                                         listState.animateScrollToItem(messages.size - 1)
                                     }
                                 }
@@ -678,17 +583,17 @@ fun ChatScreen(
                             if (inputText.trimStart().startsWith("/imagine ")) {
                                 val prompt = inputText.trimStart().removePrefix("/imagine ").trim()
                                 if (prompt.isNotBlank()) {
-                                    viewModel.generateImage(prompt)
+                                    viewModel.streamingManager.generateImage(prompt)
                                 }
                             } else {
-                                viewModel.sendMessage(inputText, selectedImagePaths)
+                                viewModel.streamingManager.sendMessage(inputText, selectedImagePaths)
                             }
                             inputText = ""
                             selectedImagePaths = emptyList()
                         }
                     },
-                    onStop = { viewModel.stopGeneration() },
-                    onContinue = { viewModel.continueGeneration() },
+                    onStop = { viewModel.streamingManager.stopGeneration() },
+                    onContinue = { viewModel.streamingManager.continueGeneration() },
                     isGenerating = isGenerating,
                     showContinue = messages.lastOrNull()?.role == "assistant" && !isGenerating,
                     isGroupChat = isGroupChat,
@@ -698,7 +603,7 @@ fun ChatScreen(
                     isListening = isListening,
                     onVoiceInput = {
                         if (isListening) {
-                            viewModel.stopVoiceInput()
+                            viewModel.speechManager.stopVoiceInput()
                         } else {
                             voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }

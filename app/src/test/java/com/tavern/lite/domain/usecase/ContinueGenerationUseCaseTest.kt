@@ -13,6 +13,7 @@ import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
 import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.network.ChatStreamChunk
 import com.tavern.lite.network.PromptBuilder
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
@@ -71,10 +72,8 @@ class ContinueGenerationUseCaseTest {
 
         // Helper setup
         every { helper.chatApiService } returns chatApiService
-        every { helper.attachReasoningContent(any()) } returnsArgument 0
+        every { helper.attachReasoningContent(any(), any()) } returnsArgument 0
         coEvery { helper.personasafe(any()) } returns null
-        every { chatApiService.lastReasoningContent } returns null
-        every { helper.lastAssistantReasoningContent = any() } returns Unit
 
         // Default DAO mocks
         coEvery { chatRepository.getRecentMessages(any(), any()) } returns listOf(
@@ -107,7 +106,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration returns result on successful streaming`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("World")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "World"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -120,7 +119,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration appends content to last assistant message`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf(" more text")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = " more text"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -131,7 +130,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration returns null for empty response`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = ""))
 
         val result = useCase.continueGeneration(100, 42, testCharacter, 2, "Hi!", testConfig)
 
@@ -141,7 +140,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration returns null for blank response`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("   ")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "   "))
 
         val result = useCase.continueGeneration(100, 42, testCharacter, 2, "Hi!", testConfig)
 
@@ -150,7 +149,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration handles multi-chunk streaming`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Hello", " ", "World")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Hello"), ChatStreamChunk(content = " "), ChatStreamChunk(content = "World"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -162,7 +161,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration applies scripts to response`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("raw response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "raw response"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
         coEvery { scriptRepository.applyScripts(any(), any(), any()) } returns "processed response"
@@ -174,7 +173,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration triggers memory extraction`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "response"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -186,7 +185,7 @@ class ContinueGenerationUseCaseTest {
     @Test
     fun `continueGeneration loads world book entries when character has worldBookId`() = runTest {
         val charWithWorldBook = testCharacter.copy(worldBookId = 10)
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "response"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -199,7 +198,7 @@ class ContinueGenerationUseCaseTest {
     fun `continueGeneration loads memory atoms`() = runTest {
         val atoms = listOf(MemoryAtomEntity(id = 1, characterId = 42, content = "fact", category = "personality", importance = 8))
         coEvery { memoryRepository.getRelevantAtoms(42, 10) } returns atoms
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "response"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -212,7 +211,7 @@ class ContinueGenerationUseCaseTest {
     fun `continueGeneration loads memories when no atoms available`() = runTest {
         coEvery { memoryRepository.getRelevantAtoms(any(), any()) } returns emptyList()
         coEvery { memoryRepository.getRelevantMemories(any(), any()) } returns listOf(mockk())
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "response"))
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -223,7 +222,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration handles network error with error message`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } throws java.net.UnknownHostException("unreachable")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } throws java.net.UnknownHostException("unreachable")
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
 
         val result = useCase.continueGeneration(100, 42, testCharacter, 2, "Hi!", testConfig)
@@ -234,7 +233,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration handles timeout error`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } throws java.net.SocketTimeoutException("timeout")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } throws java.net.SocketTimeoutException("timeout")
         coEvery { chatRepository.appendToMessage(any(), any()) } returns Unit
 
         val result = useCase.continueGeneration(100, 42, testCharacter, 2, "Hi!", testConfig)
@@ -245,7 +244,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `continueGeneration rethrows CancellationException`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } throws CancellationException()
+        every { chatApiService.streamChatWithMetadata(any(), any()) } throws CancellationException()
 
         var thrown = false
         try {
@@ -263,7 +262,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate returns result on successful streaming`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("New reply")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "New reply"))
         coEvery { chatRepository.addSwipe(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -276,7 +275,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate adds swipe to message`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Alternative reply")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Alternative reply"))
         coEvery { chatRepository.addSwipe(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -288,7 +287,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate returns null for empty response`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = ""))
 
         val result = useCase.regenerate(100, 42, testCharacter, 5, "Hello", testConfig)
 
@@ -298,7 +297,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate applies scripts to response`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("raw")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "raw"))
         coEvery { chatRepository.addSwipe(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
         coEvery { scriptRepository.applyScripts(any(), any(), any()) } returns "processed"
@@ -310,7 +309,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate handles network error with swipe error message`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } throws java.net.UnknownHostException("fail")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } throws java.net.UnknownHostException("fail")
         coEvery { chatRepository.addSwipe(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 
@@ -322,7 +321,7 @@ class ContinueGenerationUseCaseTest {
 
     @Test
     fun `regenerate rethrows CancellationException`() = runTest {
-        every { chatApiService.streamChat(any(), any()) } throws CancellationException()
+        every { chatApiService.streamChatWithMetadata(any(), any()) } throws CancellationException()
 
         var thrown = false
         try {
@@ -337,7 +336,7 @@ class ContinueGenerationUseCaseTest {
     @Test
     fun `regenerate loads world book entries from user message`() = runTest {
         val charWithWorldBook = testCharacter.copy(worldBookId = 10)
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("response")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "response"))
         coEvery { chatRepository.addSwipe(any(), any()) } returns Unit
         coEvery { chatRepository.updateMessageContent(any(), any()) } returns Unit
 

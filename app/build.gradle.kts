@@ -146,6 +146,8 @@ dependencies {
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.mockk)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.robolectric)
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.json:json:20231013")
 
     // Android Instrumented Test

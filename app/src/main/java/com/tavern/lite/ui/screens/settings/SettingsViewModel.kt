@@ -147,6 +147,11 @@ class SettingsViewModel @Inject constructor(
         saveConfig(current.copy(presencePenalty = value))
     }
 
+    fun updateReadTimeout(seconds: Long) {
+        val current = config.value
+        saveConfig(current.copy(readTimeoutSeconds = seconds))
+    }
+
     fun updateUserName(name: String) {
         val current = config.value
         saveConfig(current.copy(userName = name))

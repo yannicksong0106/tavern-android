@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
@@ -31,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -313,6 +316,10 @@ private fun PresetEditDialog(
     var authorNote by remember { mutableStateOf(preset?.authorNote ?: "") }
     var scope by remember { mutableStateOf(preset?.scope ?: "global") }
     var scopeExpanded by remember { mutableStateOf(false) }
+    var previewExpanded by remember { mutableStateOf(false) }
+    val preview = remember(systemPrompt, postHistoryInstructions, authorNote) {
+        buildPresetTemplatePreview(systemPrompt, postHistoryInstructions, authorNote)
+    }
 
     val scopeOptions = listOf("global", "character", "chat")
     val scopeLabels = mapOf(
@@ -395,6 +402,12 @@ private fun PresetEditDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                PresetTemplatePreviewCard(
+                    preview = preview,
+                    expanded = previewExpanded,
+                    onToggleExpanded = { previewExpanded = !previewExpanded }
+                )
             }
         },
         confirmButton = {
@@ -411,4 +424,89 @@ private fun PresetEditDialog(
             }
         }
     )
+}
+
+@Composable
+private fun PresetTemplatePreviewCard(
+    preview: PresetTemplatePreview,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggleExpanded)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.preset_template_preview),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = stringResource(R.string.preset_template_preview_sample),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = stringResource(
+                    if (expanded) R.string.collapse else R.string.expand
+                )
+            )
+        }
+
+        if (expanded) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            ) {
+                if (preview.hasAnyContent) {
+                    PreviewSection(
+                        title = stringResource(R.string.system_prompt_optional),
+                        content = preview.systemPrompt
+                    )
+                    PreviewSection(
+                        title = stringResource(R.string.post_history_instructions),
+                        content = preview.postHistoryInstructions
+                    )
+                    PreviewSection(
+                        title = stringResource(R.string.author_note),
+                        content = preview.authorNote
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.preset_template_preview_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewSection(
+    title: String,
+    content: String,
+) {
+    if (content.isBlank()) return
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = content,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }

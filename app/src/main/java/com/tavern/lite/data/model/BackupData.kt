@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data class BackupData(
     val version: Int = 1,
     val timestamp: Long = System.currentTimeMillis(),
-    val appVersion: String = "1.2.0",
+    val appVersion: String = "1.2.8",
     val characters: List<CharacterBackup> = emptyList(),
     val chats: List<ChatBackup> = emptyList(),
     val messages: List<MessageBackup> = emptyList(),
@@ -71,7 +71,8 @@ data class MessageBackup(
     val isActive: Boolean = true,
     val createdAt: Long,
     val swipeContent: String = "[]",
-    val swipeIndex: Int = 0
+    val swipeIndex: Int = 0,
+    val imagePaths: String = "[]"
 )
 
 @Serializable
@@ -192,6 +193,7 @@ data class BgmBackup(
     val audioPath: String,
     val loop: Boolean = true,
     val volume: Float = 0.5f,
+    val emotion: String = "",
     val displayOrder: Int = 0,
     val createdAt: Long
 )
@@ -217,5 +219,6 @@ data class RestoreResult(
     val presetsRestored: Int,
     val spritesRestored: Int = 0,
     val bgmsRestored: Int = 0,
-    val authorNotesRestored: Int = 0
+    val authorNotesRestored: Int = 0,
+    val backupAppVersion: String? = null
 )

@@ -4,6 +4,7 @@ import android.util.Log
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.entity.ScriptEntity
 import kotlinx.coroutines.flow.Flow
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,7 +13,7 @@ class ScriptRepository @Inject constructor(
     private val scriptDao: ScriptDao
 ) {
     // Cache compiled regex patterns to avoid recompilation on every call
-    private val regexCache = mutableMapOf<String, Regex>()
+    private val regexCache = ConcurrentHashMap<String, Regex>()
     fun getScriptsForCharacter(characterId: Long): Flow<List<ScriptEntity>> =
         scriptDao.getScriptsForCharacter(characterId)
 

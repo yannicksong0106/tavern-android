@@ -57,7 +57,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         SpriteEntity::class,
         BgmEntity::class,
     ],
-    version = 28,
+    version = 29,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -807,6 +807,13 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO bgms SELECT * FROM _bgms_old")
                 db.execSQL("DROP TABLE _bgms_old")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bgms_character_id ON bgms(character_id)")
+            }
+        }
+
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // bgms 添加 emotion 列：支持按情感选择 BGM
+                db.execSQL("ALTER TABLE bgms ADD COLUMN emotion TEXT NOT NULL DEFAULT ''")
             }
         }
 

@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -42,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,6 +74,7 @@ fun WorldBookEditScreen(
     var showAddEntryDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<WorldBookEntryEntity?>(null) }
     var deletingEntry by remember { mutableStateOf<WorldBookEntryEntity?>(null) }
+    var matchPreviewText by remember { mutableStateOf("") }
 
     // 添加条目对话框
     if (showAddEntryDialog) {
@@ -171,6 +177,18 @@ fun WorldBookEditScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
+            OutlinedTextField(
+                value = matchPreviewText,
+                onValueChange = { matchPreviewText = it },
+                label = { Text(stringResource(R.string.world_book_match_preview)) },
+                placeholder = { Text(stringResource(R.string.world_book_match_preview_hint)) },
+                minLines = 1,
+                maxLines = 3,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+
             if (entries.isEmpty()) {
                 androidx.compose.foundation.layout.Box(
                     contentAlignment = Alignment.Center,
@@ -190,6 +208,7 @@ fun WorldBookEditScreen(
                     items(entries, key = { it.id }) { entry ->
                         EntryCard(
                             entry = entry,
+                            previewText = matchPreviewText,
                             onEdit = { editingEntry = entry },
                             onToggleDisabled = { viewModel.toggleEntryDisabled(entry) },
                             onDelete = { deletingEntry = entry }
@@ -204,16 +223,15 @@ fun WorldBookEditScreen(
 @Composable
 private fun EntryCard(
     entry: WorldBookEntryEntity,
+    previewText: String,
     onEdit: () -> Unit,
     onToggleDisabled: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val keys: List<String> = try {
-        Json.decodeFromString(entry.keys)
-    } catch (e: Exception) {
-        Log.w("WorldBookEditScreen", "Failed to decode entry keys: ${e.message}", e)
-        emptyList()
+    val preview = remember(entry, previewText) {
+        buildKeywordMatchPreview(entry, previewText)
     }
+    val showPreview = previewText.isNotBlank()
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -241,9 +259,23 @@ private fun EntryCard(
 
                 if (entry.constant) {
                     Text(
-                        text = stringResource(R.string.constant_tag),
+                        text = if (showPreview && preview.triggered)
+                            stringResource(R.string.matched_tag)
+                        else
+                            stringResource(R.string.constant_tag),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (showPreview && preview.triggered)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                if (!entry.constant && showPreview && preview.triggered) {
+                    Text(
+                        text = stringResource(R.string.matched_tag),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
@@ -283,12 +315,14 @@ private fun EntryCard(
             }
 
             // 关键词
-            if (keys.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.keywords_label, keys.joinToString(", ")),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 4.dp)
+            if (preview.primaryKeys.isNotEmpty() || preview.secondaryKeys.isNotEmpty()) {
+                KeywordChips(
+                    primaryKeys = preview.primaryKeys,
+                    secondaryKeys = preview.secondaryKeys,
+                    matchedPrimaryKeys = preview.matchedPrimaryKeys,
+                    matchedSecondaryKeys = preview.matchedSecondaryKeys,
+                    showMatches = showPreview,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
 
@@ -305,6 +339,67 @@ private fun EntryCard(
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KeywordChips(
+    primaryKeys: List<String>,
+    secondaryKeys: List<String>,
+    matchedPrimaryKeys: Set<String>,
+    matchedSecondaryKeys: Set<String>,
+    showMatches: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        primaryKeys.forEach { key ->
+            KeywordChip(
+                label = key,
+                selected = showMatches && key in matchedPrimaryKeys
+            )
+        }
+        secondaryKeys.forEach { key ->
+            KeywordChip(
+                label = key,
+                selected = showMatches && key in matchedSecondaryKeys,
+                secondary = true
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeywordChip(
+    label: String,
+    selected: Boolean,
+    secondary: Boolean = false,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = {},
+        enabled = false,
+        label = {
+            Text(
+                text = if (secondary) stringResource(R.string.secondary_keyword_chip, label) else label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            disabledContainerColor = if (selected)
+                MaterialTheme.colorScheme.errorContainer
+            else
+                MaterialTheme.colorScheme.surface,
+            disabledLabelColor = if (selected)
+                MaterialTheme.colorScheme.onErrorContainer
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -337,7 +432,7 @@ private fun EntryEditDialog(
     }
     var constant by remember { mutableStateOf(entry?.constant ?: false) }
     var selective by remember { mutableStateOf(entry?.selective ?: false) }
-    var selectiveLogic by remember { mutableStateOf(entry?.selectiveLogic ?: 0) }
+    var selectiveLogic by remember { mutableIntStateOf(entry?.selectiveLogic ?: 0) }
     var logicExpanded by remember { mutableStateOf(false) }
     val logicOptions = listOf(
         stringResource(R.string.logic_and),
@@ -345,7 +440,7 @@ private fun EntryEditDialog(
         stringResource(R.string.logic_not)
     )
     var depthText by remember { mutableStateOf((entry?.depth ?: 4).toString()) }
-    var position by remember { mutableStateOf(entry?.position ?: 1) }
+    var position by remember { mutableIntStateOf(entry?.position ?: 1) }
     var positionExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(

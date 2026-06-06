@@ -33,6 +33,118 @@ object PromptBuilder {
         staticPromptCache.clear()
     }
 
+    /**
+     * 核心 prompt 构建逻辑，统一处理单聊和群聊的公共部分
+     */
+    private fun buildCore(config: PromptConfig): MutableList<ChatMessage> {
+        val messages = mutableListOf<ChatMessage>()
+        val effectiveUserName = config.effectiveUserName
+        val respondingCharacter = if (config.isGroupChat) config.character else config.character
+
+        // 1. 静态系统 prompt
+        val staticPrompt = if (config.isGroupChat) {
+            buildGroupStaticSystemPrompt(config.characters, respondingCharacter, effectiveUserName)
+        } else {
+            getCachedStaticPrompt(respondingCharacter, effectiveUserName)
+        }
+        val presetSysPrompt = config.preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
+        }
+
+        // 2. 示例对话
+        val exampleMessages = parseExampleDialog(respondingCharacter.mesExample, effectiveUserName, respondingCharacter.name)
+        messages.addAll(exampleMessages)
+
+        // 3. 开场白
+        if (config.isGroupChat) {
+            for (char in config.characters) {
+                if (char.firstMes.isNotBlank()) {
+                    val firstMes = replacePlaceholders(char.firstMes, effectiveUserName, char.name, char, config.persona)
+                    messages.add(ChatMessage(role = "assistant", content = "[${char.name}]: $firstMes"))
+                }
+            }
+        } else if (respondingCharacter.firstMes.isNotBlank()) {
+            val firstMes = replacePlaceholders(respondingCharacter.firstMes, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            messages.add(ChatMessage(role = "assistant", content = firstMes))
+        }
+
+        // 4. 聊天历史
+        config.chatHistory.forEach { msg ->
+            when {
+                config.isGroupChat && msg.role == "assistant" -> {
+                    val charName = msg.characterId?.let { config.characterMap[it]?.name }
+                    val content = if (charName != null) "[$charName]: ${msg.content}" else msg.content
+                    messages.add(ChatMessage(role = "assistant", content = content))
+                }
+                else -> {
+                    val role = when (msg.role) {
+                        "user" -> "user"
+                        "assistant" -> "assistant"
+                        else -> "system"
+                    }
+                    messages.add(ChatMessage(role = role, content = msg.content))
+                }
+            }
+        }
+
+        // 4.5 摘要注入
+        if (!config.summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n${config.summary}"
+            ))
+        }
+
+        // 4.6 搜索结果注入
+        if (config.searchResults.isNotEmpty()) {
+            val searchText = config.searchResults.joinToString("\n\n") { result ->
+                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
+            }
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
+            ))
+        }
+
+        // 5. 动态上下文（世界书 + 记忆 + 人格）
+        val dynamicContext = buildDynamicContext(respondingCharacter, config.worldBookEntries, effectiveUserName, config.memories, config.memoryAtoms, config.persona)
+        if (dynamicContext.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = dynamicContext))
+        }
+
+        // 5.5 Author's Note 注入
+        if (config.authorNote != null && config.authorNote.content.isNotBlank()) {
+            val noteContent = replacePlaceholders(config.authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            val insertIndex = (messages.size - config.authorNote.depth).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+        }
+
+        // 5.5.1 预设 Author Note
+        val presetAuthorNote = config.preset?.authorNote?.takeIf { it.isNotBlank() }
+        if (presetAuthorNote != null) {
+            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            val insertIndex = (messages.size - 1).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+        }
+
+        // 5.6 历史后指令（仅单聊）
+        if (!config.isGroupChat) {
+            val postHistory = config.preset?.postHistoryInstructions?.takeIf { it.isNotBlank() }
+                ?: respondingCharacter.postHistoryInstructions
+            if (!postHistory.isNullOrBlank()) {
+                messages.add(ChatMessage(
+                    role = "system",
+                    content = replacePlaceholders(postHistory, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+                ))
+            }
+        }
+
+        return messages
+    }
+
     fun build(
         character: CharacterEntity,
         userMessage: String,
@@ -48,94 +160,24 @@ object PromptBuilder {
         summary: String? = null,
         searchResults: List<WebSearchResult> = emptyList()
     ): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-
-        // Resolve effective user name: persona name > userName param
-        val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
-
-        // 1. 静态系统 prompt（角色描述、性格、回复风格 — 几乎不变，利于 API 缓存前缀命中）
-        val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
-        // 预设 systemPrompt 置于最前（最高优先级上下文）
-        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
-        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
-            .joinToString("\n\n")
-        if (combinedStatic.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = combinedStatic))
-        }
-
-        // 2. 示例对话
-        val exampleMessages = parseExampleDialog(character.mesExample, effectiveUserName, character.name)
-        messages.addAll(exampleMessages)
-
-        // 3. 开场白
-        if (character.firstMes.isNotBlank()) {
-            val firstMes = replacePlaceholders(character.firstMes, effectiveUserName, character.name, character, persona)
-            messages.add(ChatMessage(role = "assistant", content = firstMes))
-        }
-
-        // 4. 聊天历史
-        chatHistory.forEach { msg ->
-            val role = when (msg.role) {
-                "user" -> "user"
-                "assistant" -> "assistant"
-                else -> "system"
-            }
-            messages.add(ChatMessage(role = role, content = msg.content))
-        }
-
-        // 4.5 摘要注入（替代更早的历史消息）
-        if (!summary.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
-            ))
-        }
-
-        // 4.6 搜索结果注入
-        if (searchResults.isNotEmpty()) {
-            val searchText = searchResults.joinToString("\n\n") { result ->
-                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
-            }
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
-            ))
-        }
-
-        // 5. 动态上下文（世界书、记忆、人格 — 每轮可能变化，放在历史之后避免破坏缓存前缀）
-        val dynamicContext = buildDynamicContext(character, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
-        if (dynamicContext.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = dynamicContext))
-        }
-
-        // 5.5 Author's Note injection (at specified depth from end of history)
-        if (authorNote != null && authorNote.content.isNotBlank()) {
-            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, character.name, character, persona)
-            val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 5.5.1 预设 Author Note（追加到已有 author note 之后）
-        val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
-        if (presetAuthorNote != null) {
-            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, character.name, character, persona)
-            val insertIndex = (messages.size - 1).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 5.6 历史后指令（post_history_instructions）— 预设覆盖角色内置
-        val postHistory = preset?.postHistoryInstructions?.takeIf { it.isNotBlank() }
-            ?: character.postHistoryInstructions
-        if (!postHistory.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = replacePlaceholders(postHistory, effectiveUserName, character.name, character, persona)
-            ))
-        }
-
-        // 6. 当前用户消息（支持 multimodal 图片附件）
+        val config = PromptConfig(
+            character = character,
+            userMessage = userMessage,
+            chatHistory = chatHistory,
+            worldBookEntries = worldBookEntries,
+            userName = userName,
+            memories = memories,
+            memoryAtoms = memoryAtoms,
+            authorNote = authorNote,
+            persona = persona,
+            preset = preset,
+            imageUrls = imageUrls,
+            summary = summary,
+            searchResults = searchResults
+        )
+        val messages = buildCore(config)
+        // 当前用户消息（支持 multimodal 图片附件）
         messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
-
         return messages
     }
 
@@ -354,90 +396,27 @@ object PromptBuilder {
         summary: String? = null,
         searchResults: List<WebSearchResult> = emptyList()
     ): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-
-        val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
-
-        // 1. 静态系统 prompt（群聊风格 + 角色描述 + 性格）
-        val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
-        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
-        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
-            .joinToString("\n\n")
-        if (combinedStatic.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = combinedStatic))
-        }
-
-        // 2. Example dialog for responding character
-        val exampleMessages = parseExampleDialog(respondingCharacter.mesExample, effectiveUserName, respondingCharacter.name)
-        messages.addAll(exampleMessages)
-
-        // 3. Opening messages from all characters (firstMes)
-        for (char in characters) {
-            if (char.firstMes.isNotBlank()) {
-                val firstMes = replacePlaceholders(char.firstMes, effectiveUserName, char.name, char, persona)
-                messages.add(ChatMessage(
-                    role = "assistant",
-                    content = "[${char.name}]: $firstMes"
-                ))
-            }
-        }
-
-        // 4. Chat history with character attribution
-        chatHistory.forEach { msg ->
-            when (msg.role) {
-                "user" -> messages.add(ChatMessage(role = "user", content = msg.content))
-                "assistant" -> {
-                    val charName = msg.characterId?.let { characterMap[it]?.name }
-                    val content = if (charName != null) "[$charName]: ${msg.content}" else msg.content
-                    messages.add(ChatMessage(role = "assistant", content = content))
-                }
-                "system" -> messages.add(ChatMessage(role = "system", content = msg.content))
-            }
-        }
-
-        // 4.5 摘要注入
-        if (!summary.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
-            ))
-        }
-
-        // 4.6 搜索结果注入
-        if (searchResults.isNotEmpty()) {
-            val searchText = searchResults.joinToString("\n\n") { result ->
-                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
-            }
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
-            ))
-        }
-
-        // 5. 动态上下文（世界书 + 记忆 + 人格）
-        val dynamicContext = buildDynamicContext(respondingCharacter, worldBookEntries, effectiveUserName, memories, memoryAtoms, persona)
-        if (dynamicContext.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = dynamicContext))
-        }
-
-        // 5.5 Author's Note injection
-        if (authorNote != null && authorNote.content.isNotBlank()) {
-            val noteContent = replacePlaceholders(authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
-            val insertIndex = (messages.size - authorNote.depth).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 5.5.1 预设 Author Note
-        val presetAuthorNote = preset?.authorNote?.takeIf { it.isNotBlank() }
-        if (presetAuthorNote != null) {
-            val noteContent = replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
-            val insertIndex = (messages.size - 1).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 6. Current user message
+        val config = PromptConfig(
+            character = respondingCharacter,
+            userMessage = userMessage,
+            chatHistory = chatHistory,
+            worldBookEntries = worldBookEntries,
+            userName = userName,
+            memories = memories,
+            memoryAtoms = memoryAtoms,
+            authorNote = authorNote,
+            persona = persona,
+            preset = preset,
+            imageUrls = imageUrls,
+            summary = summary,
+            searchResults = searchResults,
+            characters = characters,
+            characterMap = characterMap,
+            isGroupChat = true
+        )
+        val messages = buildCore(config)
+        // 当前用户消息
         messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
-
         return messages
     }
 
@@ -499,20 +478,20 @@ object PromptBuilder {
         preset: PresetEntity? = null,
         summary: String? = null
     ): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-        val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
+        val config = PromptConfig(
+            character = character,
+            chatHistory = chatHistory,
+            userName = userName,
+            persona = persona,
+            preset = preset,
+            summary = summary,
+            isProactive = true
+        )
+        val messages = buildCore(config)
 
-        // 静态系统 prompt
-        val staticPrompt = getCachedStaticPrompt(character, effectiveUserName)
-        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
-        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
-            .joinToString("\n\n")
-        if (combinedStatic.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = combinedStatic))
-        }
-
-        // 主动对话指令
-        messages.add(ChatMessage(
+        // 主动对话指令（插入到历史之后、用户消息之前）
+        val proactiveIndex = messages.size
+        messages.add(proactiveIndex, ChatMessage(
             role = "system",
             content = """[主动对话指令]
 对话刚刚结束，现在请你主动延伸话题，自然地继续聊天。
@@ -523,30 +502,6 @@ object PromptBuilder {
 - 内容简短自然（1-2 句话）
 - 保持角色人设"""
         ))
-
-        // 聊天历史
-        chatHistory.forEach { msg ->
-            val role = when (msg.role) {
-                "user" -> "user"
-                "assistant" -> "assistant"
-                else -> "system"
-            }
-            messages.add(ChatMessage(role = role, content = msg.content))
-        }
-
-        // 摘要注入
-        if (!summary.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
-            ))
-        }
-
-        // 用户人格（动态上下文）
-        if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, effectiveUserName, character.name, character, persona)
-            messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
-        }
 
         // 添加一个空的 user 消息触发回复
         messages.add(ChatMessage(role = "user", content = "..."))
@@ -568,20 +523,23 @@ object PromptBuilder {
         preset: PresetEntity? = null,
         summary: String? = null
     ): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-        val effectiveUserName = persona?.name?.takeIf { it.isNotBlank() } ?: userName
-
-        // 群聊静态系统 prompt
-        val staticPrompt = buildGroupStaticSystemPrompt(characters, respondingCharacter, effectiveUserName)
-        val presetSysPrompt = preset?.systemPrompt?.takeIf { it.isNotBlank() }
-        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
-            .joinToString("\n\n")
-        if (combinedStatic.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = combinedStatic))
-        }
+        val config = PromptConfig(
+            character = respondingCharacter,
+            chatHistory = chatHistory,
+            userName = userName,
+            persona = persona,
+            preset = preset,
+            summary = summary,
+            characters = characters,
+            characterMap = characterMap,
+            isGroupChat = true,
+            isProactive = true
+        )
+        val messages = buildCore(config)
 
         // 主动发言指令
-        messages.add(ChatMessage(
+        val proactiveIndex = messages.size
+        messages.add(proactiveIndex, ChatMessage(
             role = "system",
             content = """[主动发言指令]
 群聊刚刚有对话，现在请你自然地插话。
@@ -592,33 +550,6 @@ object PromptBuilder {
 - 保持角色人设
 - 可以回应其他角色说的话"""
         ))
-
-        // 聊天历史
-        chatHistory.forEach { msg ->
-            when (msg.role) {
-                "user" -> messages.add(ChatMessage(role = "user", content = msg.content))
-                "assistant" -> {
-                    val charName = msg.characterId?.let { characterMap[it]?.name }
-                    val content = if (charName != null) "[$charName]: ${msg.content}" else msg.content
-                    messages.add(ChatMessage(role = "assistant", content = content))
-                }
-                else -> messages.add(ChatMessage(role = "system", content = msg.content))
-            }
-        }
-
-        // 摘要注入
-        if (!summary.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[对话摘要 — 以下是之前对话的要点总结]\n$summary"
-            ))
-        }
-
-        // 用户人格（动态上下文）
-        if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, effectiveUserName, respondingCharacter.name, respondingCharacter, persona)
-            messages.add(ChatMessage(role = "system", content = "[User Persona: ${persona.name}]\n$bio"))
-        }
 
         // 添加一个空的 user 消息触发回复
         messages.add(ChatMessage(role = "user", content = "..."))

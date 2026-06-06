@@ -1,6 +1,7 @@
 package com.tavern.lite.util
 
 import com.tavern.lite.network.ChatMessage
+import java.util.Locale
 
 /**
  * Lightweight token estimator for prompt context window usage.
@@ -83,7 +84,7 @@ object TokenEstimator {
      */
     fun formatTokenCount(count: Int): String {
         return if (count >= 1000) {
-            String.format("%.1fk", count / 1000.0)
+            String.format(Locale.ROOT, "%.1fk", count / 1000.0)
         } else {
             count.toString()
         }

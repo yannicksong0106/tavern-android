@@ -25,6 +25,7 @@ mockito = "5.14.2"
 androidxTestExt = "1.2.1"
 androidxTestEspresso = "3.6.1"
 turbine = "1.2.0"
+robolectric = "4.14.1"
 detekt = "1.23.7"
 
 [libraries]
@@ -100,6 +101,7 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version = "5.4.0" }
 mockk = { group = "io.mockk", name = "mockk", version = "1.13.13" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 # Template
 handlebars = { group = "com.github.jknack", name = "handlebars", version = "4.4.0" }

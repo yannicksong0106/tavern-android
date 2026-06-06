@@ -63,8 +63,9 @@ fun InputBar(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit,
-    onContinue: () -> Unit = {},
     isGenerating: Boolean,
+    modifier: Modifier = Modifier,
+    onContinue: () -> Unit = {},
     showContinue: Boolean = false,
     isGroupChat: Boolean = false,
     groupCharacters: List<CharacterEntity> = emptyList(),
@@ -74,8 +75,7 @@ fun InputBar(
     onVoiceInput: () -> Unit = {},
     imagePaths: List<String> = emptyList(),
     onAddImage: () -> Unit = {},
-    onRemoveImage: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemoveImage: (String) -> Unit = {}
 ) {
     var showAtMenu by remember { mutableStateOf(false) }
     var atSearchText by remember { mutableStateOf("") }

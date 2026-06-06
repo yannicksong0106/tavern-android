@@ -127,6 +127,12 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // API 超时时间
+            SectionHeader(stringResource(R.string.api_timeout))
+            ApiTimeoutSection(config.readTimeoutSeconds, viewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 用户设置
             SectionHeader(stringResource(R.string.user_settings))
             UserSettingsSection(config, viewModel)
@@ -282,6 +288,31 @@ private fun UserSettingsSection(config: com.tavern.lite.data.model.ApiConfig, vi
                 onValueChange = { viewModel.updateUserName(it) },
                 label = { Text(stringResource(R.string.user_name_label)) },
                 singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun ApiTimeoutSection(readTimeoutSeconds: Long, viewModel: SettingsViewModel) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.api_timeout_desc, readTimeoutSeconds),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Slider(
+                value = readTimeoutSeconds.toFloat(),
+                onValueChange = { viewModel.updateReadTimeout(it.toLong()) },
+                valueRange = 30f..600f,
+                steps = 18,
                 modifier = Modifier.fillMaxWidth()
             )
         }

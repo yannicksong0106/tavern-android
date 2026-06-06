@@ -16,6 +16,7 @@ import com.tavern.lite.network.ChatApiService
 import com.tavern.lite.network.WebSearchConfig
 import com.tavern.lite.network.WebSearchService
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.network.ChatStreamChunk
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -122,7 +123,7 @@ class SendMessageUseCaseIntegrationTest {
         coEvery { summaryUseCase.shouldGenerateSummary(any(), any()) } returns false
         coEvery { presetRepository.resolveEffectivePreset(any(), any()) } returns null
         coEvery { settingsStore.webSearchConfigFlow } returns flowOf(WebSearchConfig())
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = ""))
     }
 
     // ==================== sendSingleMessage ====================
@@ -132,8 +133,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Hi there!")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Hi there!"))
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hi there!"), eq("assistant"), any(), any()) } returns 101L
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
@@ -145,10 +145,29 @@ class SendMessageUseCaseIntegrationTest {
     }
 
     @Test
+    fun `sendSingleMessage returns reasoning content from metadata stream`() = runTest {
+        stubDefaults()
+        coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
+        coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(
+            ChatStreamChunk(reasoningContent = "think-1 "),
+            ChatStreamChunk(content = "Hi "),
+            ChatStreamChunk(reasoningContent = "think-2"),
+            ChatStreamChunk(content = "there!")
+        )
+        coEvery { chatRepository.sendMessage(eq(1L), eq("Hi there!"), eq("assistant"), any(), any()) } returns 101L
+
+        val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
+
+        assertNotNull(result)
+        assertEquals("Hi there!", result!!.fullResponse)
+        assertEquals("think-1 think-2", result.reasoningContent)
+    }
+
+    @Test
     fun `sendSingleMessage skips user message when content is blank`() = runTest {
         stubDefaults()
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Proactive response")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Proactive response"))
         coEvery { chatRepository.sendMessage(eq(1L), eq("Proactive response"), eq("assistant"), any(), any()) } returns 101L
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "", testConfig)
@@ -162,8 +181,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Modified Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Modified Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Response")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Response"))
         coEvery { chatRepository.sendMessage(eq(1L), eq("Response"), eq("assistant"), any(), any()) } returns 101L
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
@@ -177,8 +195,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = ""))
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
 
@@ -190,7 +207,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw UnknownHostException("DNS lookup failed") }
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flow { throw UnknownHostException("DNS lookup failed") }
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
 
@@ -203,7 +220,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw SocketTimeoutException("Read timed out") }
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flow { throw SocketTimeoutException("Read timed out") }
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
 
@@ -216,7 +233,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw RuntimeException("Something unexpected") }
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flow { throw RuntimeException("Something unexpected") }
 
         val result = useCase.sendSingleMessage(1L, testCharacter, "Hello", testConfig)
 
@@ -237,7 +254,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw CancellationException("User cancelled") }
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flow { throw CancellationException("User cancelled") }
 
         var caught: Throwable? = null
         try {
@@ -253,8 +270,7 @@ class SendMessageUseCaseIntegrationTest {
         stubDefaults()
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Hello"), eq(0)) } returns "Hello"
         coEvery { chatRepository.sendMessage(eq(1L), eq("Hello"), eq("user"), any(), any()) } returns 100L
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Raw reply")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Raw reply"))
         coEvery { chatRepository.sendMessage(eq(1L), eq("Raw reply"), eq("assistant"), any(), any()) } returns 101L
         coEvery { scriptRepository.applyScripts(eq(1L), eq("Raw reply"), eq(1)) } returns "Processed reply"
 
@@ -272,8 +288,7 @@ class SendMessageUseCaseIntegrationTest {
         val char1 = CharacterEntity(id = 1, name = "Alice", description = "AI 1", personality = "Kind", firstMes = "Hi")
         val char2 = CharacterEntity(id = 2, name = "Bob", description = "AI 2", personality = "Funny", firstMes = "Hey")
 
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Alice speaks") andThen flowOf("Bob speaks")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Alice speaks")) andThen flowOf(ChatStreamChunk(content = "Bob speaks"))
         coEvery { chatRepository.sendMessage(any(), eq("Alice speaks"), eq("assistant"), any(), any()) } returns 101L
         coEvery { chatRepository.sendMessage(any(), eq("Bob speaks"), eq("assistant"), any(), any()) } returns 102L
         coEvery { chatRepository.getMessageById(any()) } returns null
@@ -293,8 +308,7 @@ class SendMessageUseCaseIntegrationTest {
         val char1 = CharacterEntity(id = 1, name = "Alice", description = "AI 1", personality = "Kind", firstMes = "Hi")
         val char2 = CharacterEntity(id = 2, name = "Bob", description = "AI 2", personality = "Funny", firstMes = "Hey")
 
-        every { chatApiService.streamChat(any(), any()) } returns flow { throw IOException("Fail") } andThen flowOf("Bob speaks")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flow { throw IOException("Fail") } andThen flowOf(ChatStreamChunk(content = "Bob speaks"))
         coEvery { chatRepository.sendMessage(any(), any(), eq("assistant"), any(), any()) } returns 101L
         coEvery { chatRepository.getMessageById(any()) } returns null
 
@@ -312,8 +326,7 @@ class SendMessageUseCaseIntegrationTest {
         val char1 = CharacterEntity(id = 1, name = "Alice", description = "AI 1", personality = "Kind", firstMes = "Hi")
         val char2 = CharacterEntity(id = 2, name = "Bob", description = "AI 2", personality = "Funny", firstMes = "Hey")
 
-        every { chatApiService.streamChat(any(), any()) } returns flowOf("Bob answers")
-        every { chatApiService.lastReasoningContent } returns null
+        every { chatApiService.streamChatWithMetadata(any(), any()) } returns flowOf(ChatStreamChunk(content = "Bob answers"))
         coEvery { chatRepository.sendMessage(any(), eq("Bob answers"), eq("assistant"), any(), any()) } returns 101L
 
         val result = useCase.sendDirectMessage(

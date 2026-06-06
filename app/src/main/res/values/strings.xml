@@ -15,11 +15,8 @@
     <string name="create">创建</string>
     <string name="enter">进入</string>
     <string name="copy">复制</string>
-    <string name="copied">已复制</string>
     <string name="default_label">默认</string>
     <string name="untitled">无标题</string>
-    <string name="confirm_delete_title">删除</string>
-    <string name="confirm_delete_text">确定要删除吗？</string>
 
     <!-- 首页 / Home -->
     <string name="home_title">酒馆 Lite</string>
@@ -44,7 +41,6 @@
     <string name="delete_message_text">确定要删除这条消息吗？</string>
     <string name="pin_message">置顶消息</string>
     <string name="unpin_message">取消置顶</string>
-    <string name="pinned_messages">置顶消息</string>
     <string name="bookmarks">书签</string>
     <string name="no_bookmarks">暂无书签消息</string>
     <string name="you">你</string>
@@ -55,6 +51,7 @@
     <string name="input_hint">说点什么…</string>
     <string name="continue_generation">继续生成</string>
     <string name="scroll_to_bottom">回到底部</string>
+    <string name="load_more_messages">加载更早的消息</string>
     <string name="empty_message">…</string>
     <string name="typing">正在输入…</string>
     <string name="swipe_previous">上一条</string>
@@ -68,10 +65,6 @@
     <string name="voice_permission_denied">需要麦克风权限才能使用语音输入</string>
     <string name="add_image">添加图片</string>
     <string name="remove_image">移除图片</string>
-    <string name="generate_image">生成图片</string>
-    <string name="generating_image">正在生成图片…</string>
-    <string name="image_generation_failed">图片生成失败</string>
-    <string name="image_generation_only_openai">图片生成仅支持 OpenAI API</string>
     <string name="time_just_now">刚刚</string>
     <string name="time_minutes">%d 分钟前</string>
     <string name="time_hours">%d 小时前</string>
@@ -109,6 +102,8 @@
     <string name="test_reply">回复: %s</string>
     <string name="test_error">错误: %s</string>
     <string name="generation_params">生成参数</string>
+    <string name="api_timeout">API 超时时间</string>
+    <string name="api_timeout_desc">读取超时：%d 秒（reasoning 模型建议 300+）</string>
     <string name="user_settings">用户设置</string>
     <string name="user_persona">用户角色</string>
     <string name="chat_bubble">聊天气泡</string>
@@ -118,7 +113,6 @@
     <string name="about_click_hint">点击查看开发日志</string>
     <string name="dev_log_title">开发日志</string>
     <string name="dev_log_subtitle">酒馆 AI 的成长历程，记录每一次进步和生活点滴</string>
-    <string name="custom_provider">自定义</string>
     <string name="model">模型</string>
     <string name="context_length">上下文条数</string>
     <string name="user_name_label">你的名字（用于 {{user}} 占位符）</string>
@@ -218,11 +212,14 @@
     <string name="logic_or">OR（任一匹配）</string>
     <string name="logic_not">NOT（排除匹配）</string>
     <string name="keywords_label">关键词: %s</string>
+    <string name="world_book_match_preview">匹配预览</string>
+    <string name="world_book_match_preview_hint">输入一段对话，查看哪些条目会被触发</string>
+    <string name="matched_tag">已命中</string>
+    <string name="secondary_keyword_chip">副: %s</string>
     <string name="constant_tag">常驻</string>
     <string name="selective_tag">选择性(%s)</string>
 
     <!-- 记忆 / Memory -->
-    <string name="memory_title">记忆管理</string>
     <string name="clear_all_memories">清除所有记忆</string>
     <string name="clear_all_memories_text">确定要清除该角色的所有记忆吗？此操作不可撤销。</string>
     <string name="clear">清除</string>
@@ -232,16 +229,6 @@
     <string name="no_memories_hint">点击右下角 + 手动添加，或在对话中自动积累</string>
     <string name="memory_content_placeholder">记忆内容…</string>
     <string name="importance">重要度: %d</string>
-    <string name="memory_tab_manual">手动记忆</string>
-    <string name="memory_tab_auto">AI 记忆</string>
-    <string name="category_user_info">用户信息</string>
-    <string name="category_character_consistency">角色人设</string>
-    <string name="category_event">重要事件</string>
-    <string name="category_relationship">人物关系</string>
-    <string name="category_commitment">承诺约定</string>
-    <string name="add_atom">添加 AI 记忆</string>
-    <string name="edit_atom">编辑 AI 记忆</string>
-    <string name="superseded">已过时</string>
     <string name="source_llm">AI 提取</string>
     <string name="source_regex">自动识别</string>
     <string name="source_manual">手动添加</string>
@@ -251,28 +238,12 @@
     <string name="memory_library">记忆库</string>
     <string name="memory_library_desc">查看和管理角色的记忆</string>
     <string name="memory_category_all">全部</string>
-    <string name="memory_category_fact">事实</string>
-    <string name="memory_category_emotion">情感</string>
-    <string name="memory_category_preference">偏好</string>
-    <string name="memory_category_event">事件</string>
-    <string name="memory_category_habit">习惯</string>
-    <string name="memory_category_character">角色核心</string>
-    <string name="memory_category_temporary">临时记忆</string>
     <string name="core_memories">核心记忆</string>
     <string name="temporary_memories">临时记忆</string>
     <string name="last_extracted">最近提取: %s</string>
     <string name="memory_count">%d 条记忆</string>
     <string name="expires_in">将在 %s 后过期</string>
-    <string name="select_character">选择角色</string>
-    <string name="sort_by_importance">按重要度排序</string>
-    <string name="sort_by_recency">按时间排序</string>
-    <string name="sort_by_access">按访问频率排序</string>
     <string name="search_memories">搜索记忆</string>
-    <string name="memory_recalled">记忆召回: %d 条</string>
-    <string name="just_now">刚刚</string>
-    <string name="minutes_ago">%d 分钟前</string>
-    <string name="hours_ago">%d 小时前</string>
-    <string name="days_ago">%d 天前</string>
     <string name="expires_hours">%d 小时</string>
 
     <!-- 用户角色 / Persona -->
@@ -357,10 +328,10 @@
     <string name="message_interval_value">%.1f 秒</string>
 
     <!-- @ 功能 / At Mention -->
-    <string name="at_mention_hint">@ 角色名 指定回复</string>
 
     <!-- 搜索 / Search -->
     <string name="search_messages">搜索消息…</string>
+    <string name="no_results">无结果</string>
     <string name="previous">上一个</string>
     <string name="next">下一个</string>
 
@@ -379,11 +350,14 @@
     <string name="scope_character">角色</string>
     <string name="scope_chat">对话</string>
     <string name="preset_scope">预设范围</string>
+    <string name="preset_template_preview">模板预览</string>
+    <string name="preset_template_preview_sample">示例变量：char=Alice，user=You</string>
+    <string name="preset_template_preview_empty">填写模板内容后会显示替换结果</string>
+    <string name="expand">展开</string>
+    <string name="collapse">收起</string>
 
     <!-- 群聊列表 / Group Chat List -->
     <string name="group_chats">群聊</string>
-    <string name="no_group_chats">还没有群聊</string>
-    <string name="group_members_count">%d 人</string>
     <string name="delete_group_chat_title">删除群聊</string>
     <string name="delete_group_chat_text">确定要删除这个群聊吗？所有消息都会被删除。</string>
 
@@ -391,15 +365,9 @@
     <string name="data_management">数据管理</string>
     <string name="backup_data">备份数据</string>
     <string name="backup_data_desc">将所有数据导出为 JSON 文件</string>
-    <string name="backup_success">备份成功：%s</string>
-    <string name="backup_failed">备份失败：%s</string>
     <string name="restore_data">恢复数据</string>
     <string name="restore_data_desc">从备份文件恢复数据</string>
-    <string name="restore_success">恢复成功：角色 %1$d，对话 %2$d，消息 %3$d</string>
-    <string name="restore_failed">恢复失败：%s</string>
     <string name="share_backup">分享备份</string>
-    <string name="restore_confirm_title">恢复数据</string>
-    <string name="restore_confirm_text">恢复将合并现有数据，不会覆盖已有内容。确定继续吗？</string>
     <string name="storage_management">存储管理</string>
     <string name="database_size">数据库大小</string>
     <string name="cache_size">缓存大小</string>
@@ -444,7 +412,6 @@
     <string name="a11y_assistant_message">助手消息</string>
     <string name="a11y_typing_indicator">正在输入</string>
     <string name="a11y_attached_image">已附加图片</string>
-    <string name="a11y_swipe_hint">左滑回复，右滑删除</string>
     <string name="a11y_character_card">%s，角色卡片</string>
     <string name="a11y_group_chat_card">%s，群聊</string>
     <string name="a11y_chat_item">%s，对话</string>
@@ -456,8 +423,6 @@
     <string name="generate_summary">生成摘要</string>
     <string name="summary_generating">正在生成摘要…</string>
     <string name="delete_summary">删除摘要</string>
-    <string name="summary_deleted">摘要已删除</string>
-    <string name="summary_range">涵盖 %d 条消息</string>
     <string name="summary_tokens">约 %d tokens</string>
 
     <!-- Web 搜索 / Web Search -->
@@ -475,38 +440,26 @@
     <string name="web_search_command_hint">发送 /search 关键词 手动搜索</string>
 
     <!-- Visual Novel 模式 / VN Mode -->
-    <string name="vn_mode">小说模式</string>
-    <string name="vn_mode_desc">立绘 + 背景 + 对话框的沉浸式体验</string>
-    <string name="vn_enter">进入小说模式</string>
-    <string name="vn_exit">退出小说模式</string>
     <string name="vn_sprites">角色立绘</string>
     <string name="vn_sprites_desc">管理角色的表情立绘图片</string>
     <string name="vn_add_sprite">添加立绘</string>
-    <string name="vn_edit_sprite">编辑立绘</string>
     <string name="vn_delete_sprite">删除立绘</string>
     <string name="vn_delete_sprite_text">确定要删除这个立绘吗？</string>
     <string name="vn_emotion">表情</string>
     <string name="vn_emotion_hint">例如: happy, sad, angry, neutral</string>
-    <string name="vn_image">立绘图片</string>
     <string name="vn_no_sprites">暂无立绘</string>
     <string name="vn_no_sprites_hint">点击右下角 + 为角色添加表情立绘</string>
-    <string name="vn_sprite_count">%d 个立绘</string>
-    <string name="vn_current_emotion">当前表情: %s</string>
 
     <!-- 背景音乐 / BGM -->
     <string name="bgm_title">背景音乐</string>
     <string name="bgm_desc">管理角色的背景音乐</string>
     <string name="bgm_add">添加音乐</string>
-    <string name="bgm_edit">编辑音乐</string>
     <string name="bgm_delete">删除音乐</string>
     <string name="bgm_delete_text">确定要删除这首音乐吗？</string>
     <string name="bgm_name">音乐名称</string>
     <string name="bgm_name_hint">例如: 主题曲、战斗音乐</string>
-    <string name="bgm_audio">音频文件</string>
     <string name="bgm_loop">循环播放</string>
     <string name="bgm_volume">音量</string>
     <string name="bgm_no_bgms">暂无背景音乐</string>
     <string name="bgm_no_bgms_hint">点击右下角 + 为角色添加背景音乐</string>
-    <string name="bgm_count">%d 首音乐</string>
-    <string name="bgm_playing">正在播放: %s</string>
 </resources>
