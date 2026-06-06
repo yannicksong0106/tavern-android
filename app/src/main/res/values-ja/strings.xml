@@ -109,7 +109,7 @@
     <string name="chat_bubble">チャットバブル</string>
     <string name="theme">テーマ</string>
     <string name="about">About</string>
-    <string name="about_version">バージョン 1.2.8 · SillyTavernデータ形式ベース</string>
+    <string name="about_version">バージョン 1.2.9 · SillyTavernデータ形式ベース</string>
     <string name="about_click_hint">タップして開発ログを表示</string>
     <string name="dev_log_title">開発ログ</string>
     <string name="dev_log_subtitle">Tavern AIの成長記録、進歩と日常の記録</string>

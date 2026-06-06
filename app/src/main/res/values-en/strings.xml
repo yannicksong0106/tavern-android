@@ -109,7 +109,7 @@
     <string name="chat_bubble">Chat Bubbles</string>
     <string name="theme">Theme</string>
     <string name="about">About</string>
-    <string name="about_version">Version 1.2.8 · Based on SillyTavern data format</string>
+    <string name="about_version">Version 1.2.9 · Based on SillyTavern data format</string>
     <string name="about_click_hint">Tap to view dev log</string>
     <string name="dev_log_title">Dev Log</string>
     <string name="dev_log_subtitle">The growth journey of Tavern AI, recording every progress and life moments</string>

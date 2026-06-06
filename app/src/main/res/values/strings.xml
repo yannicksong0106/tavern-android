@@ -109,7 +109,7 @@
     <string name="chat_bubble">聊天气泡</string>
     <string name="theme">主题</string>
     <string name="about">关于</string>
-    <string name="about_version">版本 1.2.8 · 基于 SillyTavern 数据格式</string>
+    <string name="about_version">版本 1.2.9 · 基于 SillyTavern 数据格式</string>
     <string name="about_click_hint">点击查看开发日志</string>
     <string name="dev_log_title">开发日志</string>
     <string name="dev_log_subtitle">酒馆 AI 的成长历程，记录每一次进步和生活点滴</string>
