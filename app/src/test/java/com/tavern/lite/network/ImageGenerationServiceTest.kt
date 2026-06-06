@@ -18,9 +18,11 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.util.Base64
 
 class ImageGenerationServiceTest {
 
@@ -36,7 +38,7 @@ class ImageGenerationServiceTest {
     }
 
     @Test
-    fun `generateImage returns null for non-OpenAI provider`() = runTest {
+    fun `generateImage returns null for Claude provider`() = runTest {
         val config = ApiConfig(provider = ApiProvider.Claude(
             baseUrl = "https://api.anthropic.com",
             apiKey = "test-key",
@@ -46,6 +48,117 @@ class ImageGenerationServiceTest {
         val result = service.generateImage("test prompt", config)
 
         assertNull(result)
+    }
+
+    @Test
+    fun `generateImage writes Gemini native inline image to file`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.Gemini(
+            apiKey = "test-key",
+            model = "gemini-3.1-flash-image"
+        ))
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test_gemini_native_images")
+        tempDir.mkdirs()
+        every { context.filesDir } returns tempDir
+
+        val imageBytes = ByteArray(12) { (it + 1).toByte() }
+        val responseBody = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "inlineData": {
+                          "mimeType": "image/png",
+                          "data": "${Base64.getEncoder().encodeToString(imageBytes)}"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+        val response = Response.Builder()
+            .request(Request.Builder().url("https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-image:generateContent").build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .body(responseBody.toResponseBody("application/json".toMediaType()))
+            .build()
+
+        val call = mockk<Call>()
+        every { call.execute() } returns response
+        every { client.newCall(any()) } returns call
+
+        val result = service.generateImage("a glowing tavern", config, "1792x1024")
+
+        assertNotNull(result)
+        val file = File(result!!)
+        assertTrue(file.exists())
+        assertEquals(imageBytes.size.toLong(), file.length())
+        verify {
+            client.newCall(match {
+                it.url.toString() == "https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-image:generateContent" &&
+                    it.header("x-goog-api-key") == "test-key" &&
+                    requestBody(it).contains("\"aspectRatio\":\"16:9\"")
+            })
+        }
+
+        file.delete()
+        file.parentFile?.delete()
+        tempDir.delete()
+    }
+
+    @Test
+    fun `generateImage writes Imagen prediction image to file`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.Gemini(
+            apiKey = "test-key",
+            model = "imagen-4.0-generate-preview-06-06"
+        ))
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test_imagen_images")
+        tempDir.mkdirs()
+        every { context.filesDir } returns tempDir
+
+        val imageBytes = ByteArray(8) { (it * 2).toByte() }
+        val responseBody = """
+            {
+              "predictions": [
+                {
+                  "bytesBase64Encoded": "${Base64.getEncoder().encodeToString(imageBytes)}"
+                }
+              ]
+            }
+        """.trimIndent()
+        val response = Response.Builder()
+            .request(Request.Builder().url("https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict").build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .body(responseBody.toResponseBody("application/json".toMediaType()))
+            .build()
+
+        val call = mockk<Call>()
+        every { call.execute() } returns response
+        every { client.newCall(any()) } returns call
+
+        val result = service.generateImage("a moonlit inn", config, "1024x1792")
+
+        assertNotNull(result)
+        val file = File(result!!)
+        assertTrue(file.exists())
+        assertEquals(imageBytes.size.toLong(), file.length())
+        verify {
+            client.newCall(match {
+                it.url.toString() == "https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict" &&
+                    it.header("x-goog-api-key") == "test-key" &&
+                    requestBody(it).contains("\"aspectRatio\":\"9:16\"")
+            })
+        }
+
+        file.delete()
+        file.parentFile?.delete()
+        tempDir.delete()
     }
 
     @Test
@@ -291,5 +404,11 @@ class ImageGenerationServiceTest {
         } catch (e: kotlinx.coroutines.CancellationException) {
             // Expected
         }
+    }
+
+    private fun requestBody(request: Request): String {
+        val buffer = okio.Buffer()
+        request.body!!.writeTo(buffer)
+        return buffer.readUtf8()
     }
 }

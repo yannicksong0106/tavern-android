@@ -1,7 +1,7 @@
 # 酒馆 AI (TavernAndroid) 开发计划
 
-> 更新于 2026-06-04 | 基于全量审计报告 + Phase 1/2 实施结果
-> 当前状态：138 .kt 文件，742 tests（全绿），DB Schema v29
+> 更新于 2026-06-06 | 基于当前工作区核对 + Phase 4.3 实施结果
+> 当前状态：220 .kt 文件（main 151 / test 69），773 testcases（全绿），DB Schema v29
 > **核心原则：扩展功能永远往后推，重点永远是优化目前版本，确保目前的功能能够使用，并且尽量使这些功能获得更好的体验。**
 
 ---
@@ -21,16 +21,17 @@
 - **Phase 5.2 ChatApiService 测试 ✅** | **Phase 4.2 搜索失败提示 ✅**
 - **Phase 4.7 API 超时可配置 ✅**
 - **Phase 4.1 消息列表分页加载 ✅** | **Phase 4.6 ChatScreen LaunchedEffect 优化 ✅**
+- **Phase 4.3 图像生成多 provider ✅** (OpenAI + Gemini；Claude 官方 API 暂无图片生成端点)
 - **Lint 全面修复 ✅** (5 errors + 103 warnings → 0 errors + 32 warnings)
 
 ### 进行中
-- V VN 模式 (立绘 ✅ + 情感检测 ✅ + 输入框 ✅ + BGM 播放器 ✅ + EmotionDetector 增强 ✅ + 测试 ✅，缺 3.4 进入优化)
-- Phase 5 测试补全 (5.1 ✅ + 5.2 ✅ + 5.3 ✅ + 5.4 ✅ + 5.5 ✅ + 5.9 ✅，剩余 5.6-5.8/5.10)
+- V VN 模式 (立绘 ✅ + 情感检测 ✅ + 输入框 ✅ + BGM 播放器 ✅ + EmotionDetector 增强 ✅ + 测试 ✅ + 3.4 进入优化 ✅)
+- Phase 6 性能优化（Room 查询 / 图片内存 / 大数据备份恢复 / 长 prompt 构建验证）
 
 ### 待优化（本计划重点）
 - ~~PromptBuilder 628 行 DRY 违例 + 测试盲区~~ ✅ 已完成（559 行，33 测试）
 - ~~Repository 层线程安全 + 语义错误~~ ✅ 已完成（2 bug 修复 + 34 测试）
-- 测试覆盖率 35.8% → 目标 60%+
+- 测试覆盖率 35.8% → 目标 60%+（需引入覆盖率报告重新核算）
 - ChatViewModel 继续瘦身 + ChatScreen 拆分
 
 ### 待完成（远期）
@@ -158,13 +159,13 @@
 |------|------|------|------|
 | 4.1 | 消息列表分页加载 | LazyColumn 分页，减少初始加载时间 | ✅ |
 | 4.2 | 搜索失败用户提示 | 搜索无结果时显示红色"无结果"文字提示 | ✅ |
-| 4.3 | 图像生成多 provider | 支持 Claude/Gemini 图像生成 API | ⬜ |
+| 4.3 | 图像生成多 provider | Gemini 原生图片生成 / Imagen 已接入；Claude 官方 API 暂无图片生成端点，保持明确不支持 | ✅ |
 | 4.4 | 世界书匹配高亮 | 匹配预览文本驱动条目触发状态与关键词高亮 | ✅ |
 | 4.5 | 预设模板预览 | 编辑预设时可预览变量替换效果 | ✅ |
 | 4.6 | ChatScreen LaunchedEffect 优化 | 合并相关 Effect，减少重组开销 | ✅ |
 | 4.7 | API 超时可配置 | Settings 中添加超时时间设置 | ✅ |
 
-**验证**：长对话流畅滚动 + 搜索失败有提示 + 预设预览正确
+**验证**：长对话流畅滚动 + 搜索失败有提示 + 预设预览正确 + Gemini 图片生成单测覆盖
 
 ---
 
@@ -271,16 +272,16 @@ Phase Z: Play Store 发布
 | ~~PromptBuilder 628 行 DRY 违例~~ | ~~高~~ | Phase 2.5 | ✅ 已减至 559 行 |
 | ~~BgmRepository.updateBgm 语义错误~~ | ~~高~~ | Phase 2.6 | ✅ 已修复 |
 | ~~ScriptRepository regexCache 线程不安全~~ | ~~中~~ | Phase 2.6 | ✅ 已修复 |
-| BGM 无播放器 | 中 | Phase 3 | ⬜ |
-| EmotionDetector 纯关键词 | 低 | Phase 3 | ⬜ |
+| ~~BGM 无播放器~~ | ~~中~~ | Phase 3 | ✅ 已实现 BgmPlayer |
+| ~~EmotionDetector 纯关键词~~ | ~~低~~ | Phase 3 | ✅ 已增强并补测试 |
 | ~~DAO 零测试~~ | ~~中~~ | Phase 5 | ✅ 33 测试全覆盖 |
 | ~~DB Migration 零测试~~ | ~~高~~ | Phase 1 | ✅ 21 迁移全覆盖 |
 | ~~SSE 无重连~~ | ~~中~~ | Phase 1 | ✅ 指数退避重试 |
 | ~~reasoningContent 并发风险~~ | ~~中~~ | Phase 1 | ✅ per-request 存储 |
-| CryptoHelper 零测试 | 高 | Phase 5 | ⬜ |
-| ChatApiService 零测试 | 高 | Phase 5 | ⬜ |
-| 图像生成仅 DALL-E | 低 | Phase 4 | ⬜ |
-| 搜索失败无提示 | 低 | Phase 4 | ⬜ |
+| ~~CryptoHelper 零测试~~ | ~~高~~ | Phase 5 | ✅ 已补测试 |
+| ~~ChatApiService 零测试~~ | ~~高~~ | Phase 5 | ✅ 已补测试 |
+| ~~图像生成仅 DALL-E~~ | ~~低~~ | Phase 4 | ✅ 已支持 Gemini |
+| ~~搜索失败无提示~~ | ~~低~~ | Phase 4 | ✅ 已补提示 |
 
 ---
 
@@ -288,11 +289,11 @@ Phase Z: Play Store 发布
 
 | 指标 | v1.2.8 基线 | 当前 | v1.2.9 目标 | v1.3.1 目标 |
 |------|------------|------|-----------|-----------|
-| 测试数量 | 762 | 742 | 850+ | 900+ |
-| ChatViewModel 行数 | 974 | 379 | <500 | <500 |
-| ChatScreen 行数 | 718 | 560 | <600 | <500 |
-| PromptBuilder 行数 | 628 | 559 | <400 | <400 |
-| 测试文件覆盖率 | 35.8% | 35.8% | 45%+ | 60%+ |
+| 测试数量 | 762 | 773 | 850+ | 900+ |
+| ChatViewModel 行数 | 974 | 429 | <500 | <500 |
+| ChatScreen 行数 | 718 | 616 | <600 | <500 |
+| PromptBuilder 行数 | 628 | 532 | <400 | <400 |
+| 测试文件覆盖率 | 35.8% | 待重算 | 45%+ | 60%+ |
 | DAO 测试覆盖 | 0% | 100% | 100% ✅ | 100% |
 | DB Migration 测试 | 0 | 21/21 ✅ | 全部 | 全部 |
 | VN 模式可用性 | 部分 | 部分 | 部分 | 完整 |
@@ -303,9 +304,9 @@ Phase Z: Play Store 发布
 
 ## 下一步行动（优先级排序）
 
-1. **Phase 4.3** — 图像生成多 provider（支持 Claude/Gemini 图像生成 API）
-2. **Phase 5.6-5.8** — Repository 测试补齐（AuthorNote/BGM/Sprite/Summary）
-3. **Phase 5.10** — TTS/STT 测试
+1. **Phase 6.1** — Room 查询优化审计（检查 N+1 查询，补必要索引）
+2. **Phase 6.3** — 备份大数据量验证（1000+ 消息备份/恢复性能与完整性）
+3. **架构瘦身** — ChatScreen 继续拆分至 <600 行，PromptBuilder 继续向 <400 行推进
 
 ---
 
