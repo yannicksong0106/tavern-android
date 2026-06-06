@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
@@ -52,6 +53,7 @@ fun ChatTopBar(
     onToggleSearch: () -> Unit,
     onShowBookmarksSheet: () -> Unit,
     onShowSummarySheet: () -> Unit,
+    onShowPromptInspector: () -> Unit,
     onShowChattinessSheet: () -> Unit,
     onShowBackgroundPicker: () -> Unit,
     modifier: Modifier = Modifier
@@ -133,6 +135,9 @@ fun ChatTopBar(
             }
             IconButton(onClick = onShowSummarySheet) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.summaries))
+            }
+            IconButton(onClick = onShowPromptInspector) {
+                Icon(Icons.Default.Code, contentDescription = stringResource(R.string.prompt_inspector))
             }
             IconButton(onClick = onShowChattinessSheet) {
                 Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.chat_settings))

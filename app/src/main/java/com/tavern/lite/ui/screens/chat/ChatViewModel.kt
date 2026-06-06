@@ -6,8 +6,8 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.model.GroupSchedulingStrategy
@@ -68,6 +68,7 @@ class ChatViewModel @Inject constructor(
     private val groupChatRepository: GroupChatRepository,
     private val apiConfigStore: ApiConfigStore,
     private val settingsStore: SettingsStore,
+    private val promptInspectorBuilder: PromptInspectorBuilder,
     private val sendMessageUseCase: SendMessageUseCase,
     private val continueGenerationUseCase: ContinueGenerationUseCase,
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
@@ -148,6 +149,9 @@ class ChatViewModel @Inject constructor(
 
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+
+    private val _promptInspectorState = MutableStateFlow<PromptInspectorState?>(null)
+    val promptInspectorState: StateFlow<PromptInspectorState?> = _promptInspectorState.asStateFlow()
 
     // 流式对话管理器
     internal lateinit var streamingManager: ChatStreamingManager
@@ -371,6 +375,58 @@ class ChatViewModel @Inject constructor(
     val estimatedContextTokens: StateFlow<Int> = _estimatedContextTokens.asStateFlow()
 
     fun estimateInputTokens(text: String): Int = TokenEstimator.estimateText(text)
+
+    fun buildPromptInspector(draftInput: String) {
+        viewModelScope.launch {
+            _promptInspectorState.value = try {
+                buildPromptInspectorState(draftInput)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                PromptInspectorState(error = e.message ?: "Prompt preview failed")
+            }
+        }
+    }
+
+    fun clearPromptInspector() {
+        _promptInspectorState.value = null
+    }
+
+    private suspend fun buildPromptInspectorState(draftInput: String): PromptInspectorState {
+        val config = apiConfigStore.configFlow.first()
+        val baseCharacter = _character.value
+            ?: characterRepository.getCharacterById(characterId)
+            ?: return PromptInspectorState(error = "Character not loaded")
+        val previewInput = draftInput.ifBlank {
+            messages.value.lastOrNull { it.role == "user" }?.content ?: ""
+        }
+        val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength).reversed()
+        val summary = summaryUseCase.getLatestSummaryText(chatId)
+
+        return if (_isGroupChat.value) {
+            val characters = _groupCharacters.value.ifEmpty {
+                groupChatRepository.getCharactersForChatSync(chatId)
+            }
+            val respondingCharacter = _respondingCharacter.value ?: characters.firstOrNull() ?: baseCharacter
+            promptInspectorBuilder.buildGroup(
+                chatId = chatId,
+                characters = characters.ifEmpty { listOf(respondingCharacter) },
+                respondingCharacter = respondingCharacter,
+                userMessage = previewInput,
+                chatHistory = chatHistory,
+                userName = config.userName,
+                summary = summary
+            )
+        } else {
+            promptInspectorBuilder.buildSingle(
+                chatId = chatId,
+                character = baseCharacter,
+                userMessage = previewInput,
+                chatHistory = chatHistory,
+                userName = config.userName,
+                summary = summary
+            )
+        }
+    }
 
     val pinnedMessages: StateFlow<List<MessageEntity>> = chatRepository.getPinnedMessages(chatId)
         .distinctUntilChanged()

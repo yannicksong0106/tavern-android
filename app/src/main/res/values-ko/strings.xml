@@ -460,4 +460,17 @@
     <string name="bgm_volume">음량</string>
     <string name="bgm_no_bgms">배경 음악 없음</string>
     <string name="bgm_no_bgms_hint">우하단 +를 눌러 배경 음악 추가</string>
+
+    <!-- Prompt Inspector -->
+    <string name="prompt_inspector">Prompt 미리보기</string>
+    <string name="prompt_inspector_loading">Prompt 구성 중…</string>
+    <string name="prompt_messages_count">메시지 %d개</string>
+    <string name="prompt_tokens_count">약 %s tokens</string>
+    <string name="prompt_worldbook_count">World Info %d</string>
+    <string name="prompt_memory_count">기억 %d</string>
+    <string name="prompt_responding_character">응답 캐릭터: %s</string>
+    <string name="prompt_author_note_status">작성자 노트: %s</string>
+    <string name="prompt_persona_status">페르소나: %s</string>
+    <string name="prompt_preset_status">프리셋: %s</string>
+    <string name="prompt_summary_status">요약: %s</string>
 </resources>

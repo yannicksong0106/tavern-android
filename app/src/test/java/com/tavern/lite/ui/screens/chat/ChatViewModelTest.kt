@@ -61,6 +61,7 @@ class ChatViewModelTest {
     @MockK private lateinit var groupChatRepository: GroupChatRepository
     @MockK private lateinit var apiConfigStore: ApiConfigStore
     @MockK private lateinit var settingsStore: SettingsStore
+    @MockK private lateinit var promptInspectorBuilder: PromptInspectorBuilder
     @MockK private lateinit var sendMessageUseCase: SendMessageUseCase
     @MockK private lateinit var continueGenerationUseCase: ContinueGenerationUseCase
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
@@ -139,6 +140,7 @@ class ChatViewModelTest {
             groupChatRepository,
             apiConfigStore,
             settingsStore,
+            promptInspectorBuilder,
             sendMessageUseCase,
             continueGenerationUseCase,
             proactiveMessageUseCase,
@@ -908,6 +910,7 @@ class ChatViewModelTest {
             groupChatRepository,
             apiConfigStore,
             settingsStore,
+            promptInspectorBuilder,
             sendMessageUseCase,
             continueGenerationUseCase,
             proactiveMessageUseCase,

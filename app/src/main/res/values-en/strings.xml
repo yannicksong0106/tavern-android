@@ -462,4 +462,17 @@
     <string name="bgm_volume">Volume</string>
     <string name="bgm_no_bgms">No background music yet</string>
     <string name="bgm_no_bgms_hint">Tap + to add background music for this character</string>
+
+    <!-- Prompt Inspector -->
+    <string name="prompt_inspector">Prompt Inspector</string>
+    <string name="prompt_inspector_loading">Building prompt…</string>
+    <string name="prompt_messages_count">%d messages</string>
+    <string name="prompt_tokens_count">~%s tokens</string>
+    <string name="prompt_worldbook_count">World Info %d</string>
+    <string name="prompt_memory_count">Memory %d</string>
+    <string name="prompt_responding_character">Responding: %s</string>
+    <string name="prompt_author_note_status">Author Note: %s</string>
+    <string name="prompt_persona_status">Persona: %s</string>
+    <string name="prompt_preset_status">Preset: %s</string>
+    <string name="prompt_summary_status">Summary: %s</string>
 </resources>

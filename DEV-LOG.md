@@ -1,5 +1,43 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-06-06 — ST 忠实用户迁移审计与产品方向
+
+**背景**: 从 SillyTavern 高频重度用户视角重新审视项目：目标不是“功能列表接近 ST”，而是让用户愿意把角色卡、世界书、预设、聊天记录和日常工作流长期迁移到 Android 原生客户端。
+
+### 核心判断
+
+| 方向 | 结论 |
+|------|------|
+| 迁移可信度 | 必须让用户确认 ST 资产没有丢失、Prompt 行为没有被偷偷改变 |
+| Prompt 可控性 | Prompt Inspector 是 P0；重度用户需要看到最终 messages、世界书/记忆/作者注/预设注入结果 |
+| 移动端优势 | Quick Reply、命令面板、VN 沉浸模式、自动备份应成为区别于桌面 ST 的主力体验 |
+
+### P0 开发优先级
+
+1. **Prompt Inspector** — 聊天页可预览最终发送给模型的 messages、token 估算和注入来源。
+2. **ST 导入完整性报告** — 导入后列出成功项、跳过项、丢失字段、不兼容项。
+3. **World Info 绑定体系** — Global / Character / Persona / Chat lore 的来源、优先级和触发结果可追踪。
+4. **自动备份与恢复校验** — 每日备份、保留最近 N 份、恢复前预览、恢复后数量校验。
+
+### P1 开发优先级
+
+| 功能 | 用户价值 |
+|------|----------|
+| Quick Replies | 把常用指令、角色动作、脚本入口放到聊天输入区上方 |
+| STscript Lite | 支持基础变量、条件、发送/生成命令，承接 ST 自动化工作流 |
+| 命令面板 | `/imagine`、`/search`、`/summary` 等不再依赖用户记忆 |
+| 聊天页移动 IM 化 | 底部操作面板、失败重试、换 provider 重试、错误详情复制 |
+| VN 沉浸增强 | 自动播放、TTS、横屏、立绘转场、BGM/环境音规则 |
+
+### 代码层建议
+
+- `PromptBuilder` 继续从 object 演进为可注入服务，方便 Prompt Inspector、插件 hook 和策略切换。
+- `/imagine`、`/search` 等命令从 `ChatScreen` 内联逻辑迁移到 `CommandRegistry`。
+- `ChatScreen` 继续拆分为 MessageList / InputController / CommandHandler / ImagePicker / SideEffects。
+- 默认“像真人发微信”回复风格改为可配置预设，避免覆盖 ST 角色卡作者原意。
+
+---
+
 ## 2026-06-06 — 审核修复：图片生成消息链路 ✅
 
 **背景**: 审核发现 `/imagine` 成功后会先直接写入一条用户图片消息，再调用普通发送流程重复写入一次，导致聊天中出现重复用户消息；同时图片生成任务没有挂到 `streamingJob`，停止按钮无法可靠取消整条链路。

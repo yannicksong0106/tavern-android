@@ -70,6 +70,7 @@ import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
+import com.tavern.lite.ui.screens.chat.components.PromptInspectorDialog
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -108,6 +109,7 @@ fun ChatScreen(
     val isListening by viewModel.speechManager.isListening.collectAsStateWithLifecycle()
     val summaries by viewModel.summaries.collectAsStateWithLifecycle()
     val isGeneratingSummary by viewModel.isGeneratingSummary.collectAsStateWithLifecycle()
+    val promptInspectorState by viewModel.promptInspectorState.collectAsStateWithLifecycle()
     val schedulingStrategy by viewModel.groupChatSettingsManager.schedulingStrategy.collectAsStateWithLifecycle()
     val messageIntervalMs by viewModel.groupChatSettingsManager.messageIntervalMs.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -117,6 +119,7 @@ fun ChatScreen(
     var showSearch by remember { mutableStateOf(false) }
     var showBookmarksSheet by remember { mutableStateOf(false) }
     var showSummarySheet by remember { mutableStateOf(false) }
+    var showPromptInspector by remember { mutableStateOf(false) }
 
     if (showBackgroundPicker) {
         BackgroundPickerSheet(
@@ -154,6 +157,16 @@ fun ChatScreen(
             onSchedulingStrategyChange = { viewModel.groupChatSettingsManager.updateSchedulingStrategy(it) },
             onMessageIntervalChange = { viewModel.groupChatSettingsManager.updateMessageInterval(it) },
             onDismiss = { showChattinessSheet = false }
+        )
+    }
+
+    if (showPromptInspector) {
+        PromptInspectorDialog(
+            state = promptInspectorState,
+            onDismiss = {
+                showPromptInspector = false
+                viewModel.clearPromptInspector()
+            }
         )
     }
 
@@ -363,6 +376,10 @@ fun ChatScreen(
                 onToggleSearch = { showSearch = !showSearch },
                 onShowBookmarksSheet = { showBookmarksSheet = true },
                 onShowSummarySheet = { showSummarySheet = true },
+                onShowPromptInspector = {
+                    showPromptInspector = true
+                    viewModel.buildPromptInspector(inputText)
+                },
                 onShowChattinessSheet = { showChattinessSheet = true },
                 onShowBackgroundPicker = { showBackgroundPicker = true }
             )

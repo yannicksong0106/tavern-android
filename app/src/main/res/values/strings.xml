@@ -462,4 +462,17 @@
     <string name="bgm_volume">音量</string>
     <string name="bgm_no_bgms">暂无背景音乐</string>
     <string name="bgm_no_bgms_hint">点击右下角 + 为角色添加背景音乐</string>
+
+    <!-- Prompt Inspector -->
+    <string name="prompt_inspector">Prompt 预览</string>
+    <string name="prompt_inspector_loading">正在构建 Prompt…</string>
+    <string name="prompt_messages_count">%d 条消息</string>
+    <string name="prompt_tokens_count">约 %s tokens</string>
+    <string name="prompt_worldbook_count">世界书 %d</string>
+    <string name="prompt_memory_count">记忆 %d</string>
+    <string name="prompt_responding_character">回复角色：%s</string>
+    <string name="prompt_author_note_status">作者注：%s</string>
+    <string name="prompt_persona_status">用户角色：%s</string>
+    <string name="prompt_preset_status">预设：%s</string>
+    <string name="prompt_summary_status">摘要：%s</string>
 </resources>
