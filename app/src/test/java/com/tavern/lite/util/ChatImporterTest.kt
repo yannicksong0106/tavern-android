@@ -75,6 +75,11 @@ class ChatImporterTest {
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(10L, report.chatId)
+        assertEquals(2, report.importedMessages)
+        assertEquals(0, report.skippedMessages)
+        assertEquals("Tavern JSON", report.format)
         coVerify { chatRepository.createChat(1L, "My Chat") }
         coVerify { chatRepository.sendMessage(10L, "Hello", "user") }
         coVerify { chatRepository.sendMessage(10L, "Hi there", "assistant") }
@@ -92,6 +97,9 @@ class ChatImporterTest {
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(1, report.importedMessages)
+        assertEquals(2, report.skippedMessages)
         coVerify(exactly = 1) { chatRepository.sendMessage(10L, "Hello", "user") }
     }
 
@@ -114,6 +122,9 @@ class ChatImporterTest {
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(2, report.importedMessages)
+        assertEquals("SillyTavern JSON Array", report.format)
         coVerify { chatRepository.sendMessage(20L, "Hello", "user") }
         coVerify { chatRepository.sendMessage(20L, "Hi!", "assistant") }
     }
@@ -135,6 +146,8 @@ class ChatImporterTest {
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(2, report.importedMessages)
         coVerify { chatRepository.sendMessage(20L, "Hey", "user") }
         coVerify { chatRepository.sendMessage(20L, "Hello!", "assistant") }
     }
@@ -154,6 +167,9 @@ class ChatImporterTest {
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(2, report.importedMessages)
+        assertEquals("SillyTavern JSONL", report.format)
         coVerify { chatRepository.sendMessage(30L, "Line 1", "user") }
         coVerify { chatRepository.sendMessage(30L, "Reply 1", "assistant") }
     }
@@ -172,6 +188,9 @@ not valid json
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(2, report.importedMessages)
+        assertTrue(report.warnings.any { it.contains("解析失败") })
         coVerify { chatRepository.sendMessage(30L, "Good line", "user") }
         coVerify { chatRepository.sendMessage(30L, "Another good line", "assistant") }
     }
@@ -190,6 +209,8 @@ not valid json
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(2, report.importedMessages)
         coVerify(exactly = 1) { chatRepository.sendMessage(30L, "Hello", "user") }
         coVerify(exactly = 1) { chatRepository.sendMessage(30L, "Hi", "assistant") }
     }
@@ -207,6 +228,8 @@ not valid json
         advanceUntilIdle()
 
         assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(0, report.importedMessages)
         coVerify(exactly = 0) { chatRepository.sendMessage(any(), any(), any()) }
     }
 

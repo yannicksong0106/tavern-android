@@ -473,4 +473,13 @@
     <string name="prompt_persona_status">ペルソナ: %s</string>
     <string name="prompt_preset_status">プリセット: %s</string>
     <string name="prompt_summary_status">要約: %s</string>
+
+    <!-- Import Report -->
+    <string name="import_complete">インポート完了</string>
+    <string name="import_format">形式: %s</string>
+    <string name="import_messages_count">%d 件のメッセージをインポート</string>
+    <string name="import_skipped_count">%d 件の空白メッセージをスキップ</string>
+    <string name="import_skipped_fields">無視されたフィールド: %s</string>
+    <string name="import_warnings">警告: %s</string>
+    <string name="open_chat">チャットを開く</string>
 </resources>

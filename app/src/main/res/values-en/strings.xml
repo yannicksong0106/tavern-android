@@ -475,4 +475,13 @@
     <string name="prompt_persona_status">Persona: %s</string>
     <string name="prompt_preset_status">Preset: %s</string>
     <string name="prompt_summary_status">Summary: %s</string>
+
+    <!-- Import Report -->
+    <string name="import_complete">Import Complete</string>
+    <string name="import_format">Format: %s</string>
+    <string name="import_messages_count">Imported %d messages</string>
+    <string name="import_skipped_count">Skipped %d blank messages</string>
+    <string name="import_skipped_fields">Ignored fields: %s</string>
+    <string name="import_warnings">Warnings: %s</string>
+    <string name="open_chat">Open Chat</string>
 </resources>

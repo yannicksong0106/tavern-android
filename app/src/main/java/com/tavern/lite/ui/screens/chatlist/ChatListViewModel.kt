@@ -11,6 +11,7 @@ import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.util.ChatExporter
 import com.tavern.lite.util.ChatImporter
+import com.tavern.lite.util.ImportReport
 import com.tavern.lite.util.ExportFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -58,6 +59,9 @@ class ChatListViewModel @Inject constructor(
 
     private val _exportedFile = MutableSharedFlow<File>()
     val exportedFile: SharedFlow<File> = _exportedFile.asSharedFlow()
+
+    private val _importReport = MutableSharedFlow<ImportReport>()
+    val importReport: SharedFlow<ImportReport> = _importReport.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -127,7 +131,7 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             val result = chatImporter.importChat(characterId, file)
             result.fold(
-                onSuccess = { msg -> _exportResult.emit(msg) },
+                onSuccess = { report -> _importReport.emit(report) },
                 onFailure = { _exportResult.emit("导入失败: ${it.message}") }
             )
         }

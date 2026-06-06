@@ -76,6 +76,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.ui.components.CharacterAvatar
+import com.tavern.lite.util.ImportReport
 import com.tavern.lite.util.ExportFormat
 import java.io.File
 import java.text.SimpleDateFormat
@@ -99,6 +100,7 @@ fun ChatListScreen(
     var showExportSheet by remember { mutableStateOf(false) }
     var exportTargetChatId by remember { mutableStateOf<Long?>(null) }
     var showMenu by remember { mutableStateOf(false) }
+    var importReport by remember { mutableStateOf<ImportReport?>(null) }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -133,6 +135,23 @@ fun ChatListScreen(
             }
             context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_chat)))
         }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.importReport.collect { report ->
+            importReport = report
+        }
+    }
+
+    importReport?.let { report ->
+        ImportReportDialog(
+            report = report,
+            onDismiss = { importReport = null },
+            onNavigateToChat = {
+                importReport = null
+                onChatClick(report.chatId)
+            }
+        )
     }
 
     // 导出格式选择

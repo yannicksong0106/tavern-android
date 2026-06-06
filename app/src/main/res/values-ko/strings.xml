@@ -473,4 +473,13 @@
     <string name="prompt_persona_status">페르소나: %s</string>
     <string name="prompt_preset_status">프리셋: %s</string>
     <string name="prompt_summary_status">요약: %s</string>
+
+    <!-- Import Report -->
+    <string name="import_complete">가져오기 완료</string>
+    <string name="import_format">형식: %s</string>
+    <string name="import_messages_count">메시지 %d개 가져옴</string>
+    <string name="import_skipped_count">빈 메시지 %d개 건너뜀</string>
+    <string name="import_skipped_fields">무시된 필드: %s</string>
+    <string name="import_warnings">경고: %s</string>
+    <string name="open_chat">채팅 열기</string>
 </resources>
