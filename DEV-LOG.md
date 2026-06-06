@@ -1,5 +1,35 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-06-06 — 审核修复：图片生成消息链路 ✅
+
+**背景**: 审核发现 `/imagine` 成功后会先直接写入一条用户图片消息，再调用普通发送流程重复写入一次，导致聊天中出现重复用户消息；同时图片生成任务没有挂到 `streamingJob`，停止按钮无法可靠取消整条链路。
+
+### 修复内容
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 图片生成链路收敛 | ChatStreamingManager.kt | 生成图片后统一走 `sendSingleMessage()`，由 UseCase 一次性保存用户图片消息 |
+| 取消状态修复 | ChatStreamingManager.kt | `generateImage()` 纳入 `streamingJob` + `streamingMutex` 管理 |
+| 回归测试 | ChatStreamingManagerTest.kt / ChatViewModelTest.kt | 验证只调用一次发送用例，不再直接额外写 user 消息 |
+
+**测试结果**: `testDebugUnitTest` 通过，`detekt` 通过。
+
+---
+
+## 2026-06-06 — Phase 5.10 语音封装测试 ✅
+
+**背景**: TTS/STT 依赖 Android 系统服务，直接单测成本较高。本次覆盖稳定的 `SpeechManager` 封装层，验证语音输入/输出委托和状态流透出。
+
+### 测试覆盖
+
+| 测试 | 说明 |
+|------|------|
+| SpeechManagerTest | 初始状态、helper 状态流同步、TTS speak/stop、STT start/stop、shutdown |
+
+**测试结果**: `SpeechManagerTest` 通过。
+
+---
+
 ## 2026-06-06 — Phase 4.5 预设模板预览 ✅
 
 **背景**: 预设编辑只能填写模板，无法确认 `{{char}}`、`{{user}}` 等变量替换后的实际效果。本次加入实时模板预览，降低 prompt 调试成本。

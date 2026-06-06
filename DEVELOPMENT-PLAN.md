@@ -200,16 +200,16 @@
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
 | 5.5 | DAO 层测试 | 33 测试：CharacterDao 5 + ChatDao 6 + MessageDao 10 + BranchDao 3 + SummaryDao 5 + Cascade 2，Robolectric 集成测试 | ✅ |
-| 5.6 | AuthorNoteRepository 测试 | CRUD + 排序查询 | ⬜ |
-| 5.7 | BgmRepository/SpriteRepository 测试 | 立绘/BGM 数据层 | ⬜ |
-| 5.8 | SummaryRepository 测试 | 自动摘要数据层 | ⬜ |
+| 5.6 | AuthorNoteRepository 测试 | CRUD + 排序查询 | ✅ |
+| 5.7 | BgmRepository/SpriteRepository 测试 | 立绘/BGM 数据层 | ✅ |
+| 5.8 | SummaryRepository 测试 | 自动摘要数据层 | ✅ |
 
 ### P2 — 工具层
 
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
 | 5.9 | ChatImporter/SillyTavernImporter 测试 | 导入格式兼容性，10 测试覆盖 3 种格式 + 边界 | ✅ |
-| 5.10 | TtsHelper/SttHelper 测试 | 语音输入/输出 | ⬜ |
+| 5.10 | TtsHelper/SttHelper 测试 | SpeechManager 封装层覆盖 TTS/STT 委托与状态流 | ✅ |
 
 **目标**：测试覆盖率 35.8% → 60%+，测试总数 779 → 900+
 
