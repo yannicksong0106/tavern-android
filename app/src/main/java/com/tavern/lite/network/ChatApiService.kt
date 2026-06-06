@@ -119,24 +119,7 @@ class ChatApiService @Inject constructor(
                 if (data == "[DONE]") { completedNormally = true; break }
 
                 try {
-                    val chunk = JSONObject(data)
-                    val delta = chunk.getJSONArray("choices")
-                        .getJSONObject(0)
-                        .optJSONObject("delta")
-
-                    // 收集 reasoning_content（思维链），不 emit 给用户
-                    val reasoningObj = delta?.opt("reasoning_content")
-                    if (reasoningObj != null && reasoningObj != JSONObject.NULL) {
-                        emit(ChatStreamChunk(reasoningContent = reasoningObj.toString()))
-                    }
-
-                    val contentObj = delta?.opt("content")
-                    if (contentObj != null && contentObj != JSONObject.NULL) {
-                        val content = contentObj.toString()
-                        if (content.isNotEmpty()) {
-                            emit(ChatStreamChunk(content = content))
-                        }
-                    }
+                    parseOpenAIStreamChunk(data).forEach { emit(it) }
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.w("ChatApiService", "SSE chunk parse error", e)
@@ -368,6 +351,30 @@ class ChatApiService @Inject constructor(
             }
         }
     }
+}
+
+internal fun parseOpenAIStreamChunk(data: String): List<ChatStreamChunk> {
+    val chunk = JSONObject(data)
+    val choices = chunk.getJSONArray("choices")
+    if (choices.length() == 0) return emptyList()
+
+    val delta = choices.getJSONObject(0).optJSONObject("delta") ?: return emptyList()
+    val chunks = mutableListOf<ChatStreamChunk>()
+
+    val reasoningObj = delta.opt("reasoning_content")
+    if (reasoningObj != null && reasoningObj != JSONObject.NULL) {
+        chunks.add(ChatStreamChunk(reasoningContent = reasoningObj.toString()))
+    }
+
+    val contentObj = delta.opt("content")
+    if (contentObj != null && contentObj != JSONObject.NULL) {
+        val content = contentObj.toString()
+        if (content.isNotEmpty()) {
+            chunks.add(ChatStreamChunk(content = content))
+        }
+    }
+
+    return chunks
 }
 
 data class ChatMessage(

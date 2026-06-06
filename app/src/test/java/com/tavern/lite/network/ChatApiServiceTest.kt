@@ -132,6 +132,33 @@ class ChatApiServiceTest {
     // ── ChatMessage data class ─────────────────────────────────────────
 
     @Test
+    fun `parseOpenAIStreamChunk returns content chunk`() {
+        val chunks = parseOpenAIStreamChunk(
+            """{"choices":[{"delta":{"content":"OK"}}]}"""
+        )
+
+        assertEquals(1, chunks.size)
+        assertEquals("OK", chunks.single().content)
+    }
+
+    @Test
+    fun `parseOpenAIStreamChunk returns reasoning chunk`() {
+        val chunks = parseOpenAIStreamChunk(
+            """{"choices":[{"delta":{"reasoning_content":"thinking"}}]}"""
+        )
+
+        assertEquals(1, chunks.size)
+        assertEquals("thinking", chunks.single().reasoningContent)
+    }
+
+    @Test
+    fun `parseOpenAIStreamChunk ignores empty choices`() {
+        val chunks = parseOpenAIStreamChunk("""{"choices":[]}""")
+
+        assertTrue(chunks.isEmpty())
+    }
+
+    @Test
     fun `ChatMessage default values`() {
         val msg = ChatMessage(role = "user", content = "hi")
 
