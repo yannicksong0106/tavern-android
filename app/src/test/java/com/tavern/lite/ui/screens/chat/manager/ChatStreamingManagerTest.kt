@@ -220,6 +220,66 @@ class ChatStreamingManagerTest {
         assertFalse(manager.isGenerating.value)
     }
 
+    @Test
+    fun `continueGeneration passes reasoning for target assistant message`() = runTest {
+        val character = CharacterEntity(id = characterId, name = "Test")
+        manager.characterProvider = { character }
+        coEvery {
+            sendMessageUseCase.sendSingleMessage(chatId, character, "hello", any(), null, emptyList())
+        } returns MessageExecutionHelper.ExecutionResult(
+            assistantMsgId = 88L,
+            fullResponse = "reply",
+            reasoningContent = "first reasoning"
+        )
+        coEvery { chatRepository.getMessageById(88L) } returns MessageEntity(
+            id = 88L,
+            chatId = chatId,
+            role = "assistant",
+            content = "reply"
+        )
+        every { proactiveDialogueUseCase.shouldScheduleProactive(any()) } returns null
+
+        manager.sendMessage("hello")
+        advanceUntilIdle()
+
+        manager.messagesProvider = {
+            listOf(
+                MessageEntity(id = 1L, chatId = chatId, role = "user", content = "hello"),
+                MessageEntity(id = 88L, chatId = chatId, role = "assistant", content = "reply")
+            )
+        }
+        coEvery {
+            continueGenerationUseCase.continueGeneration(
+                chatId = chatId,
+                characterId = characterId,
+                character = character,
+                lastAssistantMsgId = 88L,
+                lastAssistantContent = "reply",
+                config = any(),
+                previousReasoningContent = "first reasoning"
+            )
+        } returns MessageExecutionHelper.ExecutionResult(
+            assistantMsgId = 88L,
+            fullResponse = " continued",
+            reasoningContent = "continued reasoning"
+        )
+
+        manager.continueGeneration()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            continueGenerationUseCase.continueGeneration(
+                chatId = chatId,
+                characterId = characterId,
+                character = character,
+                lastAssistantMsgId = 88L,
+                lastAssistantContent = "reply",
+                config = any(),
+                previousReasoningContent = "first reasoning"
+            )
+        }
+    }
+
     // ==================== regenerate guards ====================
 
     @Test

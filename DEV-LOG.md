@@ -2658,3 +2658,20 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 **Unverified / follow-up**:
 - Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
 - A2 is now largely split by responsibility, but `ChatStreamingManager` still owns job/mutex/state orchestration and `lastReasoningContent`. The next likely step is A3 reasoning context cleanup.
+
+## 2026-06-12 - A3 Reasoning Context Start
+
+**Context**: Automation continued the backend architecture cleanup after A2 send coordination. The next unfinished source-of-truth item was A3 reasoning context cleanup because `ChatStreamingManager` still held `lastReasoningContent` as manager-level mutable state.
+
+| Item | Files | Result |
+|------|-------|--------|
+| Reasoning context boundary | `GenerationReasoningContext.kt` / `ChatStreamingManager.kt` | Replaced the manager-level `lastReasoningContent` string with a small context object keyed by assistant message id. Continue/regenerate now read reasoning for the target assistant message instead of a single global latest value. |
+| Regression tests | `GenerationReasoningContextTest.kt` / `ChatStreamingManagerTest.kt` | Covered storing reasoning by assistant message id, clearing stale reasoning when a same-message result has none, ignoring results without ids, and manager delegation of target-message reasoning into continue generation. |
+
+**Verification**:
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationReasoningContextTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationContinuationCoordinatorTest` - passed.
+- `detekt` - passed, 0 code smells.
+
+**Unverified / follow-up**:
+- Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
+- A3 is only started. The next likely step is to extend the typed generation context/result boundary into more send paths, especially group responses and any request path that should persist or replay reasoning across manager recreation.

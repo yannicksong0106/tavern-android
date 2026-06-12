@@ -63,6 +63,7 @@ class ChatStreamingManager(
         sendMessageUseCase = sendMessageUseCase,
         random = random
     )
+    private val generationReasoningContext = GenerationReasoningContext()
     private val proactiveDialogueCoordinator = ProactiveDialogueCoordinator(
         chatId = chatId,
         apiConfigStore = apiConfigStore,
@@ -72,7 +73,6 @@ class ChatStreamingManager(
         streamingMutex = streamingMutex
     )
     @Volatile private var wasCancelled = false
-    @Volatile private var lastReasoningContent: String? = null
 
     init {
         proactiveDialogueCoordinator.characterProvider = { characterProvider() }
@@ -181,10 +181,10 @@ class ChatStreamingManager(
                         request = request,
                         character = character,
                         config = config,
-                        previousReasoningContent = lastReasoningContent
+                        previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
                     )
                     if (result != null) {
-                        lastReasoningContent = result.reasoningContent
+                        generationReasoningContext.record(result)
                         onAssistantReplyCommitted()
                     }
                 } catch (e: Exception) {
@@ -215,10 +215,10 @@ class ChatStreamingManager(
                         request = request,
                         character = character,
                         config = config,
-                        previousReasoningContent = lastReasoningContent
+                        previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
                     )
                     if (result != null) {
-                        lastReasoningContent = result.reasoningContent
+                        generationReasoningContext.record(result)
                         onAssistantReplyCommitted()
                     }
                 } catch (e: Exception) {
@@ -268,9 +268,7 @@ class ChatStreamingManager(
                     )
                     if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.Success) {
                         val result = generationResult.executionResult
-                        if (result != null) {
-                            lastReasoningContent = result.reasoningContent
-                        }
+                        generationReasoningContext.record(result)
                         if (commitAssistantReply(result?.assistantMsgId)) {
                             scheduleProactiveDialogue()
                         }
@@ -319,9 +317,7 @@ class ChatStreamingManager(
                         config = config,
                         imagePaths = imagePaths
                     )
-                    if (result != null) {
-                        lastReasoningContent = result.reasoningContent
-                    }
+                    generationReasoningContext.record(result)
                     if (commitAssistantReply(result?.assistantMsgId)) {
                         scheduleProactiveDialogue()
                     }
@@ -392,9 +388,7 @@ class ChatStreamingManager(
                         config = config,
                         imagePaths = imagePaths
                     )
-                    if (result != null) {
-                        lastReasoningContent = result.reasoningContent
-                    }
+                    generationReasoningContext.record(result)
                     commitAssistantReply(result?.assistantMsgId)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
