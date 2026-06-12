@@ -343,7 +343,7 @@ class ChatStreamingManager(
                     if (characters.isEmpty()) return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    generationSendCoordinator.sendGroup(
+                    val groupResult = generationSendCoordinator.sendGroup(
                         characters = characters,
                         content = content,
                         config = config,
@@ -355,6 +355,7 @@ class ChatStreamingManager(
                         onRespondingCharacterChanged = onRespondingCharacterChanged,
                         onAssistantReplyCommit = { assistantMsgId -> commitAssistantReply(assistantMsgId) }
                     )
+                    generationReasoningContext.recordAll(groupResult.results.map { it.second })
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     onToast(classifyError(e))

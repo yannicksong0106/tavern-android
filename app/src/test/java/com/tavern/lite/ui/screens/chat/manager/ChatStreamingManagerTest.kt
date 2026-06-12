@@ -280,6 +280,88 @@ class ChatStreamingManagerTest {
         }
     }
 
+    @Test
+    fun `continueGeneration passes reasoning recorded from group assistant message`() = runTest {
+        val alice = CharacterEntity(id = 1L, name = "Alice")
+        val bob = CharacterEntity(id = 2L, name = "Bob")
+        manager.isGroupChatProvider = { true }
+        manager.characterProvider = { bob }
+        manager.groupCharactersProvider = { listOf(alice, bob) }
+        manager.schedulingStrategyProvider = { GroupSchedulingStrategy.LIST_ORDER }
+        manager.messageIntervalProvider = { 1L }
+        every { proactiveDialogueUseCase.parseAtMention("hello", listOf(alice, bob)) } returns null
+        coEvery {
+            sendMessageUseCase.sendGroupMessage(chatId, listOf(alice, bob), "hello", any(), emptyList())
+        } returns listOf(
+            alice.id to MessageExecutionHelper.ExecutionResult(
+                assistantMsgId = 11L,
+                fullResponse = "alice reply",
+                reasoningContent = "alice reasoning"
+            ),
+            bob.id to MessageExecutionHelper.ExecutionResult(
+                assistantMsgId = 22L,
+                fullResponse = "bob reply",
+                reasoningContent = "bob reasoning"
+            )
+        )
+        coEvery { chatRepository.getMessageById(11L) } returns MessageEntity(
+            id = 11L,
+            chatId = chatId,
+            role = "assistant",
+            content = "alice reply",
+            characterId = alice.id
+        )
+        coEvery { chatRepository.getMessageById(22L) } returns MessageEntity(
+            id = 22L,
+            chatId = chatId,
+            role = "assistant",
+            content = "bob reply",
+            characterId = bob.id
+        )
+        every { proactiveDialogueUseCase.shouldScheduleGroupProactive(listOf(alice, bob)) } returns null
+
+        manager.sendMessage("hello")
+        advanceUntilIdle()
+
+        manager.messagesProvider = {
+            listOf(
+                MessageEntity(id = 1L, chatId = chatId, role = "user", content = "hello"),
+                MessageEntity(id = 11L, chatId = chatId, role = "assistant", content = "alice reply", characterId = alice.id),
+                MessageEntity(id = 22L, chatId = chatId, role = "assistant", content = "bob reply", characterId = bob.id)
+            )
+        }
+        coEvery {
+            continueGenerationUseCase.continueGeneration(
+                chatId = chatId,
+                characterId = characterId,
+                character = bob,
+                lastAssistantMsgId = 22L,
+                lastAssistantContent = "bob reply",
+                config = any(),
+                previousReasoningContent = "bob reasoning"
+            )
+        } returns MessageExecutionHelper.ExecutionResult(
+            assistantMsgId = 22L,
+            fullResponse = " continued",
+            reasoningContent = "continued bob reasoning"
+        )
+
+        manager.continueGeneration()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            continueGenerationUseCase.continueGeneration(
+                chatId = chatId,
+                characterId = characterId,
+                character = bob,
+                lastAssistantMsgId = 22L,
+                lastAssistantContent = "bob reply",
+                config = any(),
+                previousReasoningContent = "bob reasoning"
+            )
+        }
+    }
+
     // ==================== regenerate guards ====================
 
     @Test

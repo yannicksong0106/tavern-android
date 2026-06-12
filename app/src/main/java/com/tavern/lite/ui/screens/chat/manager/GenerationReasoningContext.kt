@@ -18,4 +18,8 @@ internal class GenerationReasoningContext {
             reasoningByAssistantMessageId[assistantMessageId] = reasoningContent
         }
     }
+
+    fun recordAll(results: Iterable<MessageExecutionHelper.ExecutionResult>) {
+        results.forEach(::record)
+    }
 }

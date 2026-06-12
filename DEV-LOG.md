@@ -2675,3 +2675,20 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 **Unverified / follow-up**:
 - Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
 - A3 is only started. The next likely step is to extend the typed generation context/result boundary into more send paths, especially group responses and any request path that should persist or replay reasoning across manager recreation.
+
+## 2026-06-12 - A3 Group Reasoning Context
+
+**Context**: Automation continued A3 after the first reasoning context split. The remaining source-of-truth gap was that group responses returned per-assistant `ExecutionResult` values, but `ChatStreamingManager` did not record their reasoning into the per-message context.
+
+| Item | Files | Result |
+|------|-------|--------|
+| Group response reasoning recording | `ChatStreamingManager.kt` / `GenerationReasoningContext.kt` | Added a batch record path and now records every group response `ExecutionResult` after group send coordination completes. |
+| Regression coverage | `ChatStreamingManagerTest.kt` | Added coverage proving a group assistant message's recorded reasoning is passed into subsequent continue generation for that assistant message. |
+
+**Verification**:
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationReasoningContextTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationSendCoordinatorTest` - passed.
+- `detekt` - passed, 0 code smells.
+
+**Unverified / follow-up**:
+- Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
+- A3 still has no durable reasoning replay across manager recreation because `MessageEntity` does not persist reasoning content. The next likely step is to decide whether reasoning should remain session-only or gain a persisted metadata column/table.
