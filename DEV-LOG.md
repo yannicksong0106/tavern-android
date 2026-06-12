@@ -19,7 +19,7 @@
 |------|------|---------------|--------|----------|------|
 | A0 架构护栏 | 阻止 UI/network/data 边界继续扩散 | `SettingsViewModel.kt`, 新增 `TestConnectionUseCase`, 架构测试 | 设置页连接测试迁入 UseCase；新增依赖边界测试 | 单测证明 ViewModel 不直接依赖 `ChatApiService`；架构测试禁止 `ui` 直接依赖 `ChatApiService`/DAO | done（第一刀） |
 | A1 数据迁移策略 | 解决“数据不可丢”和破坏性迁移冲突 | `AppModule.kt`, `TavernDatabase.kt`, migration tests | 明确 v2-v7 策略：补迁移或显式用户提示；禁止静默清库 | 最近 3 个版本 + 一个历史版本迁移测试通过；破坏性迁移必须有用户可见策略 | done（代表性旧 schema 验收） |
-| A2 聊天生成拆分 | 降低 `ChatStreamingManager` 多职责风险 | `ChatStreamingManager.kt`, 新增 generation/proactive/image/post-processing coordinator | 拆出生成协调、主动消息、图片生成、助手消息后处理 | 现有聊天 manager 测试全过；主文件明显减负；发送/继续/重生成/图片/主动消息行为不变 | in_progress（提交后处理 + 图片生成 + 群聊选择） |
+| A2 聊天生成拆分 | 降低 `ChatStreamingManager` 多职责风险 | `ChatStreamingManager.kt`, 新增 generation/proactive/image/post-processing coordinator | 拆出生成协调、主动消息、图片生成、助手消息后处理 | 现有聊天 manager 测试全过；主文件明显减负；发送/继续/重生成/图片/主动消息行为不变 | in_progress（提交后处理 + 图片生成 + 群聊选择 + 主动消息调度） |
 | A3 reasoning 上下文收口 | 消除会话层 reasoning 串线风险 | `MessageExecutionHelper.kt`, `ContinueGenerationUseCase.kt`, `ChatStreamingManager.kt` | 引入 `GenerationContext` / `GenerationResult`，reasoning 随请求上下文传递 | 并发/连续发送测试覆盖不同 chat/request 不串 reasoning | todo |
 | A4 Prompt 可解释化 | 让最终 prompt 能解释来源 | `PromptBuilder.kt`, `PromptSectionBuilder.kt`, `PromptInspector*` | 引入 `PromptSection(source, content, tokenEstimate)` 或等价 trace | Inspector 显示最终 messages、token、每段来源；PromptBuilder 测试覆盖 trace | todo |
 | A5 世界书匹配引擎 | 把复杂匹配从 Repository 拆出 | `WorldBookRepository.kt`, 新增 `WorldBookMatcher` | Repository 只取数据；Matcher 输出命中列表和 `WorldBookMatchTrace` | 现有匹配测试迁移；补 regex/case/whole word/token budget 的待办测试或明确未实现 | todo |
@@ -88,20 +88,23 @@
 | 图片生成链路从 manager 外提 | A2 目标“拆出图片生成”；当前原则“复杂业务编排下沉到可单测服务” | `ImageGenerationCoordinator.kt`, `ChatStreamingManager.kt` | 代码证据 + coordinator 测试 + manager 回归测试 | `ChatStreamingManager` 不再直接调用 `imageGenerationService.generateImage()` 后拼 `/imagine`，改为委托 `ImageGenerationCoordinator` | 通过 |
 | 图片生成边界可单测 | A2 目标“图片生成行为不变”；当前原则“核心逻辑尽量做成可单测的纯服务” | `ImageGenerationCoordinatorTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ImageGenerationCoordinatorTest` | 覆盖图片生成成功后发送 `/imagine`、图片服务返回 null、生成后取消时不发送消息 | 通过 |
 | 群聊响应角色选择从 manager 外提 | A2 目标“拆出生成协调”；当前原则“核心逻辑尽量做成可单测的纯服务” | `GroupRespondingCharacterSelector.kt`, `ChatStreamingManager.kt` | selector 单测 + manager 回归测试 | `LIST_ORDER`、`ROUND_ROBIN`、`NATURAL` 响应选择从 manager 私有函数迁入 selector；轮询状态由 selector 持有 | 通过 |
+| 主动消息调度与发送从 manager 外提 | A2 目标“拆出主动消息”；当前原则“复杂业务编排下沉到可单测服务” | `ProactiveDialogueCoordinator.kt`, `ChatStreamingManager.kt` | coordinator 单测 + manager 回归测试 | 单聊/群聊主动消息延迟调度、主动发送、打开聊天时的链式触发 guard 迁入 `ProactiveDialogueCoordinator`；manager 只保留触发入口和通用发送委托 | 通过 |
+| 主动消息边界可单测 | A2 验收方式“主动消息行为不变”；当前原则“核心逻辑尽量做成可单测的纯服务” | `ProactiveDialogueCoordinatorTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ProactiveDialogueCoordinatorTest` | 覆盖单聊主动延迟发送、群聊主动角色选择与 responding 状态清理、聊天打开时 assistant 链式触发下一位群聊角色 | 通过 |
 | 现有聊天 manager 行为未回退 | A2 验收方式“现有聊天 manager 测试全过” | `ChatStreamingManagerTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` | 现有 manager 测试通过；发送、定向群聊、图片生成、主动触发 guard 等测试未回退 | 通过 |
-| 主文件明显减负 | A2 验收方式“主文件明显减负” | `ChatStreamingManager.kt` | 行数证据 | 当前 `ChatStreamingManager.kt` 为 512 行，新增 `AssistantReplyCommitter.kt` 60 行、`ImageGenerationCoordinator.kt` 43 行、`GroupRespondingCharacterSelector.kt` 41 行；有下降证据，但主动消息和生成协调仍未外提完 | 未验收 |
-| A2 全量拆分完成 | A2 目标“生成协调、主动消息、图片生成、助手消息后处理” | `ChatStreamingManager.kt` 及后续 coordinator | 模块边界检查 + 完整回归 | 已完成助手消息后处理、图片生成、群聊响应选择；主动消息、发送/继续/重生成协调仍在 manager 内 | 未验收 |
+| 主文件明显减负 | A2 验收方式“主文件明显减负” | `ChatStreamingManager.kt` | 行数证据 | 当前 `ChatStreamingManager.kt` 为 441 行，新增 `AssistantReplyCommitter.kt` 60 行、`ImageGenerationCoordinator.kt` 43 行、`GroupRespondingCharacterSelector.kt` 41 行、`ProactiveDialogueCoordinator.kt` 155 行；有下降证据，但发送/继续/重生成协调仍未外提完 | 未验收 |
+| A2 全量拆分完成 | A2 目标“生成协调、主动消息、图片生成、助手消息后处理” | `ChatStreamingManager.kt` 及后续 coordinator | 模块边界检查 + 完整回归 | 已完成助手消息后处理、图片生成、群聊响应选择、主动消息调度；发送/继续/重生成协调仍在 manager 内 | 未验收 |
 
 **验证结果**：
 
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ProactiveDialogueCoordinatorTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` — 通过。
 - `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ImageGenerationCoordinatorTest --tests com.tavern.lite.ui.screens.chat.manager.AssistantReplyCommitterTest --tests com.tavern.lite.ui.screens.chat.manager.GroupRespondingCharacterSelectorTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` — 通过。
 - `detekt` — 通过，0 code smells。
-- `(Get-Content ChatStreamingManager.kt).Count` — 512；`AssistantReplyCommitter.kt` — 60；`ImageGenerationCoordinator.kt` — 43；`GroupRespondingCharacterSelector.kt` — 41。
+- `(Get-Content ChatStreamingManager.kt).Count` — 441；`AssistantReplyCommitter.kt` — 60；`ImageGenerationCoordinator.kt` — 43；`GroupRespondingCharacterSelector.kt` — 41；`ProactiveDialogueCoordinator.kt` — 155。
 
 **未验收 / 后续**：
 
 - 未跑全量 `testDebugUnitTest`、`lintDebug`、`assembleDebug`、模拟器/真机聊天 smoke。
-- 主动消息、发送/继续/重生成协调仍在 `ChatStreamingManager`，A2 只能标进行中。
+- 发送/继续/重生成协调仍在 `ChatStreamingManager`，A2 只能标进行中。
 - A3 的 reasoning 上下文收口尚未处理，`lastReasoningContent` 仍是 manager 级状态。
 
 ### 风险清单
@@ -110,7 +113,7 @@
 |------|----------|----------|
 | UI 层直接网络调用 | `SettingsViewModel` 注入 `ChatApiService` | A0 迁入 UseCase，并用架构测试锁住 |
 | 旧版本数据可能静默丢失 | 原生产路径有 `fallbackToDestructiveMigrationFrom(2,3,4,5,6,7)`；现已移除并补 v2-v7 迁移入口 | 保留代表性旧 schema 测试；若拿到真实旧库样本，补真实样本迁移验收 |
-| 聊天 manager 继续膨胀 | `ChatStreamingManager` 仍管发送、继续、重生成、主动消息；提交后处理、图片生成、群聊响应选择已外提 | A2 继续拆 proactive 与发送/继续/重生成协调 |
+| 聊天 manager 继续膨胀 | `ChatStreamingManager` 仍管发送、继续、重生成；提交后处理、图片生成、群聊响应选择、主动消息调度已外提 | A2 继续拆发送/继续/重生成协调 |
 | reasoning 状态边界不清 | 会话层仍有 `lastReasoningContent` | A3 改为请求上下文 |
 | Prompt/世界书难解释 | Inspector 只有最终消息和计数，缺每段来源 | A4/A5 引入 trace |
 | 远期功能挤压收口 | Data Bank/RAG、扩展 hook、完整 STscript 尚未稳定 | v1.3.1 不推进新大功能，只保留设计预留 |

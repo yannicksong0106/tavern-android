@@ -5,7 +5,6 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
-import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
@@ -57,9 +56,34 @@ class ChatStreamingManager(
         sendMessageUseCase = sendMessageUseCase
     )
     private val groupRespondingCharacterSelector = GroupRespondingCharacterSelector(random)
+    private val proactiveDialogueCoordinator = ProactiveDialogueCoordinator(
+        chatId = chatId,
+        apiConfigStore = apiConfigStore,
+        proactiveMessageUseCase = proactiveMessageUseCase,
+        proactiveDialogueUseCase = proactiveDialogueUseCase,
+        scope = scope,
+        streamingMutex = streamingMutex
+    )
     @Volatile private var wasCancelled = false
-    @Volatile private var isProactiveMessage = false
     @Volatile private var lastReasoningContent: String? = null
+
+    init {
+        proactiveDialogueCoordinator.characterProvider = { characterProvider() }
+        proactiveDialogueCoordinator.groupCharactersProvider = { groupCharactersProvider() }
+        proactiveDialogueCoordinator.isGroupChatProvider = { isGroupChatProvider() }
+        proactiveDialogueCoordinator.isGeneratingProvider = { _isGenerating.value }
+        proactiveDialogueCoordinator.onGeneratingChanged = { _isGenerating.value = it }
+        proactiveDialogueCoordinator.onRespondingCharacterChanged = { onRespondingCharacterChanged(it) }
+        proactiveDialogueCoordinator.onToast = { onToast(classifyError(it)) }
+        proactiveDialogueCoordinator.onAssistantReplyCommit = { assistantMsgId, updateEmotion, respectCancellation ->
+            commitAssistantReply(
+                assistantMsgId = assistantMsgId,
+                updateEmotion = updateEmotion,
+                respectCancellation = respectCancellation
+            )
+        }
+        proactiveDialogueCoordinator.onStreamingJobChanged = { streamingJob = it }
+    }
 
     // Round-robin 索引
     // ==================== 外部只读状态（由 ViewModel 提供） ====================
@@ -259,25 +283,12 @@ class ChatStreamingManager(
     }
 
     fun triggerProactiveIfNeeded() {
-        val currentMessages = messagesProvider()
-        if (_isGenerating.value || isProactiveMessage) return
-
-        val lastMsg = currentMessages.lastOrNull() ?: return
-
-        if (lastMsg.role == "user") {
-            if (isGroupChatProvider()) {
-                sendGroupChatMessage("")
-            } else {
-                sendSingleChatMessage("")
-            }
-        } else if (isGroupChatProvider() && lastMsg.role == "assistant") {
-            val characters = groupCharactersProvider()
-            val lastCharIndex = characters.indexOfFirst { it.id == lastMsg.characterId }
-            if (lastCharIndex >= 0 && lastCharIndex < characters.size - 1) {
-                val nextChar = characters[lastCharIndex + 1]
-                sendDirectMessage("", nextChar)
-            }
-        }
+        proactiveDialogueCoordinator.triggerIfNeeded(
+            currentMessages = messagesProvider(),
+            sendSingleChatMessage = { sendSingleChatMessage(it) },
+            sendGroupChatMessage = { sendGroupChatMessage(it) },
+            sendDirectMessage = { content, character -> sendDirectMessage(content, character) }
+        )
     }
 
     fun cancel() {
@@ -388,93 +399,11 @@ class ChatStreamingManager(
     // ==================== 主动对话 ====================
 
     private fun scheduleProactiveDialogue() {
-        if (isGroupChatProvider() || isProactiveMessage) return
-        val character = characterProvider() ?: return
-
-        val delayMs = proactiveDialogueUseCase.shouldScheduleProactive(character.chattiness) ?: return
-
-        scope.launch {
-            delay(delayMs)
-            if (!_isGenerating.value) {
-                sendProactiveSingleMessage()
-            }
-        }
-    }
-
-    private fun sendProactiveSingleMessage() {
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                isProactiveMessage = true
-                try {
-                    val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = proactiveMessageUseCase.sendProactiveMessage(chatId, character, config)
-                    commitAssistantReply(
-                        assistantMsgId = result?.assistantMsgId,
-                        updateEmotion = false,
-                        respectCancellation = false
-                    )
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    isProactiveMessage = false
-                    streamingJob = null
-                }
-            }
-        }
+        proactiveDialogueCoordinator.scheduleSingle()
     }
 
     private fun scheduleGroupProactiveDialogue() {
-        if (!isGroupChatProvider() || isProactiveMessage) return
-        val characters = groupCharactersProvider()
-        if (characters.isEmpty()) return
-
-        val delayMs = proactiveDialogueUseCase.shouldScheduleGroupProactive(characters) ?: return
-
-        scope.launch {
-            delay(delayMs)
-            if (!_isGenerating.value) {
-                val nextChar = proactiveDialogueUseCase.selectNextProactiveCharacter(characters)
-                if (nextChar != null) {
-                    sendProactiveGroupMessage(nextChar)
-                }
-            }
-        }
-    }
-
-    private fun sendProactiveGroupMessage(character: CharacterEntity) {
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                onRespondingCharacterChanged(character)
-                isProactiveMessage = true
-                try {
-                    val characters = groupCharactersProvider()
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
-                    commitAssistantReply(
-                        assistantMsgId = result?.assistantMsgId,
-                        updateEmotion = false,
-                        respectCancellation = false
-                    )
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    onRespondingCharacterChanged(null)
-                    isProactiveMessage = false
-                    streamingJob = null
-                }
-            }
-        }
+        proactiveDialogueCoordinator.scheduleGroup()
     }
 
     // ==================== 消息拆分 ====================
