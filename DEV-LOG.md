@@ -2640,3 +2640,21 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 **Unverified / follow-up**:
 - Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
 - A2 still has the normal send/direct/group send orchestration inside `ChatStreamingManager`; the next small step is to extract that send coordination or move on to A3 reasoning context if risk priority changes.
+
+## 2026-06-12 - A2 Send Coordination Split
+
+**Context**: Automation continued the A2 manager split after the continuation/regenerate coordinator pass. The workspace was clean and no active prior automation work was detected.
+
+| Item | Files | Result |
+|------|-------|--------|
+| Normal send coordinator | `GenerationSendCoordinator.kt` / `ChatStreamingManager.kt` | Moved single send, direct group mention send, group responder selection, group `SendMessageUseCase` delegation, assistant commit callbacks, and inter-reply delay handling out of `ChatStreamingManager`. |
+| Coordinator tests | `GenerationSendCoordinatorTest.kt` | Covered single send delegation, direct send delegation, group response commit order, cancellation after first group commit, and virtual-time delay between group replies. |
+| Jitter guard | `GenerationSendCoordinator.kt` | Fixed the small-interval jitter edge case by coercing the random bound to at least 1 ms. |
+
+**Verification**:
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationSendCoordinatorTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` - passed.
+- `detekt` - passed, 0 code smells.
+
+**Unverified / follow-up**:
+- Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
+- A2 is now largely split by responsibility, but `ChatStreamingManager` still owns job/mutex/state orchestration and `lastReasoningContent`. The next likely step is A3 reasoning context cleanup.

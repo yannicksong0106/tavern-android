@@ -10,11 +10,9 @@ import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ImageGenerationService
-import com.tavern.lite.util.SwipeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +58,11 @@ class ChatStreamingManager(
         characterId = characterId,
         continueGenerationUseCase = continueGenerationUseCase
     )
-    private val groupRespondingCharacterSelector = GroupRespondingCharacterSelector(random)
+    private val generationSendCoordinator = GenerationSendCoordinator(
+        chatId = chatId,
+        sendMessageUseCase = sendMessageUseCase,
+        random = random
+    )
     private val proactiveDialogueCoordinator = ProactiveDialogueCoordinator(
         chatId = chatId,
         apiConfigStore = apiConfigStore,
@@ -311,7 +313,12 @@ class ChatStreamingManager(
                     val character = characterProvider() ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendSingleMessage(chatId, character, content, config, null, imagePaths)
+                    val result = generationSendCoordinator.sendSingle(
+                        character = character,
+                        content = content,
+                        config = config,
+                        imagePaths = imagePaths
+                    )
                     if (result != null) {
                         lastReasoningContent = result.reasoningContent
                     }
@@ -340,23 +347,18 @@ class ChatStreamingManager(
                     if (characters.isEmpty()) return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val respondingChars = groupRespondingCharacterSelector.select(
+                    generationSendCoordinator.sendGroup(
                         characters = characters,
+                        content = content,
+                        config = config,
+                        imagePaths = imagePaths,
                         schedulingStrategy = schedulingStrategyProvider(),
-                        chattinessByCharacterId = groupCharacterChattinessProvider()
+                        chattinessByCharacterId = groupCharacterChattinessProvider(),
+                        intervalMs = messageIntervalProvider(),
+                        isCancelled = { wasCancelled },
+                        onRespondingCharacterChanged = onRespondingCharacterChanged,
+                        onAssistantReplyCommit = { assistantMsgId -> commitAssistantReply(assistantMsgId) }
                     )
-
-                    val intervalMs = messageIntervalProvider()
-                    val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config, imagePaths)
-                    for ((charId, result) in results) {
-                        if (wasCancelled) break
-                        onRespondingCharacterChanged(characters.find { it.id == charId })
-                        commitAssistantReply(result.assistantMsgId)
-                        if (charId != results.last().first && !wasCancelled) {
-                            val jitter = random.nextLong((intervalMs * 0.3).toLong())
-                            delay(intervalMs + jitter)
-                        }
-                    }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     onToast(classifyError(e))
@@ -383,7 +385,13 @@ class ChatStreamingManager(
                     val characters = groupCharactersProvider()
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config, imagePaths)
+                    val result = generationSendCoordinator.sendDirect(
+                        characters = characters,
+                        targetCharacter = targetCharacter,
+                        content = content,
+                        config = config,
+                        imagePaths = imagePaths
+                    )
                     if (result != null) {
                         lastReasoningContent = result.reasoningContent
                     }
