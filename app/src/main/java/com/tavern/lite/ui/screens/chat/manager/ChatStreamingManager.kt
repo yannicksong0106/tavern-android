@@ -55,6 +55,11 @@ class ChatStreamingManager(
         imageGenerationService = imageGenerationService,
         sendMessageUseCase = sendMessageUseCase
     )
+    private val generationContinuationCoordinator = GenerationContinuationCoordinator(
+        chatId = chatId,
+        characterId = characterId,
+        continueGenerationUseCase = continueGenerationUseCase
+    )
     private val groupRespondingCharacterSelector = GroupRespondingCharacterSelector(random)
     private val proactiveDialogueCoordinator = ProactiveDialogueCoordinator(
         chatId = chatId,
@@ -158,8 +163,8 @@ class ChatStreamingManager(
     }
 
     fun continueGeneration() {
-        val lastMsg = messagesProvider().lastOrNull { it.role == "assistant" }
-        if (lastMsg == null || _isGenerating.value) return
+        val request = generationContinuationCoordinator.resolveContinueRequest(messagesProvider())
+        if (request == null || _isGenerating.value) return
 
         wasCancelled = false
         streamingJob?.cancel()
@@ -170,8 +175,10 @@ class ChatStreamingManager(
                     val character = characterProvider() ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = continueGenerationUseCase.continueGeneration(
-                        chatId, characterId, character, lastMsg.id, lastMsg.content, config,
+                    val result = generationContinuationCoordinator.continueGeneration(
+                        request = request,
+                        character = character,
+                        config = config,
                         previousReasoningContent = lastReasoningContent
                     )
                     if (result != null) {
@@ -190,13 +197,8 @@ class ChatStreamingManager(
     }
 
     fun regenerate(messageId: Long) {
-        val allMessages = messagesProvider()
-        val msg = allMessages.find { it.id == messageId }
-        if (msg == null || msg.role != "assistant") return
-
-        val msgIndex = allMessages.indexOfFirst { it.id == messageId }
-        val userMsg = allMessages.take(msgIndex).lastOrNull { it.role == "user" }
-        if (userMsg == null) return
+        val request = generationContinuationCoordinator.resolveRegenerateRequest(messagesProvider(), messageId)
+        if (request == null) return
 
         wasCancelled = false
         streamingJob?.cancel()
@@ -207,8 +209,10 @@ class ChatStreamingManager(
                     val character = characterProvider() ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val result = continueGenerationUseCase.regenerate(
-                        chatId, characterId, character, messageId, userMsg.content, config,
+                    val result = generationContinuationCoordinator.regenerate(
+                        request = request,
+                        character = character,
+                        config = config,
                         previousReasoningContent = lastReasoningContent
                     )
                     if (result != null) {

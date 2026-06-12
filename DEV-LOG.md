@@ -2622,3 +2622,21 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 ## 当前计划入口
 
 当前优先级以本文件顶部的“2026-06-12 — 后端架构整改计划与日志整理”为准；长期路线仍参考 `ROADMAP.md`，阶段任务细节参考 `DEVELOPMENT-PLAN.md`。
+# Tavern Android Automation Addendum
+
+## 2026-06-12 - A2 Generation Continuation Split
+
+**Context**: Automation continued the backend architecture cleanup plan. A2 was still the next unfinished item after proactive dialogue, image generation, group response selection, and assistant reply committing had already been extracted from `ChatStreamingManager`.
+
+| Item | Files | Result |
+|------|-------|--------|
+| Continue/regenerate coordinator | `GenerationContinuationCoordinator.kt` / `ChatStreamingManager.kt` | Moved continue and regenerate request resolution plus `ContinueGenerationUseCase` delegation out of `ChatStreamingManager`; manager now keeps only job/state orchestration for these paths. |
+| Coordinator tests | `GenerationContinuationCoordinatorTest.kt` | Covered last-assistant continue resolution, nearest previous-user regenerate resolution, invalid target guards, and delegation of config/character/reasoning parameters. |
+
+**Verification**:
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.GenerationContinuationCoordinatorTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` - passed.
+- `detekt` - passed, 0 code smells.
+
+**Unverified / follow-up**:
+- Full `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and emulator smoke were not run in this pass.
+- A2 still has the normal send/direct/group send orchestration inside `ChatStreamingManager`; the next small step is to extract that send coordination or move on to A3 reasoning context if risk priority changes.
