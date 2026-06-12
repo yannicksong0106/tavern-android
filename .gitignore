@@ -1,6 +1,7 @@
 # Built outputs
 *.iml
 .gradle
+.gradle-local/
 /build
 /app/build
 /local.properties
@@ -34,6 +35,9 @@ desktop.ini
 
 # Debug
 *.hprof
+screen.png
+settings3.xml
+smoke_seed.sql
 
 # Screenshots (keep for README)
 

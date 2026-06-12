@@ -14,6 +14,7 @@ import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
+import com.tavern.lite.data.db.dao.QuickReplyDao
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
@@ -31,6 +32,8 @@ import com.tavern.lite.data.db.entity.MemoryEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.PresetEntity
+import com.tavern.lite.data.db.entity.QuickReplyEntity
+import com.tavern.lite.data.db.entity.QuickReplySetEntity
 import com.tavern.lite.data.db.entity.ScriptEntity
 import com.tavern.lite.data.db.entity.SpriteEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
@@ -56,8 +59,10 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         SummaryEntity::class,
         SpriteEntity::class,
         BgmEntity::class,
+        QuickReplySetEntity::class,
+        QuickReplyEntity::class,
     ],
-    version = 30,
+    version = 31,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -76,6 +81,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun summaryDao(): SummaryDao
     abstract fun spriteDao(): SpriteDao
     abstract fun bgmDao(): BgmDao
+    abstract fun quickReplyDao(): QuickReplyDao
 
     companion object {
         /**
@@ -117,6 +123,7 @@ abstract class TavernDatabase : RoomDatabase() {
                         FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
+                normalizeVersion8Columns(db)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_chats_character_id ON chats(character_id)")
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS messages (
@@ -234,7 +241,145 @@ abstract class TavernDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_character_personas_character_id ON character_personas(character_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_character_personas_persona_id ON character_personas(persona_id)")
+                normalizeVersion8Columns(db)
             }
+        }
+
+        val MIGRATION_2_8 = legacyVersionTo8Migration(2)
+        val MIGRATION_3_8 = legacyVersionTo8Migration(3)
+        val MIGRATION_4_8 = legacyVersionTo8Migration(4)
+        val MIGRATION_5_8 = legacyVersionTo8Migration(5)
+        val MIGRATION_6_8 = legacyVersionTo8Migration(6)
+        val MIGRATION_7_8 = legacyVersionTo8Migration(7)
+
+        private fun legacyVersionTo8Migration(startVersion: Int): Migration {
+            return object : Migration(startVersion, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    MIGRATION_1_8.migrate(db)
+                }
+            }
+        }
+
+        private fun normalizeVersion8Columns(db: SupportSQLiteDatabase) {
+            addColumnIfMissing(db, "characters", "description", "description TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "characters", "personality", "personality TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "characters", "first_mes", "first_mes TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "characters", "mes_example", "mes_example TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "characters", "avatar_path", "avatar_path TEXT")
+            addColumnIfMissing(db, "characters", "system_prompt", "system_prompt TEXT")
+            addColumnIfMissing(db, "characters", "post_history_instructions", "post_history_instructions TEXT")
+            addColumnIfMissing(db, "characters", "tags", "tags TEXT NOT NULL DEFAULT '[]'")
+            addColumnIfMissing(db, "characters", "world_book_id", "world_book_id INTEGER")
+            addColumnIfMissing(db, "characters", "background_path", "background_path TEXT")
+            addColumnIfMissing(db, "characters", "creator", "creator TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "characters", "version", "version TEXT NOT NULL DEFAULT '1.0'")
+            addColumnIfMissing(db, "characters", "spec", "spec TEXT NOT NULL DEFAULT 'chara_card_v2'")
+            addColumnIfMissing(db, "characters", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "characters", "updated_at", "updated_at INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "chats", "character_id", "character_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "chats", "name", "name TEXT")
+            addColumnIfMissing(db, "chats", "background_path", "background_path TEXT")
+            addColumnIfMissing(db, "chats", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "chats", "updated_at", "updated_at INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "messages", "chat_id", "chat_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "messages", "role", "role TEXT NOT NULL DEFAULT 'user'")
+            addColumnIfMissing(db, "messages", "content", "content TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "messages", "parent_id", "parent_id INTEGER")
+            addColumnIfMissing(db, "messages", "branch_id", "branch_id INTEGER")
+            addColumnIfMissing(db, "messages", "is_active", "is_active INTEGER NOT NULL DEFAULT 1")
+            addColumnIfMissing(db, "messages", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "messages", "swipe_content", "swipe_content TEXT NOT NULL DEFAULT '[]'")
+            addColumnIfMissing(db, "messages", "swipe_index", "swipe_index INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "world_books", "name", "name TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "world_books", "description", "description TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "world_books", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_books", "updated_at", "updated_at INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "world_book_entries", "world_book_id", "world_book_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "uid", "uid INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "comment", "comment TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "world_book_entries", "keys", "keys TEXT NOT NULL DEFAULT '[]'")
+            addColumnIfMissing(db, "world_book_entries", "keys_secondary", "keys_secondary TEXT NOT NULL DEFAULT '[]'")
+            addColumnIfMissing(db, "world_book_entries", "content", "content TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "world_book_entries", "constant", "constant INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "position", "position INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "order_val", "order_val INTEGER NOT NULL DEFAULT 100")
+            addColumnIfMissing(db, "world_book_entries", "probability", "probability INTEGER NOT NULL DEFAULT 100")
+            addColumnIfMissing(db, "world_book_entries", "depth", "depth INTEGER NOT NULL DEFAULT 4")
+            addColumnIfMissing(db, "world_book_entries", "disabled", "disabled INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "selective", "selective INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "selective_logic", "selective_logic INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "exclude_recursion", "exclude_recursion INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "prevent_recursion", "prevent_recursion INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "group", "\"group\" TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "world_book_entries", "group_override", "group_override INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "world_book_entries", "group_weight", "group_weight INTEGER NOT NULL DEFAULT 100")
+
+            addColumnIfMissing(db, "memories", "character_id", "character_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "memories", "content", "content TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "memories", "importance", "importance INTEGER NOT NULL DEFAULT 5")
+            addColumnIfMissing(db, "memories", "source", "source TEXT NOT NULL DEFAULT 'manual'")
+            addColumnIfMissing(db, "memories", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "memories", "last_accessed", "last_accessed INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "memories", "access_count", "access_count INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "scripts", "character_id", "character_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "scripts", "name", "name TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "scripts", "comment", "comment TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "scripts", "script_type", "script_type INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "scripts", "find_pattern", "find_pattern TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "scripts", "replace_pattern", "replace_pattern TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "scripts", "is_regex", "is_regex INTEGER NOT NULL DEFAULT 1")
+            addColumnIfMissing(db, "scripts", "case_sensitive", "case_sensitive INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "scripts", "enabled", "enabled INTEGER NOT NULL DEFAULT 1")
+            addColumnIfMissing(db, "scripts", "sort_order", "sort_order INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "author_notes", "character_id", "character_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "author_notes", "content", "content TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "author_notes", "position", "position TEXT NOT NULL DEFAULT 'after_an'")
+            addColumnIfMissing(db, "author_notes", "depth", "depth INTEGER NOT NULL DEFAULT 4")
+            addColumnIfMissing(db, "author_notes", "updated_at", "updated_at INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "personas", "name", "name TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "personas", "biography", "biography TEXT NOT NULL DEFAULT ''")
+            addColumnIfMissing(db, "personas", "avatar_path", "avatar_path TEXT")
+            addColumnIfMissing(db, "personas", "is_default", "is_default INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "personas", "created_at", "created_at INTEGER NOT NULL DEFAULT 0")
+
+            addColumnIfMissing(db, "character_personas", "character_id", "character_id INTEGER NOT NULL DEFAULT 0")
+            addColumnIfMissing(db, "character_personas", "persona_id", "persona_id INTEGER NOT NULL DEFAULT 0")
+        }
+
+        private fun addColumnIfMissing(
+            db: SupportSQLiteDatabase,
+            table: String,
+            column: String,
+            columnDefinition: String
+        ) {
+            if (!tableExists(db, table) || columnExists(db, table, column)) return
+            db.execSQL("ALTER TABLE $table ADD COLUMN $columnDefinition")
+        }
+
+        private fun tableExists(db: SupportSQLiteDatabase, table: String): Boolean {
+            db.query(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                arrayOf(table)
+            ).use { cursor ->
+                return cursor.moveToFirst()
+            }
+        }
+
+        private fun columnExists(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+            db.query("PRAGMA table_info($table)").use { cursor ->
+                val nameIndex = cursor.getColumnIndexOrThrow("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == column) return true
+                }
+            }
+            return false
         }
 
         val MIGRATION_10_11 = object : Migration(10, 11) {
@@ -1222,6 +1367,44 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_summaries_chat_id_created_at ON summaries(chat_id, created_at DESC)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_branches_chat_id_is_default_created_at ON branches(chat_id, is_default DESC, created_at)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_scripts_character_id_enabled_sort_order_id ON scripts(character_id, enabled, sort_order, id)")
+            }
+        }
+
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS quick_reply_sets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        scope TEXT NOT NULL DEFAULT 'global',
+                        character_id INTEGER,
+                        chat_id INTEGER,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS quick_replies (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        set_id INTEGER NOT NULL,
+                        label TEXT NOT NULL,
+                        script TEXT NOT NULL,
+                        icon TEXT,
+                        automation_id TEXT,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        requires_confirmation INTEGER NOT NULL DEFAULT 0,
+                        allow_auto_run INTEGER NOT NULL DEFAULT 0,
+                        can_send_messages INTEGER NOT NULL DEFAULT 0,
+                        can_trigger_generation INTEGER NOT NULL DEFAULT 0,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (set_id) REFERENCES quick_reply_sets(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_reply_sets_scope_character_id_chat_id_enabled_display_order ON quick_reply_sets(scope, character_id, chat_id, enabled, display_order)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_replies_set_id ON quick_replies(set_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_quick_replies_set_id_enabled_display_order ON quick_replies(set_id, enabled, display_order)")
             }
         }
 

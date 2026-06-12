@@ -4,18 +4,29 @@ import androidx.lifecycle.SavedStateHandle
 import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.QuickReplyEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.BubbleStyleConfig
+import com.tavern.lite.data.model.StScriptCommand
+import com.tavern.lite.data.model.StScriptCommandType
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.data.repository.QuickReplyRepository
 import com.tavern.lite.data.repository.SummaryRepository
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
+import com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerResult
+import com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
+import com.tavern.lite.domain.usecase.QuickReplyAutomationExecution
+import com.tavern.lite.domain.usecase.StScriptAction
+import com.tavern.lite.domain.usecase.StScriptBlockedCommand
+import com.tavern.lite.domain.usecase.StScriptExecutionResult
+import com.tavern.lite.domain.usecase.StScriptLiteExecutor
 import com.tavern.lite.domain.usecase.SummaryUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.EmotionDetector
@@ -59,6 +70,7 @@ class ChatViewModelTest {
     @MockK private lateinit var characterRepository: CharacterRepository
     @MockK private lateinit var chatRepository: ChatRepository
     @MockK private lateinit var groupChatRepository: GroupChatRepository
+    @MockK private lateinit var quickReplyRepository: QuickReplyRepository
     @MockK private lateinit var apiConfigStore: ApiConfigStore
     @MockK private lateinit var settingsStore: SettingsStore
     @MockK private lateinit var promptInspectorBuilder: PromptInspectorBuilder
@@ -66,6 +78,8 @@ class ChatViewModelTest {
     @MockK private lateinit var continueGenerationUseCase: ContinueGenerationUseCase
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
+    @MockK private lateinit var quickReplyAutomationTriggerUseCase: QuickReplyAutomationTriggerUseCase
+    @MockK private lateinit var stScriptLiteExecutor: StScriptLiteExecutor
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
     @MockK private lateinit var summaryUseCase: SummaryUseCase
     @MockK private lateinit var summaryRepository: SummaryRepository
@@ -103,6 +117,7 @@ class ChatViewModelTest {
         // Default mocks for ViewModel init
         every { settingsStore.bubbleStyleFlow } returns flowOf(BubbleStyleConfig())
         every { chatRepository.getMessagesForChat(CHAT_ID) } returns flowOf(emptyList())
+        every { quickReplyRepository.getEnabledRepliesForContext(CHARACTER_ID, CHAT_ID) } returns flowOf(emptyList())
         coEvery { chatRepository.getMessagesPage(any(), any()) } returns emptyList()
         every { chatRepository.getPinnedMessages(CHAT_ID) } returns flowOf(emptyList())
         coEvery { characterRepository.getCharacterById(CHARACTER_ID) } returns testCharacter
@@ -138,6 +153,7 @@ class ChatViewModelTest {
             characterRepository,
             chatRepository,
             groupChatRepository,
+            quickReplyRepository,
             apiConfigStore,
             settingsStore,
             promptInspectorBuilder,
@@ -145,6 +161,8 @@ class ChatViewModelTest {
             continueGenerationUseCase,
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
+            quickReplyAutomationTriggerUseCase,
+            stScriptLiteExecutor,
             memoryExtractionUseCase,
             summaryUseCase,
             summaryRepository,
@@ -900,6 +918,105 @@ class ChatViewModelTest {
         assertEquals(testCharacter, viewModel.getCharacterForMessage(msg))
     }
 
+    // ==================== quick replies ====================
+
+    @Test
+    fun `executeQuickReply returns actions echoes and blocked reasons`() {
+        val reply = QuickReplyEntity(setId = 1, label = "Draft", script = "/input hi")
+        every { stScriptLiteExecutor.execute(reply, any(), any()) } returns StScriptExecutionResult(
+            actions = listOf(StScriptAction.SetInput("hi")),
+            echoes = listOf("ok", "", "ok"),
+            blockedCommands = listOf(
+                StScriptBlockedCommand(
+                    command = StScriptCommand(type = StScriptCommandType.Send, argument = "blocked"),
+                    reason = "Sending messages is not allowed"
+                ),
+                StScriptBlockedCommand(
+                    command = StScriptCommand(type = StScriptCommandType.Send, argument = "again"),
+                    reason = "Sending messages is not allowed"
+                ),
+                StScriptBlockedCommand(
+                    command = StScriptCommand(type = StScriptCommandType.Send, argument = "blank"),
+                    reason = ""
+                )
+            )
+        )
+
+        val result = viewModel.executeQuickReply(reply)
+
+        assertEquals(listOf(StScriptAction.SetInput("hi")), result.actions)
+        assertEquals(listOf("ok"), result.echoes)
+        assertEquals(listOf("Sending messages is not allowed"), result.blockedReasons)
+    }
+
+    @Test
+    fun `triggerQuickReplyAutomation maps automation result to ui result`() = runTest {
+        val reply = QuickReplyEntity(setId = 1, label = "Open", script = "/input hi")
+        coEvery {
+            quickReplyAutomationTriggerUseCase("chat_open", CHARACTER_ID, CHAT_ID)
+        } returns QuickReplyAutomationTriggerResult(
+            automationId = "chat_open",
+            executions = listOf(
+                QuickReplyAutomationExecution(
+                    reply = reply,
+                    result = StScriptExecutionResult(
+                        actions = listOf(StScriptAction.SetInput("hi")),
+                        echoes = listOf("ready", "", "ready"),
+                        blockedCommands = listOf(
+                            StScriptBlockedCommand(
+                                command = StScriptCommand(type = StScriptCommandType.Send, argument = "blocked"),
+                                reason = "Command is not safe for auto-run"
+                            ),
+                            StScriptBlockedCommand(
+                                command = StScriptCommand(type = StScriptCommandType.Send, argument = "again"),
+                                reason = "Command is not safe for auto-run"
+                            )
+                        )
+                    )
+                ),
+                QuickReplyAutomationExecution(
+                    reply = reply.copy(id = 2, label = "Confirm"),
+                    result = StScriptExecutionResult(
+                        actions = listOf(StScriptAction.SetInput("second")),
+                        echoes = listOf("ready", "next"),
+                        blockedCommands = listOf(
+                            StScriptBlockedCommand(
+                                command = StScriptCommand(type = StScriptCommandType.Send, argument = "again"),
+                                reason = "Command is not safe for auto-run"
+                            )
+                        )
+                    ),
+                    skippedReason = "Confirmation is required"
+                )
+            ),
+            variables = mapOf("mood" to "calm")
+        )
+
+        val result = viewModel.triggerQuickReplyAutomation("chat_open")
+
+        assertEquals(listOf(StScriptAction.SetInput("hi"), StScriptAction.SetInput("second")), result.actions)
+        assertEquals(listOf("ready", "next"), result.echoes)
+        assertEquals(
+            listOf("Command is not safe for auto-run", "Confirmation is required"),
+            result.blockedReasons
+        )
+        coVerify { quickReplyAutomationTriggerUseCase("chat_open", CHARACTER_ID, CHAT_ID) }
+    }
+
+    @Test
+    fun `assistant reply committed event is exposed as one shot flow`() = runTest {
+        val events = mutableListOf<Unit>()
+        val job = launch(Dispatchers.Unconfined) {
+            viewModel.assistantReplyCommitted.collect { events.add(it) }
+        }
+
+        viewModel.streamingManager.onAssistantReplyCommitted()
+        advanceUntilIdle()
+
+        assertEquals(1, events.size)
+        job.cancel()
+    }
+
     // ==================== Helper ====================
 
     private fun createViewModel(): ChatViewModel {
@@ -908,6 +1025,7 @@ class ChatViewModelTest {
             characterRepository,
             chatRepository,
             groupChatRepository,
+            quickReplyRepository,
             apiConfigStore,
             settingsStore,
             promptInspectorBuilder,
@@ -915,6 +1033,8 @@ class ChatViewModelTest {
             continueGenerationUseCase,
             proactiveMessageUseCase,
             proactiveDialogueUseCase,
+            quickReplyAutomationTriggerUseCase,
+            stScriptLiteExecutor,
             memoryExtractionUseCase,
             summaryUseCase,
             summaryRepository,

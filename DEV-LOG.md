@@ -1,5 +1,479 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-06-12 — 后端架构整改计划与日志整理
+
+**背景**: 2026-06-11 的架构审计确认，项目核心能力已经具备，但边界和可验收性没有同步长稳：UI 层仍有直接网络调用，聊天生成 manager 继续承担过多职责，旧版本数据库存在破坏性迁移入口，Prompt/世界书/自动化缺少可解释 trace，远期能力和当前收口任务混在一起。接下来优先做架构止血和主链路稳定，不推进新的大功能。
+
+### 当前原则
+
+- 先修边界，再拆大类，最后补扩展能力。
+- 每个任务必须有规则来源、代码改动范围、自动验证和手测要求。
+- 没有证据的项只允许写“未验收”，不能用文档状态替代真实结果。
+- UI/ViewModel 只表达状态和用户意图；网络、数据库、事务和复杂业务编排必须下沉到 UseCase/Coordinator/Repository。
+- Repository 只负责数据访问和简单查询；Prompt、世界书、STscript、自动化等核心逻辑尽量做成可单测的纯服务。
+- 新功能后置。v1.3.1 收口阶段只处理会影响稳定性、数据安全、架构边界和可解释性的工作。
+
+### 整改路线图
+
+| 阶段 | 目标 | 主要文件/模块 | 交付物 | 验收方式 | 状态 |
+|------|------|---------------|--------|----------|------|
+| A0 架构护栏 | 阻止 UI/network/data 边界继续扩散 | `SettingsViewModel.kt`, 新增 `TestConnectionUseCase`, 架构测试 | 设置页连接测试迁入 UseCase；新增依赖边界测试 | 单测证明 ViewModel 不直接依赖 `ChatApiService`；架构测试禁止 `ui` 直接依赖 `ChatApiService`/DAO | done（第一刀） |
+| A1 数据迁移策略 | 解决“数据不可丢”和破坏性迁移冲突 | `AppModule.kt`, `TavernDatabase.kt`, migration tests | 明确 v2-v7 策略：补迁移或显式用户提示；禁止静默清库 | 最近 3 个版本 + 一个历史版本迁移测试通过；破坏性迁移必须有用户可见策略 | done（代表性旧 schema 验收） |
+| A2 聊天生成拆分 | 降低 `ChatStreamingManager` 多职责风险 | `ChatStreamingManager.kt`, 新增 generation/proactive/image/post-processing coordinator | 拆出生成协调、主动消息、图片生成、助手消息后处理 | 现有聊天 manager 测试全过；主文件明显减负；发送/继续/重生成/图片/主动消息行为不变 | in_progress（提交后处理 + 图片生成 + 群聊选择） |
+| A3 reasoning 上下文收口 | 消除会话层 reasoning 串线风险 | `MessageExecutionHelper.kt`, `ContinueGenerationUseCase.kt`, `ChatStreamingManager.kt` | 引入 `GenerationContext` / `GenerationResult`，reasoning 随请求上下文传递 | 并发/连续发送测试覆盖不同 chat/request 不串 reasoning | todo |
+| A4 Prompt 可解释化 | 让最终 prompt 能解释来源 | `PromptBuilder.kt`, `PromptSectionBuilder.kt`, `PromptInspector*` | 引入 `PromptSection(source, content, tokenEstimate)` 或等价 trace | Inspector 显示最终 messages、token、每段来源；PromptBuilder 测试覆盖 trace | todo |
+| A5 世界书匹配引擎 | 把复杂匹配从 Repository 拆出 | `WorldBookRepository.kt`, 新增 `WorldBookMatcher` | Repository 只取数据；Matcher 输出命中列表和 `WorldBookMatchTrace` | 现有匹配测试迁移；补 regex/case/whole word/token budget 的待办测试或明确未实现 | todo |
+| A6 自动化事件总线 | 避免聊天页硬编码自动化事件 | `QuickReplyAutomationTriggerUseCase.kt`, `ChatScreen.kt`, 新增 automation event 模型 | `chat_open` / `assistant_reply` 迁入业务事件分发；世界书 automation id 做设计预留 | 自动触发只执行一次；unsafe action 仍默认拦截；无 UI 直接拼事件逻辑 | todo |
+| A7 配置档案建模 | 为 Connection Profiles 打基础 | `ApiConfigStore.kt`, `ApiConfig.kt`, 新增 profile entity/repository | 单一配置迁移为默认 profile；角色/聊天绑定预留 | 旧配置可无损迁移；密钥仍加密；连接测试走 profile | todo |
+| A8 质量门禁复核 | 把审计口径固化到开发流程 | Gradle test/lint/detekt/Kover 报告，模拟器 smoke | 每次阶段完成记录自动验证 + 手测证据 | `testDebugUnitTest`、`detekt`、`lintDebug`、`assembleDebug`；设备 smoke 未做则写未验收 | todo |
+
+### 第一批执行顺序
+
+1. **A0 架构护栏**：先把 `SettingsViewModel -> ChatApiService` 改成 `SettingsViewModel -> TestConnectionUseCase -> ChatApiService`，并加架构依赖测试。
+2. **A1 数据迁移策略**：处理 `fallbackToDestructiveMigrationFrom(2,3,4,5,6,7)`，不能继续让生产路径静默清库。
+3. **A2/A3 聊天生成收口**：先拆图片生成和 proactive，再处理发送/继续/重生成，最后落地 `GenerationContext`。
+4. **A4/A5 可解释性**：Prompt 和世界书一起做 trace，避免后续 SillyTavern 宏、outlet、token budget 继续堆到不可验证状态。
+5. **A6 以后**：自动化、Connection Profiles、Data Bank/RAG、扩展 hook 都在主链路稳定后推进。
+
+### A0 执行记录
+
+| 项目 | 文件 | 结果 |
+|------|------|------|
+| 连接测试下沉 | `TestConnectionUseCase.kt` / `SettingsViewModel.kt` | 设置页 ViewModel 不再直接注入 `ChatApiService`，连接测试网络调用由 UseCase 承接 |
+| ViewModel 回归测试 | `SettingsViewModelTest.kt` | 覆盖连接测试成功状态与 `CancellationException` 不吞异常 |
+| UseCase 测试 | `TestConnectionUseCaseTest.kt` | 覆盖连接测试 prompt、`maxTokens = 50` 和 100 字符预览截断 |
+| 架构边界测试 | `ArchitectureBoundaryTest.kt` | 扫描 `ui` 源码，禁止直接导入 `ChatApiService` 或 DAO |
+
+**验证结果**：
+
+- `testDebugUnitTest --tests com.tavern.lite.domain.usecase.TestConnectionUseCaseTest --tests com.tavern.lite.ui.screens.settings.SettingsViewModelTest --tests com.tavern.lite.architecture.ArchitectureBoundaryTest` — 通过。
+- `detekt` — 通过，0 code smells。
+- `rg "ChatApiService|com\\.tavern\\.lite\\.data\\.db\\.dao" app/src/main/java/com/tavern/lite/ui` — 无匹配。
+
+**未验收 / 后续**：
+
+- UI 层仍存在历史性的 `ApiConfigStore`、`ImageGenerationService`、`PromptBuilder` 等 `network` 包依赖；本轮只锁住直接网络服务和 DAO 入口，后续在 A2/A4/A7 中继续收敛。
+- 未做模拟器/真机手测，因为本轮只移动设置页连接测试边界，未改变可视交互。
+
+### A1 执行记录
+
+| 验收项 | 规则来源 | 对应文件 | 验收方式 | 实际结果 | 是否通过 |
+|------|----------|----------|----------|----------|----------|
+| 生产路径禁止静默清库 | 当前原则“数据安全优先”；A1 目标“禁止静默清库”；审计问题 `fallbackToDestructiveMigrationFrom(2,3,4,5,6,7)` | `AppModule.kt` | `rg -n "fallbackToDestructiveMigrationFrom|MIGRATION_2_8|MIGRATION_7_8" app/src/main/java app/src/test/java` | 生产注册新增 `MIGRATION_2_8` 到 `MIGRATION_7_8`，未再匹配 `fallbackToDestructiveMigrationFrom` | 通过 |
+| v2-v7 有显式迁移入口 | A1 交付物“明确 v2-v7 策略”；迁移链必须可审计 | `TavernDatabase.kt`, `TavernDatabaseMigrationTest.kt` | `testDebugUnitTest --tests com.tavern.lite.data.db.TavernDatabaseMigrationTest` | 主链继续覆盖 1→31；早期入口覆盖 2→8、3→8、4→8、5→8、6→8、7→8 | 通过 |
+| 早期旧表补到 v8 基线再继续迁移 | A1 数据不可丢；旧 `CREATE TABLE IF NOT EXISTS` 不能补已有旧表缺列 | `TavernDatabase.kt` | `TavernDatabaseEarlyMigrationTest` 构造缺列旧表并跑到当前版本 | `normalizeVersion8Columns()` 先补 v8 必需列，再进入 8→31 迁移链；v2 代表性聊天数据保留 | 通过 |
+| v6 swipe/记忆/脚本代表性数据保留 | A1 至少覆盖一个历史版本迁移；历史线索显示 v6 已有 swipe 字段 | `TavernDatabaseEarlyMigrationTest.kt` | `testDebugUnitTest --tests com.tavern.lite.data.db.TavernDatabaseEarlyMigrationTest` | v6 代表性 schema 迁移到当前版本后，`swipe_content`、`swipe_index`、`memories.content`、`scripts.find_pattern` 均保留 | 通过 |
+| 最近迁移链未回退 | A1 验收方式“最近 3 个版本 + 历史版本迁移测试通过” | `TavernDatabaseSqlMigrationTest.kt`, `TavernDatabaseIndexMigrationTest.kt`, `QuickReplyMigrationTest.kt` | 迁移 SQL 测试 + v29→v30 索引迁移 + v30→v31 Quick Reply 迁移测试 | 21→29、27→29、28→29、29→30、30→31 相关迁移测试均通过 | 通过 |
+| 完整真实 v2-v7 schema 无损迁移 | “没有证据写未验收”原则 | `app/schemas/...`，旧发布样本数据库 | 查证 schema 文件与本轮测试证据 | 仓库只有 21.json 到 31.json，没有 v2-v7 Room schema，也没有真实旧库样本；当前只验证代表性旧 schema | 未验收 |
+
+**验证结果**：
+
+- `testDebugUnitTest --tests com.tavern.lite.data.db.TavernDatabaseMigrationTest --tests com.tavern.lite.data.db.TavernDatabaseEarlyMigrationTest --tests com.tavern.lite.data.db.TavernDatabaseSqlMigrationTest` — 通过。
+- `testDebugUnitTest --tests com.tavern.lite.data.db.TavernDatabaseIndexMigrationTest --tests com.tavern.lite.data.db.QuickReplyMigrationTest` — 通过。
+- `detekt` — 通过，0 code smells。
+- `rg -n "fallbackToDestructiveMigrationFrom|MIGRATION_2_8|MIGRATION_7_8|normalizeVersion8Columns" app/src/main/java app/src/test/java` — 未匹配破坏性 fallback；匹配到新增迁移入口、注册和补列工具。
+
+**未验收 / 后续**：
+
+- 没有 v2-v7 的 Room schema JSON 或真实用户库样本，不能声明“所有真实 v2-v7 数据完整无损通过”；如后续拿到样本，需要补样本库迁移测试。
+- 本轮未跑 `lintDebug`、`assembleDebug`、模拟器/真机 smoke；A1 是数据库迁移路径改动，当前证据限于 JVM/Robolectric SQL 测试和 detekt。
+- `TavernDatabaseEarlyMigrationTest` 是代表性旧 schema，不等同于所有历史中间版本的逐字段还原证据。
+
+### A2 执行记录（持续拆分）
+
+| 验收项 | 规则来源 | 对应文件 | 验收方式 | 实际结果 | 是否通过 |
+|------|----------|----------|----------|----------|----------|
+| 助手回复提交后处理从 manager 外提 | A2 目标“拆出助手消息后处理”；当前原则“复杂业务编排下沉到可单测服务” | `AssistantReplyCommitter.kt`, `ChatStreamingManager.kt` | 代码证据 + manager 回归测试 | `ChatStreamingManager` 改为委托 `AssistantReplyCommitter` 处理落库消息读取、表情更新、多段拆分和 committed 事件 | 通过 |
+| 后处理边界可单测 | 当前原则“核心逻辑尽量做成可单测的纯服务” | `AssistantReplyCommitterTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.AssistantReplyCommitterTest` | 覆盖空 id、取消保护、表情更新、committed 事件、多段回复拆分与追加 assistant 消息 | 通过 |
+| 图片生成链路从 manager 外提 | A2 目标“拆出图片生成”；当前原则“复杂业务编排下沉到可单测服务” | `ImageGenerationCoordinator.kt`, `ChatStreamingManager.kt` | 代码证据 + coordinator 测试 + manager 回归测试 | `ChatStreamingManager` 不再直接调用 `imageGenerationService.generateImage()` 后拼 `/imagine`，改为委托 `ImageGenerationCoordinator` | 通过 |
+| 图片生成边界可单测 | A2 目标“图片生成行为不变”；当前原则“核心逻辑尽量做成可单测的纯服务” | `ImageGenerationCoordinatorTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ImageGenerationCoordinatorTest` | 覆盖图片生成成功后发送 `/imagine`、图片服务返回 null、生成后取消时不发送消息 | 通过 |
+| 群聊响应角色选择从 manager 外提 | A2 目标“拆出生成协调”；当前原则“核心逻辑尽量做成可单测的纯服务” | `GroupRespondingCharacterSelector.kt`, `ChatStreamingManager.kt` | selector 单测 + manager 回归测试 | `LIST_ORDER`、`ROUND_ROBIN`、`NATURAL` 响应选择从 manager 私有函数迁入 selector；轮询状态由 selector 持有 | 通过 |
+| 现有聊天 manager 行为未回退 | A2 验收方式“现有聊天 manager 测试全过” | `ChatStreamingManagerTest.kt` | `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` | 现有 manager 测试通过；发送、定向群聊、图片生成、主动触发 guard 等测试未回退 | 通过 |
+| 主文件明显减负 | A2 验收方式“主文件明显减负” | `ChatStreamingManager.kt` | 行数证据 | 当前 `ChatStreamingManager.kt` 为 512 行，新增 `AssistantReplyCommitter.kt` 60 行、`ImageGenerationCoordinator.kt` 43 行、`GroupRespondingCharacterSelector.kt` 41 行；有下降证据，但主动消息和生成协调仍未外提完 | 未验收 |
+| A2 全量拆分完成 | A2 目标“生成协调、主动消息、图片生成、助手消息后处理” | `ChatStreamingManager.kt` 及后续 coordinator | 模块边界检查 + 完整回归 | 已完成助手消息后处理、图片生成、群聊响应选择；主动消息、发送/继续/重生成协调仍在 manager 内 | 未验收 |
+
+**验证结果**：
+
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ImageGenerationCoordinatorTest --tests com.tavern.lite.ui.screens.chat.manager.AssistantReplyCommitterTest --tests com.tavern.lite.ui.screens.chat.manager.GroupRespondingCharacterSelectorTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` — 通过。
+- `detekt` — 通过，0 code smells。
+- `(Get-Content ChatStreamingManager.kt).Count` — 512；`AssistantReplyCommitter.kt` — 60；`ImageGenerationCoordinator.kt` — 43；`GroupRespondingCharacterSelector.kt` — 41。
+
+**未验收 / 后续**：
+
+- 未跑全量 `testDebugUnitTest`、`lintDebug`、`assembleDebug`、模拟器/真机聊天 smoke。
+- 主动消息、发送/继续/重生成协调仍在 `ChatStreamingManager`，A2 只能标进行中。
+- A3 的 reasoning 上下文收口尚未处理，`lastReasoningContent` 仍是 manager 级状态。
+
+### 风险清单
+
+| 风险 | 当前证据 | 处理策略 |
+|------|----------|----------|
+| UI 层直接网络调用 | `SettingsViewModel` 注入 `ChatApiService` | A0 迁入 UseCase，并用架构测试锁住 |
+| 旧版本数据可能静默丢失 | 原生产路径有 `fallbackToDestructiveMigrationFrom(2,3,4,5,6,7)`；现已移除并补 v2-v7 迁移入口 | 保留代表性旧 schema 测试；若拿到真实旧库样本，补真实样本迁移验收 |
+| 聊天 manager 继续膨胀 | `ChatStreamingManager` 仍管发送、继续、重生成、主动消息；提交后处理、图片生成、群聊响应选择已外提 | A2 继续拆 proactive 与发送/继续/重生成协调 |
+| reasoning 状态边界不清 | 会话层仍有 `lastReasoningContent` | A3 改为请求上下文 |
+| Prompt/世界书难解释 | Inspector 只有最终消息和计数，缺每段来源 | A4/A5 引入 trace |
+| 远期功能挤压收口 | Data Bank/RAG、扩展 hook、完整 STscript 尚未稳定 | v1.3.1 不推进新大功能，只保留设计预留 |
+
+### 日志维护优化
+
+- 新增计划类条目统一使用：背景、原则、路线图、执行顺序、风险、验收口径。
+- 完成类条目统一使用：变更摘要、影响文件、验证结果、未验收项、后续风险。
+- “通过”只能来自实际命令、测试报告、设备手测记录或代码证据；文档勾选只作为线索。
+- 历史日志保留事实，不再反复改写；新状态只追加到顶部，避免旧记录被当前判断污染。
+- 若只做文档整理，验证写“文档变更，未运行代码测试”。
+
+## 2026-06-11 — Coverage Hotspot: SillyTavernImporter ✅
+
+**背景**: v1.3.1 收口继续按 Kover 热点补测试，本轮优先补齐 SillyTavernImporter 的角色卡导入/导出路径。
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| SillyTavernImporter 测试补强 | `SillyTavernImporterTest.kt` | 覆盖 JSON 导入、PNG chara metadata 导入、缺 metadata 失败、JSON 导出、PNG 导出、无头像占位 PNG 分支 |
+| 占位 PNG 修复 | `SillyTavernImporter.kt` | 无头像导出 PNG 时改为生成带正确 chunk CRC 的 1x1 PNG，避免写入 metadata 后读取 EOF |
+| 死代码清理 | `SillyTavernImporter.kt` | 移除旧的未使用占位 PNG 构造函数，覆盖率报告不再被无效代码拖低 |
+| 覆盖率刷新 | `app/build/reports/kover/reportDebug.xml` | 业务代码 line 70.19%、branch 42.85%、instruction 66.22%；SillyTavernImporter.kt line 64/72 = 88.89% |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.util.SillyTavernImporterTest --tests com.tavern.lite.util.PngMetadataTest detekt compileDebugKotlin testDebugUnitTest` — 通过
+- `:app:koverXmlReportDebug :app:koverLogDebug` — 通过，业务代码 line 70.19%
+
+## 2026-06-10 — v1.3.1 收口计划同步
+
+**背景**: Quick Replies / STscript Lite 已完成持久化、聊天页、管理页、自动触发、备份恢复和多轮稳定性收口；Phase 1-6 计划项也已基本完成。进入收口验证前，先同步路线图与开发计划，避免按过期状态继续开发。
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 开发计划同步 | `DEVELOPMENT-PLAN.md` | 更新当前状态为 v1.3.1 收口验证，明确下一步为全量验证、真实 smoke 和覆盖率报告核算 |
+| 路线图同步 | `ROADMAP.md` | 标记 Phase 1-6、VN 核心能力和 Quick Replies 核心接入状态；远期新功能继续后置 |
+| 覆盖率报告 | `build.gradle.kts` / `app/build.gradle.kts` / `gradle/libs.versions.toml` | 接入 Kover 0.9.8，生成 debug XML/HTML/log 覆盖率报告，并过滤 Hilt/Room/Compose 渲染壳等非业务噪声 |
+| 覆盖率基线 | `app/build/reports/kover/reportDebug.xml` | 业务代码 line 69.28%、branch 42.52%、instruction 65.31%；HTML 报告位于 `app/build/reports/kover/htmlDebug/index.html` |
+| 工具层测试补强 | `PngMetadataTest.kt` / `ChatExporterTest.kt` | 覆盖 PNG metadata/chara round-trip、非法 PNG、真实聊天导出、HTML 转义、JSON 结构、ZIP 批量导出和缺失实体失败路径 |
+| 下一批测试热点 | 覆盖率报告 | `PngMetadata` 已到 97.40%、`ChatExporter` 已到 87.33%；下一轮优先 `SillyTavernImporter`、`ChatRepository`、`WorldBookRepository`、`MemoryExtractorService`、`BgmPlayer` |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest` — 通过
+- `lintDebug` — 通过
+- `assembleDebug` — 通过，生成 `app/build/outputs/apk/debug/app-debug.apk`
+- `testDebugUnitTest --tests com.tavern.lite.util.PngMetadataTest --tests com.tavern.lite.util.ChatExporterTest` — 通过
+- `:app:koverXmlReportDebug :app:koverLogDebug` — 通过，业务代码 line 69.28%
+- 真实模拟器 `Tavern_Phone` smoke — 管理页入口与列表渲染通过；聊天页进入崩溃已定位并修复为 Android ICU regex 兼容问题；重新安装后 `chat_open` 自动输入、聊天页 Quick Reply 栏、手动 `Chat Smoke` 输入均通过；logcat 未见 `AndroidRuntime` 崩溃。
+- Smoke 备注 — 当前模拟器历史 seed 数据会显示两枚 `Global Smoke`，源码确认聊天页只有一个 Quick Reply 渲染入口，暂按本地 smoke 夹具残留处理，不作为产品问题扩展。
+
+## 2026-06-09 — Quick Replies 管理页结构优化 ✅
+
+**背景**: 深度评估后确认 Quick Replies 链路整体健康，但管理页单文件已膨胀到 700+ 行，继续开发前需要先把 UI 结构压稳。
+
+### 结构优化
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 页面壳瘦身 | `QuickReplyScreen.kt` | 只保留状态收集、弹窗开关、ViewModel 调用和页面布局，行数约 734 → 206 |
+| 列表组件拆分 | `QuickReplyListComponents.kt` | 承接回复组选择器、摘要卡片、回复卡片和空状态 |
+| 弹窗组件拆分 | `QuickReplyDialogs.kt` | 承接回复组编辑弹窗与回复项编辑弹窗 |
+| 表单字段拆分 | `QuickReplyFormFields.kt` | 承接数字输入、勾选行、实体下拉和 scope 文案 |
+| 仓库卫生 | `.gitignore` | 忽略 `.gradle-local/` 与 smoke 临时产物，避免本地构建缓存和截图/seed 误提交 |
+| scoped 回复组校验 | `QuickReplyDialogs.kt` / `QuickReplyViewModel.kt` | 角色/对话范围必须选择目标后才能保存；ViewModel 层同步拒绝无目标 scoped 写入 |
+| 校验文案 | `strings.xml` (zh/en/ja/ko) | 补齐角色/对话范围缺少目标时的错误提示 |
+| 校验测试 | `QuickReplyViewModelTest.kt` | 覆盖无 character/chat 目标时不会写入无效回复组 |
+| automation 误配提示 | `QuickReplyDialogs.kt` / `QuickReplyValidation.kt` | 有 Automation ID 但未开启 auto-run、需要确认、或包含自动执行会拦截的命令时，编辑弹窗直接提示 |
+| automation 提示测试 | `QuickReplyValidationTest.kt` | 覆盖 auto-run 未开启、确认回复跳过自动触发、unsafe 命令被自动执行拦截和手动回复无警告 |
+| 空回复项防御 | `QuickReplyViewModel.kt` | ViewModel 层拒绝空 label 或空 script 的回复项写入，和 UI 禁用保存形成双保险 |
+| 空回复项测试 | `QuickReplyViewModelTest.kt` | 覆盖创建/更新回复项时空 label 或空 script 不会调用 Repository |
+| scope / setId 输入防御 | `QuickReplyViewModel.kt` | 拒绝非法 scope、非正数 setId 和无效选中 ID，避免绕过 UI 时写出不可匹配数据 |
+| 输入防御测试 | `QuickReplyViewModelTest.kt` | 覆盖非法 scope、无效 setId、无效 selectSet 不会改变状态或写库 |
+| 群聊定向回复 automation 补齐 | `ChatStreamingManager.kt` | `@角色` 定向回复成功落库后同步触发 `assistant_reply` 自动化事件，并和普通回复一样更新表情/拆分多段消息 |
+| 定向回复链路测试 | `ChatStreamingManagerTest.kt` | 覆盖定向群聊回复有助手消息 ID 时触发 committed 事件、无助手消息 ID 时不误触发 |
+| 助手回复提交后处理收口 | `ChatStreamingManager.kt` | 抽出 `commitAssistantReply()` 统一处理表情更新、多段拆分和 committed 事件，减少单聊/图片/群聊/定向/主动回复路径重复 |
+| 提交后处理测试 | `ChatStreamingManagerTest.kt` | 覆盖普通单聊回复成功落库后只查一次消息、更新表情并触发 committed 事件 |
+| Quick Reply UI 结果清洗 | `QuickReplyUiResult.kt` / `QuickReplyResultHandler.kt` | 在转换层统一过滤空 echo/blocked reason 并去重，UI handler 只负责展示，避免重复 toast |
+| UI 结果清洗测试 | `ChatViewModelTest.kt` | 手动执行和 automation 结果都覆盖空白/重复 echo 与 blocked reason，确保输出保持干净 |
+| automation 警告边界统一 | `QuickReplyValidation.kt` / `QuickReplyDialogs.kt` | 管理页自动化警告复用 `StScriptLiteParser` 与命令 `isSafeForAutoRun`，避免 UI 提示和真实执行器安全边界漂移 |
+| automation 警告测试 | `QuickReplyValidationTest.kt` | 覆盖 `/generate`、`/gen` 等 parser 别名会被识别为 unsafe，注释和安全命令不会误报 |
+| scoped 目标 ID 防御 | `QuickReplyViewModel.kt` | 回复组为 character/chat scope 时要求目标 ID 必须为正数，防止绕过 UI 写入不可匹配的 `0` 或负数目标 |
+| scoped 目标 ID 测试 | `QuickReplyViewModelTest.kt` | 覆盖 create/update 回复组时非正数 characterId/chatId 不会写入 repository |
+| automation id 查询防御 | `QuickReplyRepository.kt` | Repository 层统一 trim automation id，并在空白 id 时直接返回空结果，避免未来绕过 use case 的入口产生不稳定匹配 |
+| automation id 查询测试 | `QuickReplyRepositoryTest.kt` | 覆盖带空格 automation id 仍能匹配，空白 id 不会打到 DAO |
+| STscript send 解析优化 | `StScriptLiteExecutor.kt` | `/send` 命令变量替换结果复用一次解析，避免同一内容在空值判断和 action 构造时重复跑正则替换 |
+| STscript send 测试 | `StScriptLiteExecutorTest.kt` | 覆盖 `/send {{missing}}` 解析为空时仍按空消息拦截，锁住优化后的语义 |
+| Quick Reply UI 聚合优化 | `QuickReplyUiResult.kt` | automation 结果转 UI 时单次遍历 executions，同时收集 actions、echo 和 blocked reason，避免三个派生 getter 重复遍历 |
+| UI 聚合测试 | `ChatViewModelTest.kt` | 覆盖多个 automation execution 的 action 合并、echo 去重、skipped reason 与 blocked reason 顺序保持 |
+| Continue action 状态清理 | `QuickReplyResultHandler.kt` | 手动 Quick Reply 触发继续生成时也先清理当前选中消息操作栏，和发送/触发生成路径保持一致 |
+| Continue action 测试 | `QuickReplyResultHandlerTest.kt` | 覆盖允许继续生成时会先调用 `onBeforeUnsafeAction()` 再执行继续生成 |
+| unsafe action 清理节流 | `QuickReplyResultHandler.kt` | 单次 Quick Reply 结果包含多个发送/生成/继续动作时，仅在首个 unsafe action 前清理一次选中状态，避免重复状态写入 |
+| unsafe action 节流测试 | `QuickReplyResultHandlerTest.kt` | 覆盖多个 unsafe action 会按顺序执行，但 `onBeforeUnsafeAction()` 只调用一次 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `lintDebug` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.QuickReplyResultHandlerTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.data.db.QuickReplyMigrationTest --tests com.tavern.lite.util.BackupManagerIntegrationTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.data.db.QuickReplyMigrationTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.manager.ChatStreamingManagerTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+- `compileDebugKotlin testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest` — 通过
+- `compileDebugKotlin testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest` — 通过
+- `compileDebugKotlin testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyValidationTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest` — 通过
+
+## 2026-06-08 — Quick Replies 管理页可用性补强 ✅
+
+**背景**: Quick Replies 已接入聊天页、自动触发和备份/恢复。本轮继续收管理页的日常使用细节，减少手填 ID 和只显示裸编号带来的误操作。
+
+### 管理页体验
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| scope 摘要可读名称 | `QuickReplyScreen.kt` | 回复组选中摘要从仅显示 `#id` 改为优先显示角色名/对话名，找不到实体时才回退到 `#id` |
+| automation id 快捷选择 | `QuickReplyScreen.kt` | 回复编辑弹窗保留手写 Automation ID，同时新增 `chat_open` / `assistant_reply` 常用事件 chip |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest` — 通过
+
+## 2026-06-07 — Phase 6 性能保障：Room 索引 + 大备份验证 ✅
+
+**背景**: Phase 6 聚焦大数据量下的稳定体验。本轮延续开发日志推进，先确认已落地的 Room 查询优化，再补齐 1000+ 消息备份/恢复验证。
+
+### 6.1 Room 查询优化
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 高频查询索引 | `TavernDatabase.kt` / Entity schema | DB v30 添加 chats、chat_characters、bgms、sprites、summaries、branches、scripts 复合索引 |
+| N+1 消除确认 | `ChatDao.kt` / `ChatListViewModel.kt` | 聊天列表使用 `getChatsWithLastMessage()` 单查询获取最后消息 |
+| 迁移覆盖 | `TavernDatabaseIndexMigrationTest.kt` | 验证 v29→v30 性能索引存在 |
+
+### 6.3 备份大数据量验证
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 消息批量写入 | `MessageDao.kt` | 新增 `insertAll(messages)` |
+| 恢复批量插入 | `BackupManager.kt` | 恢复消息时按 500 条分批插入，减少大备份恢复 DAO 调用开销 |
+| 大历史集成测试 | `BackupManagerIntegrationTest.kt` | 新增 1200 条消息备份→恢复测试，校验数量、顺序、置顶、图片路径与 <5s 预算 |
+| 测试替身同步 | `ChatRepositoryTest.kt` / `GroupChatRepositoryTest.kt` | Fake `MessageDao` 补齐 `insertAll()` |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.data.db.TavernDatabaseIndexMigrationTest --tests com.tavern.lite.data.db.TavernDatabaseMigrationTest` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.util.BackupManagerIntegrationTest` — 通过
+
+### 6.2 图片内存池
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 全局 ImageLoader | `TavernApp.kt` | 实现 `ImageLoaderFactory`，统一配置 Coil 内存缓存与磁盘缓存 |
+| 内存缓存限制 | `TavernApp.kt` | `MemoryCache` 限制为可用内存 20%，降低聊天图、头像、VN 立绘混用时的内存压力 |
+| 磁盘缓存 | `TavernApp.kt` | 使用 `cacheDir/image_cache`，限制为磁盘 3%，避免重复解码/加载本地与远程图片 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+
+### 6.4 PromptBuilder 长对话验证
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 长历史回归测试 | `PromptBuilderTest.kt` | 新增 150 条聊天历史 + 世界书 + 结构化记忆 + 人格 + 摘要 + 搜索结果的构建验证 |
+| 性能预算 | `PromptBuilderTest.kt` | 校验长 prompt 构建 < 1s，防止后续模板/注入逻辑出现数量级退化 |
+| 完整性校验 | `PromptBuilderTest.kt` | 检查首尾历史、当前用户消息、世界书、记忆、摘要和搜索结果均进入最终 messages |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.network.PromptBuilderTest` — 通过
+
+### 架构瘦身：ChatScreen <600 行
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 列表控制组件抽出 | `ChatListControls.kt` | 新增加载更多、正在输入、回到底部 3 个纯 UI 组件 |
+| ChatScreen 减负 | `ChatScreen.kt` | 移除列表控制 UI 内联实现，行数 615 → 553 |
+| 无效状态清理 | `ChatScreen.kt` | 移除未使用的 `displayMessageIds` 派生状态 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+
+### PromptBuilder 瘦身 + Quick Replies / STscript Lite 草案
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| Prompt 段落外提 | `PromptSectionBuilder.kt` | 承接静态/群聊系统 prompt、动态上下文、示例对话解析、模板替换 |
+| PromptBuilder 减负 | `PromptBuilder.kt` | 保留公共构建入口和流程编排，行数 498 → 291 |
+| Quick Reply 模型 | `QuickReply.kt` | 定义 `QuickReplySet`、`QuickReply`、作用域、启用排序和 automation id 标记 |
+| STscript Lite 模型 | `StScriptLite.kt` | 定义 MVP 命令类型、命令结构、权限和自动执行安全判断 |
+| 模型测试 | `QuickReplyModelTest.kt` | 覆盖快捷回复排序/过滤、automation id、STscript 自动执行安全边界 |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.network.PromptBuilderTest --tests com.tavern.lite.data.model.QuickReplyModelTest` — 通过
+
+### Quick Replies / STscript Lite 持久化
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| Room Entity | `QuickReplySetEntity.kt` / `QuickReplyEntity.kt` | 新增快捷回复组和快捷回复项，支持 global/character/chat scope、automation id、自动执行权限位 |
+| DAO | `QuickReplyDao.kt` | 提供上下文可用组查询、组内回复查询、automation id 查询、批量保存回复 |
+| Repository | `QuickReplyRepository.kt` | 封装保存快捷回复组 + 替换回复项的事务路径 |
+| DB v31 | `TavernDatabase.kt` / `AppModule.kt` / schema `31.json` | 数据库升到 v31，新增 quick_reply_sets / quick_replies 和高频索引 |
+| 测试 | `QuickReplyRepositoryTest.kt` / `QuickReplyMigrationTest.kt` / `TavernDatabaseMigrationTest.kt` | 覆盖 Repository 事务保存、automation 查询、v30→v31 迁移和迁移链 |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.data.model.QuickReplyModelTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.data.db.QuickReplyMigrationTest --tests com.tavern.lite.data.db.TavernDatabaseMigrationTest` — 通过
+
+### Quick Replies / STscript Lite 执行器
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| MVP 命令解析 | `StScriptLiteExecutor.kt` | 支持 `/send`、`/trigger`、`/continue`、`/setvar`、`/getvar`、`/echo`、`/input`、注释和未知命令识别 |
+| 安全权限边界 | `StScriptLiteExecutor.kt` | 手动执行按发送/触发权限拦截；自动执行额外要求 `allowAutoRun` 且命令属于安全集合 |
+| Quick Reply 接入入口 | `StScriptLiteExecutor.kt` | `QuickReplyEntity` 可直接映射权限并执行自身脚本，后续 UI 可复用 |
+| 执行器测试 | `StScriptLiteExecutorTest.kt` | 覆盖解析、变量读写、action 产出、权限拦截、自动执行安全和 entity 权限映射 |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.model.QuickReplyModelTest` — 通过
+- `compileDebugKotlin --rerun-tasks` — 通过（首次普通编译命中 KSP 增量缓存缺失生成文件，刷新任务后恢复）
+
+### Quick Replies UI：聊天页快捷回复栏
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 上下文回复查询 | `QuickReplyDao.kt` / `QuickReplyRepository.kt` | 新增按 global/character/chat scope 获取启用快捷回复的 Flow |
+| 聊天页状态接入 | `ChatViewModel.kt` | 暴露 `quickReplies`，封装执行器结果为 UI 可消费的 actions、echoes、blocked reasons |
+| 执行动作接入 | `ChatStreamingManager.kt` / `ChatScreen.kt` | 支持快捷回复写入输入框、发送消息、触发生成、继续生成和阻止原因 toast |
+| 快捷回复栏 UI | `QuickReplyBar.kt` / `ChatScreen.kt` | 在输入框上方显示横向快捷回复 chip；需要确认的回复弹出确认对话框 |
+| 多语言资源 | `strings.xml` (zh/en/ja/ko) | 补齐快捷回复确认弹窗文本 |
+| 测试同步 | `QuickReplyRepositoryTest.kt` / `ChatViewModelTest.kt` | 覆盖上下文回复查询委托和快捷回复执行结果映射 |
+
+### 验证结果
+
+- `compileDebugKotlin --rerun-tasks` — 通过（普通编译再次命中 KSP/Gradle 缓存打包生成文件问题，刷新任务后通过）
+- `testDebugUnitTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest` — 通过
+
+### Quick Replies 管理页 + Smoke 测试
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 管理页 ViewModel | `QuickReplyViewModel.kt` | 管理回复组选择、组内回复 Flow、创建/更新/删除回复组与回复项 |
+| 管理页 UI | `QuickReplyScreen.kt` | 设置页入口进入；支持回复组 scope、character/chat id、启用、排序和回复权限位配置 |
+| 设置与导航入口 | `SettingsScreen.kt` / `TavernNavGraph.kt` | 设置页新增快捷回复入口，接入 `quick_replies` 路由 |
+| 多语言资源 | `strings.xml` (zh/en/ja/ko) | 补齐管理页标题、字段、空状态、权限标签和删除确认文本 |
+| 管理页测试 | `QuickReplyViewModelTest.kt` | 覆盖默认选中回复组、scope id 清理、回复字段清洗和权限位保存 |
+
+### Smoke 结果
+
+- `compileDebugKotlin` — 通过
+- `assembleDebug` — 通过，生成 `app/build/outputs/apk/debug/app-debug.apk`
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.db.QuickReplyMigrationTest` — 通过
+- `lintDebug` — 通过
+- `git diff --check` — 通过
+- 真实模拟器 `Tavern_Phone` smoke — 已安装并启动 `app-debug.apk`；从首页进入 Settings，滚动并打开 Quick Replies 管理页；标题、空状态和 `New Reply Set` 按钮渲染正常；logcat 未见启动崩溃。模拟器宿主窗口仍被 Qt/Emulator 放在 `originY=-720` 的屏幕坐标，Computer Use 可捕获内容，但用户侧可视位置未能自动修正。
+
+### Quick Replies automation trigger
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 自动触发用例 | `QuickReplyAutomationTriggerUseCase.kt` | 按 automation id + character/chat 上下文查找启用快捷回复，并以 `autoRun=true` 复用 STscript Lite 执行器 |
+| 安全边界复用 | `QuickReplyAutomationTriggerUseCase.kt` / `StScriptLiteExecutor.kt` | 自动触发继续遵守 `allowAutoRun`、确认开关和 auto-run 安全集合；`/send`、`/trigger`、`/continue` 不会自动执行 |
+| 测试 | `QuickReplyAutomationTriggerUseCaseTest.kt` | 覆盖上下文查询、变量跨回复传递、确认回复跳过、不安全命令拦截和空 automation id 不查询 |
+
+### 验证结果
+
+- `testDebugUnitTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+
+### ChatScreen 再瘦身
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| Quick Reply 面板抽出 | `QuickReplyPanel.kt` / `ChatScreen.kt` | 将快捷回复确认弹窗、toast 反馈、执行动作分发和横向栏从聊天页内联逻辑抽为组件 |
+| ChatScreen 减负 | `ChatScreen.kt` | 行数 626 → 585，重新回到 `<600` 目标线内 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+
+### ChatViewModel 回到目标线内
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| Prompt Inspector 状态构建外提 | `ChatPromptInspectorStateBuilder.kt` / `ChatViewModel.kt` | 将 prompt 预览的上下文收集、摘要读取、单双聊分支组装从 ViewModel 私有函数抽出 |
+| ChatViewModel 减负 | `ChatViewModel.kt` | 行数 511 → 489，回到 `<500` 目标线内 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.ui.screens.chat.PromptInspectorTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+
+### Quick Replies 选择器增强
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 对话列表 Flow | `ChatDao.kt` / `ChatRepository.kt` | 新增 `getAllChats()`，供设置型页面直接选择 chat scope |
+| 管理页选择器 | `QuickReplyScreen.kt` | 回复组 scope 为 character/chat 时，从真实角色/对话列表下拉选择，不再手填 ID；旧 ID 找不到时保留 `#id` 回显 |
+| ViewModel 选项流 | `QuickReplyViewModel.kt` | 暴露 `characters` / `chats` StateFlow 给管理页使用 |
+| 测试同步 | `QuickReplyViewModelTest.kt` / Repository fake | 覆盖选择器选项流，并补齐 `ChatDao.getAllChats()` fake 实现 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.quickreply.QuickReplyViewModelTest --tests com.tavern.lite.data.repository.ChatRepositoryTest --tests com.tavern.lite.data.repository.GroupChatRepositoryTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest` — 通过
+- 备注：首次并行验证时再次命中 KSP 增量缓存/生成目录竞争；改为 `--rerun-tasks` 刷新并串行重跑后通过。
+
+### Quick Replies automation 事件源接入
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| `chat_open` 事件源 | `ChatScreen.kt` / `ChatViewModel.kt` | 聊天页进入时触发 automation id `chat_open`，按当前 character/chat 上下文执行匹配快捷回复 |
+| 自动执行 UI 边界 | `QuickReplyResultHandler.kt` | 自动事件只应用安全的 `SetInput`，即使异常返回发送/生成动作也会在 UI 层二次拦截 |
+| 结果映射 | `QuickReplyUiResult.kt` / `QuickReplyPanel.kt` | 手动快捷回复和自动事件共用 `QuickReplyUiResult` 与 action 分发路径 |
+| 测试 | `ChatViewModelTest.kt` | 覆盖 `triggerQuickReplyAutomation()` 的 action/echo/blocked reason 映射 |
+
+### 验证结果
+
+- `compileDebugKotlin` — 通过
+- `testDebugUnitTest --tests com.tavern.lite.ui.screens.chat.ChatViewModelTest --tests com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCaseTest --tests com.tavern.lite.data.repository.QuickReplyRepositoryTest` — 通过
+- 备注：验证过程中遇到一次 Gradle daemon `Address already in use`，停止 daemon 后串行执行通过。
+
+### Quick Replies UI smoke 扩展
+
+| 任务 | 方式 | 结果 |
+|------|------|------|
+| 模拟器 seed | `Tavern_Phone` debug app 私有库中写入 1 个角色、2 个对话、4 个回复组、5 条回复 | seed 成功；`Smoke Alice` 与两个 smoke 对话在真实 App 首页/角色详情中渲染 |
+| scope 过滤 | 进入 `Smoke Main Chat`，检查聊天页快捷回复栏 | 显示 global、character、当前 chat 三类回复；未显示另一个 chat 的 `Hidden Other Chat` |
+| `chat_open` 自动输入 | 当前 chat 的 automation id `chat_open` 执行 `/input chat-open smoke ok` | 进入聊天页后输入框自动填入 `chat-open smoke ok` |
+| 手动快捷回复 | 点击 `Global Smoke` | 输入框更新为 `global smoke`，确认手动和自动入口共用结果处理链 |
+
+### Smoke 备注
+
+- `Tavern_Phone` 上未见 `FATAL EXCEPTION` / `Process: com.tavern.lite` / `ANR in com.tavern.lite`。
+- 设备端 `sqlite3` seed 时，PowerShell + adb + Android shell 引号组合会误拆 `.read` / SQL 参数；最终采用 `run-as com.tavern.lite sqlite3 /data/user/0/com.tavern.lite/databases/tavern_db "'.read /data/local/tmp/smoke_seed.sql'"` 成功。
+- 模拟器宿主窗口可视位置问题仍未处理，窗口状态仍需后续单独修复。
+
+### Assistant reply 事件源
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 落库后事件 | `ChatStreamingManager.kt` / `ChatViewModel.kt` | 助理消息真正落库后发出 one-shot `assistantReplyCommitted` 事件，避免把自动化直接绑在发送手势上 |
+| UI 触发 | `ChatScreen.kt` | 聊天页收集 `assistantReplyCommitted`，触发 `assistant_reply` automation 并复用现有结果处理链 |
+| 回归测试 | `ChatViewModelTest.kt` | 验证事件流确实只发一次，避免后续重复触发 |
+
+---
+
 ## 2026-06-06 — P0 迁移信任度功能 ✅
 
 **背景**: 从 SillyTavern 用户迁移需要两个核心信任工具：能看到最终 Prompt、能确认导入没有丢数据。
@@ -2142,6 +2616,6 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 
 ---
 
-## 待做方向
+## 当前计划入口
 
-详见 `ROADMAP.md`。
+当前优先级以本文件顶部的“2026-06-12 — 后端架构整改计划与日志整理”为准；长期路线仍参考 `ROADMAP.md`，阶段任务细节参考 `DEVELOPMENT-PLAN.md`。

@@ -10,11 +10,10 @@ import com.tavern.lite.data.model.ApiProvider
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.data.store.TtsSettings
+import com.tavern.lite.domain.usecase.TestConnectionUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.SearchEngine
 import com.tavern.lite.network.WebSearchConfig
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,7 +50,7 @@ sealed class ConnectionTestState {
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiConfigStore: ApiConfigStore,
-    private val chatApiService: ChatApiService,
+    private val testConnectionUseCase: TestConnectionUseCase,
     private val settingsStore: SettingsStore,
     private val proactiveWorkScheduler: ProactiveWorkScheduler,
     private val backupManager: BackupManager
@@ -161,15 +160,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _testState.value = ConnectionTestState.Testing
             try {
-                val testConfig = config.value.copy(maxTokens = 50)
-                val messages = listOf(
-                    ChatMessage(role = "user", content = "Say 'hello' in one word.")
-                )
-                val result = StringBuilder()
-                chatApiService.streamChat(messages, testConfig).collect { chunk ->
-                    result.append(chunk)
-                }
-                _testState.value = ConnectionTestState.Success(result.toString().take(100))
+                val result = testConnectionUseCase(config.value)
+                _testState.value = ConnectionTestState.Success(result)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _testState.value = ConnectionTestState.Error(e.message ?: "Unknown error")

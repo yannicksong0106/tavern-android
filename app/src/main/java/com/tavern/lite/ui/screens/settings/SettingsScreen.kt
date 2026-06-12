@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Quickreply
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
@@ -67,6 +68,7 @@ fun SettingsScreen(
     onChatStyleClick: () -> Unit = {},
     onTtsClick: () -> Unit = {},
     onDataManagementClick: () -> Unit = {},
+    onQuickRepliesClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
@@ -158,6 +160,16 @@ fun SettingsScreen(
                 title = stringResource(R.string.chat_bubble),
                 subtitle = "${stringResource(R.string.font_size, bubbleStyle.fontSize)}  |  ${stringResource(R.string.bubble_corner_radius, bubbleStyle.cornerRadius)}",
                 onClick = onChatStyleClick
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SectionHeader(stringResource(R.string.quick_replies))
+            SettingsEntryCard(
+                icon = Icons.Default.Quickreply,
+                title = stringResource(R.string.quick_replies),
+                subtitle = stringResource(R.string.quick_replies_desc),
+                onClick = onQuickRepliesClick
             )
 
             Spacer(modifier = Modifier.height(16.dp))

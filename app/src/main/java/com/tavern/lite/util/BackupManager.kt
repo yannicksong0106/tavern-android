@@ -16,6 +16,7 @@ import com.tavern.lite.data.db.dao.MemoryDao
 import com.tavern.lite.data.db.dao.MessageDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.PresetDao
+import com.tavern.lite.data.db.dao.QuickReplyDao
 import com.tavern.lite.data.db.dao.ScriptDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
@@ -33,6 +34,8 @@ import com.tavern.lite.data.model.MemoryBackup
 import com.tavern.lite.data.model.MessageBackup
 import com.tavern.lite.data.model.PersonaBackup
 import com.tavern.lite.data.model.PresetBackup
+import com.tavern.lite.data.model.QuickReplyBackup
+import com.tavern.lite.data.model.QuickReplySetBackup
 import com.tavern.lite.data.model.RestoreResult
 import com.tavern.lite.data.model.ScriptBackup
 import com.tavern.lite.data.model.SpriteBackup
@@ -68,7 +71,8 @@ class BackupManager @Inject constructor(
     private val branchDao: BranchDao,
     private val summaryDao: SummaryDao,
     private val spriteDao: SpriteDao,
-    private val bgmDao: BgmDao
+    private val bgmDao: BgmDao,
+    private val quickReplyDao: QuickReplyDao
 ) {
     private val json = Json {
         prettyPrint = true
@@ -287,6 +291,41 @@ class BackupManager @Inject constructor(
                 }
             }
 
+            val quickReplySetsDeferred = async {
+                quickReplyDao.getAllSetsSync().map {
+                    QuickReplySetBackup(
+                        id = it.id,
+                        name = it.name,
+                        scope = it.scope,
+                        characterId = it.characterId,
+                        chatId = it.chatId,
+                        enabled = it.enabled,
+                        displayOrder = it.displayOrder,
+                        createdAt = it.createdAt,
+                        updatedAt = it.updatedAt
+                    )
+                }
+            }
+
+            val quickRepliesDeferred = async {
+                quickReplyDao.getAllRepliesSync().map {
+                    QuickReplyBackup(
+                        id = it.id,
+                        setId = it.setId,
+                        label = it.label,
+                        script = it.script,
+                        icon = it.icon,
+                        automationId = it.automationId,
+                        enabled = it.enabled,
+                        requiresConfirmation = it.requiresConfirmation,
+                        allowAutoRun = it.allowAutoRun,
+                        canSendMessages = it.canSendMessages,
+                        canTriggerGeneration = it.canTriggerGeneration,
+                        displayOrder = it.displayOrder
+                    )
+                }
+            }
+
             // Await all queries and build backup data
             val backupData = BackupData(
                 appVersion = currentAppVersion,
@@ -306,7 +345,9 @@ class BackupManager @Inject constructor(
                 summaries = summariesDeferred.await(),
                 sprites = spritesDeferred.await(),
                 bgms = bgmsDeferred.await(),
-                authorNotes = authorNotesDeferred.await()
+                authorNotes = authorNotesDeferred.await(),
+                quickReplySets = quickReplySetsDeferred.await(),
+                quickReplies = quickRepliesDeferred.await()
             )
 
             val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
@@ -351,6 +392,8 @@ class BackupManager @Inject constructor(
             var spritesRestored = 0
             var bgmsRestored = 0
             var authorNotesRestored = 0
+            var quickReplySetsRestored = 0
+            var quickRepliesRestored = 0
 
             // Restore characters
             for (c in data.characters) {
@@ -415,19 +458,22 @@ class BackupManager @Inject constructor(
                 branchesRestored++
             }
 
-            // Restore messages
-            for (m in data.messages) {
-                messageDao.insert(
-                    com.tavern.lite.data.db.entity.MessageEntity(
+            // Restore messages in batches so large chat backups do not spend most time
+            // crossing the DAO boundary one row at a time.
+            for (chunk in data.messages.chunked(MESSAGE_RESTORE_BATCH_SIZE)) {
+                messageDao.insertAll(
+                    chunk.map { m ->
+                        com.tavern.lite.data.db.entity.MessageEntity(
                         id = m.id, chatId = m.chatId, role = m.role, content = m.content,
                         characterId = m.characterId, parentId = m.parentId, branchId = m.branchId,
                         isActive = m.isActive, createdAt = m.createdAt,
                         swipeContent = m.swipeContent, swipeIndex = m.swipeIndex,
                         replyToId = m.replyToId, isPinned = m.isPinned,
                         imagePaths = m.imagePaths
-                    )
+                        )
+                    }
                 )
-                messagesRestored++
+                messagesRestored += chunk.size
             }
 
             // Restore memories
@@ -584,6 +630,44 @@ class BackupManager @Inject constructor(
                 authorNotesRestored++
             }
 
+            // Restore quick reply sets before replies because replies reference set_id.
+            for (set in data.quickReplySets) {
+                quickReplyDao.insertSet(
+                    com.tavern.lite.data.db.entity.QuickReplySetEntity(
+                        id = set.id,
+                        name = set.name,
+                        scope = set.scope,
+                        characterId = set.characterId,
+                        chatId = set.chatId,
+                        enabled = set.enabled,
+                        displayOrder = set.displayOrder,
+                        createdAt = set.createdAt,
+                        updatedAt = set.updatedAt
+                    )
+                )
+                quickReplySetsRestored++
+            }
+
+            for (reply in data.quickReplies) {
+                quickReplyDao.insertReply(
+                    com.tavern.lite.data.db.entity.QuickReplyEntity(
+                        id = reply.id,
+                        setId = reply.setId,
+                        label = reply.label,
+                        script = reply.script,
+                        icon = reply.icon,
+                        automationId = reply.automationId,
+                        enabled = reply.enabled,
+                        requiresConfirmation = reply.requiresConfirmation,
+                        allowAutoRun = reply.allowAutoRun,
+                        canSendMessages = reply.canSendMessages,
+                        canTriggerGeneration = reply.canTriggerGeneration,
+                        displayOrder = reply.displayOrder
+                    )
+                )
+                quickRepliesRestored++
+            }
+
             Result.success(
                 RestoreResult(
                     charactersRestored = charactersRestored,
@@ -601,6 +685,8 @@ class BackupManager @Inject constructor(
                     spritesRestored = spritesRestored,
                     bgmsRestored = bgmsRestored,
                     authorNotesRestored = authorNotesRestored,
+                    quickReplySetsRestored = quickReplySetsRestored,
+                    quickRepliesRestored = quickRepliesRestored,
                     backupAppVersion = backupVersion
                 )
             )
@@ -613,6 +699,8 @@ class BackupManager @Inject constructor(
     }
 
     companion object {
+        private const val MESSAGE_RESTORE_BATCH_SIZE = 500
+
         /**
          * 比较两个版本号，判断 backupVersion 是否比 currentVersion 更新。
          * 支持 "major.minor.patch" 格式，如 "1.2.8"。

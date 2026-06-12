@@ -50,13 +50,18 @@ class ChatStreamingManager(
 
     private var streamingJob: Job? = null
     private val streamingMutex = Mutex()
+    private val assistantReplyCommitter = AssistantReplyCommitter(chatId, chatRepository)
+    private val imageGenerationCoordinator = ImageGenerationCoordinator(
+        chatId = chatId,
+        imageGenerationService = imageGenerationService,
+        sendMessageUseCase = sendMessageUseCase
+    )
+    private val groupRespondingCharacterSelector = GroupRespondingCharacterSelector(random)
     @Volatile private var wasCancelled = false
     @Volatile private var isProactiveMessage = false
     @Volatile private var lastReasoningContent: String? = null
 
     // Round-robin 索引
-    private var roundRobinIndex = 0
-
     // ==================== 外部只读状态（由 ViewModel 提供） ====================
 
     /** 获取当前角色 */
@@ -91,6 +96,9 @@ class ChatStreamingManager(
     /** 发送 toast 消息 */
     var onToast: suspend (String) -> Unit = {}
 
+    /** 助理消息真正落库后触发 */
+    var onAssistantReplyCommitted: () -> Unit = {}
+
     // ==================== 公开方法 ====================
 
     fun sendMessage(content: String, imagePaths: List<String> = emptyList()) {
@@ -105,6 +113,16 @@ class ChatStreamingManager(
             }
         } else {
             sendSingleChatMessage(content, imagePaths)
+        }
+    }
+
+    fun triggerGeneration(userInput: String? = null) {
+        if (_isGenerating.value) return
+        val content = userInput.orEmpty()
+        if (isGroupChatProvider()) {
+            sendGroupChatMessage(content)
+        } else {
+            sendSingleChatMessage(content)
         }
     }
 
@@ -134,6 +152,7 @@ class ChatStreamingManager(
                     )
                     if (result != null) {
                         lastReasoningContent = result.reasoningContent
+                        onAssistantReplyCommitted()
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
@@ -170,6 +189,7 @@ class ChatStreamingManager(
                     )
                     if (result != null) {
                         lastReasoningContent = result.reasoningContent
+                        onAssistantReplyCommitted()
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
@@ -210,27 +230,21 @@ class ChatStreamingManager(
                     val character = characterProvider() ?: return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val imagePath = imageGenerationService.generateImage(prompt, config)
-                    if (imagePath != null && !wasCancelled) {
-                        val result = sendMessageUseCase.sendSingleMessage(
-                            chatId = chatId,
-                            character = character,
-                            userContent = "/imagine $prompt",
-                            config = config,
-                            imagePaths = listOf(imagePath)
-                        )
+                    val generationResult = imageGenerationCoordinator.generateImageReply(
+                        prompt = prompt,
+                        character = character,
+                        config = config,
+                        isCancelled = { wasCancelled }
+                    )
+                    if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.Success) {
+                        val result = generationResult.executionResult
                         if (result != null) {
                             lastReasoningContent = result.reasoningContent
                         }
-                        if (result?.assistantMsgId != null && !wasCancelled) {
-                            val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
-                            if (assistantMsg != null) {
-                                onEmotionUpdate(assistantMsg.content)
-                            }
-                            splitIntoMultipleMessages(result.assistantMsgId)
+                        if (commitAssistantReply(result?.assistantMsgId)) {
                             scheduleProactiveDialogue()
                         }
-                    } else if (imagePath == null) {
+                    } else if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.ImageGenerationFailed) {
                         onToast("图片生成失败，请检查 OpenAI API 配置")
                     }
                 } catch (e: Exception) {
@@ -286,12 +300,7 @@ class ChatStreamingManager(
                     if (result != null) {
                         lastReasoningContent = result.reasoningContent
                     }
-                    if (result?.assistantMsgId != null && !wasCancelled) {
-                        val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
-                        if (assistantMsg != null) {
-                            onEmotionUpdate(assistantMsg.content)
-                        }
-                        splitIntoMultipleMessages(result.assistantMsgId)
+                    if (commitAssistantReply(result?.assistantMsgId)) {
                         scheduleProactiveDialogue()
                     }
                 } catch (e: Exception) {
@@ -316,20 +325,18 @@ class ChatStreamingManager(
                     if (characters.isEmpty()) return@withLock
                     val config = apiConfigStore.configFlow.first()
 
-                    val respondingChars = selectRespondingCharacters(characters)
+                    val respondingChars = groupRespondingCharacterSelector.select(
+                        characters = characters,
+                        schedulingStrategy = schedulingStrategyProvider(),
+                        chattinessByCharacterId = groupCharacterChattinessProvider()
+                    )
 
                     val intervalMs = messageIntervalProvider()
                     val results = sendMessageUseCase.sendGroupMessage(chatId, respondingChars, content, config, imagePaths)
                     for ((charId, result) in results) {
                         if (wasCancelled) break
                         onRespondingCharacterChanged(characters.find { it.id == charId })
-                        if (result.assistantMsgId != null) {
-                            val assistantMsg = chatRepository.getMessageById(result.assistantMsgId)
-                            if (assistantMsg != null) {
-                                onEmotionUpdate(assistantMsg.content)
-                            }
-                            splitIntoMultipleMessages(result.assistantMsgId)
-                        }
+                        commitAssistantReply(result.assistantMsgId)
                         if (charId != results.last().first && !wasCancelled) {
                             val jitter = random.nextLong((intervalMs * 0.3).toLong())
                             delay(intervalMs + jitter)
@@ -350,24 +357,6 @@ class ChatStreamingManager(
         }
     }
 
-    private fun selectRespondingCharacters(characters: List<CharacterEntity>): List<CharacterEntity> {
-        return when (schedulingStrategyProvider()) {
-            GroupSchedulingStrategy.NATURAL -> {
-                characters.filter { char ->
-                    val chattiness = groupCharacterChattinessProvider()[char.id] ?: char.chattiness
-                    val responseChance = 0.5 + (chattiness / 100.0) * 0.5
-                    random.nextDouble() < responseChance
-                }.ifEmpty { listOf(characters.random()) }
-            }
-            GroupSchedulingStrategy.LIST_ORDER -> characters
-            GroupSchedulingStrategy.ROUND_ROBIN -> {
-                val char = characters[roundRobinIndex % characters.size]
-                roundRobinIndex = (roundRobinIndex + 1) % characters.size
-                listOf(char)
-            }
-        }
-    }
-
     private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity, imagePaths: List<String> = emptyList()) {
         wasCancelled = false
         streamingJob?.cancel()
@@ -380,9 +369,10 @@ class ChatStreamingManager(
                     val config = apiConfigStore.configFlow.first()
 
                     val result = sendMessageUseCase.sendDirectMessage(chatId, characters, targetCharacter, content, config, imagePaths)
-                    if (result?.assistantMsgId != null && !wasCancelled) {
-                        splitIntoMultipleMessages(result.assistantMsgId)
+                    if (result != null) {
+                        lastReasoningContent = result.reasoningContent
                     }
+                    commitAssistantReply(result?.assistantMsgId)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     onToast(classifyError(e))
@@ -422,9 +412,11 @@ class ChatStreamingManager(
                     val config = apiConfigStore.configFlow.first()
 
                     val result = proactiveMessageUseCase.sendProactiveMessage(chatId, character, config)
-                    if (result?.assistantMsgId != null) {
-                        splitIntoMultipleMessages(result.assistantMsgId)
-                    }
+                    commitAssistantReply(
+                        assistantMsgId = result?.assistantMsgId,
+                        updateEmotion = false,
+                        respectCancellation = false
+                    )
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     onToast(classifyError(e))
@@ -467,9 +459,11 @@ class ChatStreamingManager(
                     val config = apiConfigStore.configFlow.first()
 
                     val result = proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
-                    if (result?.assistantMsgId != null) {
-                        splitIntoMultipleMessages(result.assistantMsgId)
-                    }
+                    commitAssistantReply(
+                        assistantMsgId = result?.assistantMsgId,
+                        updateEmotion = false,
+                        respectCancellation = false
+                    )
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     onToast(classifyError(e))
@@ -485,33 +479,23 @@ class ChatStreamingManager(
 
     // ==================== 消息拆分 ====================
 
-    private suspend fun splitIntoMultipleMessages(assistantMsgId: Long?) {
-        if (assistantMsgId == null) return
-        val msg = chatRepository.getMessageById(assistantMsgId) ?: return
-        val content = msg.content.trim()
-        if (content.isBlank()) return
-
-        val paragraphs = content.split(PARAGRAPH_SPLIT_REGEX)
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-
-        if (paragraphs.size <= 1) return
-
-        val msgCharacterId = msg.characterId
-        chatRepository.updateMessageContent(assistantMsgId, paragraphs[0])
-
-        for (i in 1 until paragraphs.size) {
-            val len = paragraphs[i].length
-            val baseDelay = (400L + len * 30L).coerceIn(500L, 2000L)
-            val jitter = random.nextLong(-200, 200)
-            delay(baseDelay + jitter)
-            chatRepository.sendMessage(chatId, paragraphs[i], "assistant", msgCharacterId)
-        }
+    private suspend fun commitAssistantReply(
+        assistantMsgId: Long?,
+        updateEmotion: Boolean = true,
+        respectCancellation: Boolean = true
+    ): Boolean {
+        return assistantReplyCommitter.commitAssistantReply(
+            assistantMsgId = assistantMsgId,
+            isCancelled = { wasCancelled },
+            updateEmotion = updateEmotion,
+            respectCancellation = respectCancellation,
+            onEmotionUpdate = onEmotionUpdate,
+            onAssistantReplyCommitted = onAssistantReplyCommitted
+        )
     }
 
     companion object {
         private val random = kotlin.random.Random.Default
-        private val PARAGRAPH_SPLIT_REGEX: Regex = Regex("\n{2,}")
 
         private fun classifyError(e: Exception): String = when (e) {
             is UnknownHostException -> "网络连接失败，请检查网络设置"

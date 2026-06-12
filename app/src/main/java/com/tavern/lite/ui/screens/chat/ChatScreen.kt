@@ -6,36 +6,20 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -46,24 +30,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.R
 import com.tavern.lite.ui.components.BackgroundPickerSheet
-import com.tavern.lite.ui.components.LoadingDots
 import com.tavern.lite.ui.screens.chat.components.BookmarkSheet
 import com.tavern.lite.ui.screens.chat.components.SummarySheet
 import com.tavern.lite.ui.screens.chat.components.BranchNavigationBar
 import com.tavern.lite.ui.screens.chat.components.ChattinessSheet
 import com.tavern.lite.ui.screens.chat.components.ChatBackground
+import com.tavern.lite.ui.screens.chat.components.LoadMoreMessagesItem
 import com.tavern.lite.ui.screens.chat.components.ChatSearchBar
 import com.tavern.lite.ui.screens.chat.components.ChatTopBar
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
@@ -71,10 +51,16 @@ import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
 import com.tavern.lite.ui.screens.chat.components.PromptInspectorDialog
+import com.tavern.lite.ui.screens.chat.components.QuickReplyPanel
+import com.tavern.lite.ui.screens.chat.components.ScrollToBottomButton
+import com.tavern.lite.ui.screens.chat.components.TypingIndicator
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
 
 private const val PROACTIVE_TRIGGER_DELAY_MS = 500L
+private const val CHAT_OPEN_AUTOMATION_ID = "chat_open"
+private const val ASSISTANT_REPLY_AUTOMATION_ID = "assistant_reply"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +98,9 @@ fun ChatScreen(
     val promptInspectorState by viewModel.promptInspectorState.collectAsStateWithLifecycle()
     val schedulingStrategy by viewModel.groupChatSettingsManager.schedulingStrategy.collectAsStateWithLifecycle()
     val messageIntervalMs by viewModel.groupChatSettingsManager.messageIntervalMs.collectAsStateWithLifecycle()
+    val quickReplies by viewModel.quickReplies.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     var showBackgroundPicker by remember { mutableStateOf(false) }
     var showChattinessSheet by remember { mutableStateOf(false) }
@@ -223,10 +211,6 @@ fun ChatScreen(
     val displayIdToIndex by remember(messages) {
         derivedStateOf { messages.mapIndexed { i, m -> m.id to i }.toMap() }
     }
-    // 全量消息 ID 集合，用于快速判断搜索结果是否在当前显示范围内
-    val displayMessageIds by remember(messages) {
-        derivedStateOf { messages.map { it.id }.toSet() }
-    }
     // 搜索结果映射到 displayMessages 索引
     val searchResultSet by remember(searchResults, displayIdToIndex, allMessages) {
         derivedStateOf {
@@ -250,6 +234,18 @@ fun ChatScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val applyQuickReplyResult: (QuickReplyUiResult, Boolean) -> Unit = { result, allowUnsafeActions ->
+        handleQuickReplyResult(
+            context = context,
+            result = result,
+            allowUnsafeActions = allowUnsafeActions,
+            onSetInput = { inputText = it },
+            onSendMessage = { viewModel.streamingManager.sendMessage(it) },
+            onTriggerGeneration = { viewModel.streamingManager.triggerGeneration(it) },
+            onContinueGeneration = { viewModel.streamingManager.continueGeneration() },
+            onBeforeUnsafeAction = { selectedMessageId = null }
+        )
+    }
 
     if (showBookmarksSheet) {
         BookmarkSheet(
@@ -338,6 +334,18 @@ fun ChatScreen(
         viewModel.streamingManager.triggerProactiveIfNeeded()
     }
 
+    LaunchedEffect(characterId, chatId) {
+        val result = viewModel.triggerQuickReplyAutomation(CHAT_OPEN_AUTOMATION_ID)
+        applyQuickReplyResult(result, false)
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.assistantReplyCommitted.collect {
+            val result = viewModel.triggerQuickReplyAutomation(ASSISTANT_REPLY_AUTOMATION_ID)
+            applyQuickReplyResult(result, false)
+        }
+    }
+
     var editingMessage by remember { mutableStateOf<com.tavern.lite.data.db.entity.MessageEntity?>(null) }
     editingMessage?.let { message ->
         EditMessageDialog(
@@ -410,7 +418,6 @@ fun ChatScreen(
             )
 
             Column(modifier = Modifier.fillMaxSize().imePadding()) {
-                val haptic = LocalHapticFeedback.current
                 if (branchEntities.size > 1) {
                     BranchNavigationBar(
                         currentIndex = branchEntities.indexOfFirst { it.id == currentBranchId }.coerceAtLeast(0),
@@ -434,23 +441,7 @@ fun ChatScreen(
                     ) {
                         if (!allMessagesLoaded) {
                             item(key = "load_more") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.load_more_messages),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .clip(MaterialTheme.shapes.small)
-                                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
-                                            .clickable { viewModel.loadMoreMessages() }
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
+                                LoadMoreMessagesItem(onClick = { viewModel.loadMoreMessages() })
                             }
                         }
                         items(
@@ -542,27 +533,13 @@ fun ChatScreen(
                                 } else {
                                     character?.name ?: ""
                                 }
-                                Row(
-                                    modifier = Modifier.padding(start = 12.dp, top = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    LoadingDots()
-                                    if (typingName.isNotBlank()) {
-                                        Text(
-                                            text = " $typingName ${stringResource(R.string.typing)}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontSize = 11.sp,
-                                            modifier = Modifier.padding(start = 4.dp)
-                                        )
-                                    }
-                                }
+                                TypingIndicator(name = typingName)
                             }
                         }
                     }
 
                     if (!isAtBottom) {
-                        IconButton(
+                        ScrollToBottomButton(
                             onClick = {
                                 scope.launch {
                                     if (messages.isNotEmpty()) {
@@ -575,19 +552,16 @@ fun ChatScreen(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(end = 16.dp, bottom = 8.dp)
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f))
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowDown,
-                                contentDescription = stringResource(R.string.scroll_to_bottom),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        )
                     }
                 }
+
+                QuickReplyPanel(
+                    replies = quickReplies,
+                    executeReply = { viewModel.executeQuickReply(it) },
+                    onResult = { applyQuickReplyResult(it, true) },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 InputBar(
                     value = inputText,

@@ -17,6 +17,7 @@ import com.tavern.lite.data.db.dao.AuthorNoteDao
 import com.tavern.lite.data.db.dao.PersonaDao
 import com.tavern.lite.data.db.dao.MemoryAtomDao
 import com.tavern.lite.data.db.dao.PresetDao
+import com.tavern.lite.data.db.dao.QuickReplyDao
 import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
@@ -48,6 +49,12 @@ object AppModule {
             "tavern_db"
         ).addMigrations(
             TavernDatabase.MIGRATION_1_8,
+            TavernDatabase.MIGRATION_2_8,
+            TavernDatabase.MIGRATION_3_8,
+            TavernDatabase.MIGRATION_4_8,
+            TavernDatabase.MIGRATION_5_8,
+            TavernDatabase.MIGRATION_6_8,
+            TavernDatabase.MIGRATION_7_8,
             TavernDatabase.MIGRATION_8_9,
             TavernDatabase.MIGRATION_9_10,
             TavernDatabase.MIGRATION_10_11,
@@ -69,9 +76,9 @@ object AppModule {
             TavernDatabase.MIGRATION_26_27,
             TavernDatabase.MIGRATION_27_28,
             TavernDatabase.MIGRATION_28_29,
-            TavernDatabase.MIGRATION_29_30
-        ).fallbackToDestructiveMigrationFrom(2, 3, 4, 5, 6, 7)
-         .build()
+            TavernDatabase.MIGRATION_29_30,
+            TavernDatabase.MIGRATION_30_31
+        ).build()
     }
 
     @Provides
@@ -122,6 +129,9 @@ object AppModule {
 
     @Provides
     fun provideBgmDao(db: TavernDatabase): BgmDao = db.bgmDao()
+
+    @Provides
+    fun provideQuickReplyDao(db: TavernDatabase): QuickReplyDao = db.quickReplyDao()
 
     @Provides
     @Singleton

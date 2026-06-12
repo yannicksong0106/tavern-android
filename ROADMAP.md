@@ -1,6 +1,6 @@
 # 酒馆 AI (TavernAndroid) 路线图
 
-> 更新于 2026-06-03，反映实际代码状态
+> 更新于 2026-06-10，反映实际代码状态
 > **核心原则：优化优先于扩展，确保现有功能稳定可用、体验更好**
 
 ---
@@ -72,44 +72,54 @@
 
 ## 进行中
 
-### Phase V：Visual Novel 模式 — 部分完成
+### Phase V：Visual Novel 模式 — 核心完成，体验继续打磨
 - [x] V1 立绘系统（SpriteEntity + SpriteRepository）
 - [x] V2 表情映射（EmotionDetector 关键词匹配）
+- [x] V3 VN 游戏界面补全（输入框 + 发送链路）
+- [x] V5 BGM 系统补全（BgmPlayer + AudioFocus + 情感映射）
+- [x] V6 VN 设置优化（入口与基础体验优化）
 - [x] V7 DB Migration v26/v27
-- [ ] V3 VN 游戏界面补全（缺输入框、BGM 播放器）
-- [ ] V4 转场动画优化
-- [ ] V5 BGM 系统补全（数据层完成，缺播放器）
-- [ ] V6 VN 设置优化
+- [ ] V4 转场动画优化（低优先级打磨）
+
+### v1.3.1 收口验证
+- [x] 全量 `testDebugUnitTest`
+- [x] `lintDebug`
+- [x] `assembleDebug`
+- [x] Quick Replies 管理页 + 聊天页真实 smoke
+- [x] 覆盖率报告核算（Kover debug：业务代码 line 70.19%，branch 42.85%）
 
 ---
 
-## 当前计划：优化优先 (v1.2.9 ~ v1.3.1)
+## 当前计划：优化优先 (v1.3.1 收口)
 
 > 详见 AUDIT-REPORT.md 和 DEVELOPMENT-PLAN.md
 
-### Phase 1：稳定性修复 (v1.2.9) — 🔴
+### Phase 1：稳定性修复 (v1.2.9) — ✅
 1.1 DB Migration 测试 | 1.2 Backup 版本校验 | 1.3 SSE 断线重连
 1.4 API 限流退避 | 1.5 WebSearch 测试修复 | 1.6 reasoningContent 并发安全
 
-### Phase 2：ChatViewModel 拆分 (v1.2.9) — 🔴
+### Phase 2：ChatViewModel 拆分 (v1.2.9) — ✅
 2.1 ChatStreamingManager | 2.2 GroupChatManager | 2.3 BranchManager
 2.4 VnModeManager | 2.5 ViewModel 瘦身 | 2.6 ChatScreen 子组件拆分
 
-### Phase 3：VN 模式补全 (v1.3.0) — 🟡
+### Phase 3：VN 模式补全 (v1.3.0) — ✅
 3.1 VnScreen 输入框 | 3.2 BGM 播放器 | 3.3 EmotionDetector 增强
 3.4 VN 入口优化 | 3.5 VN 测试
 
-### Phase 4：UX 润色 (v1.3.0) — 🟡
+### Phase 4：UX 润色 (v1.3.0) — ✅
 4.1 消息分页 | 4.2 搜索失败提示 | 4.3 图像生成多 provider
 4.4 世界书匹配高亮 | 4.5 预设模板预览 | 4.6 LaunchedEffect 优化
 4.7 API 超时可配置
 
-### Phase 5：测试补全 (v1.3.1) — 🟡
+### Phase 5：测试补全 (v1.3.1) — ✅，按覆盖率热点继续补分支
 5.1 DAO 测试 | 5.2 Migration 测试 | 5.3 VN 测试
 5.4 Integration 测试 | 5.5 Backup 测试
 
-### Phase 6：性能优化 (v1.3.1) — 🟢
-6.1 Room 查询优化 | 6.2 图片内存池 | 6.3 大数据量验证
+### Phase 6：性能优化 (v1.3.1) — ✅
+6.1 Room 查询优化 | 6.2 图片内存池 | 6.3 大数据量验证 | 6.4 长 prompt 验证
+
+### Quick Replies / STscript Lite — ✅ 核心接入，收口验证中
+持久化 | 聊天页快捷回复栏 | 管理页 | 自动触发 | 备份恢复 | 结果清洗与安全边界
 
 ---
 
@@ -135,9 +145,9 @@
 
 | 版本 | 内容 | 预估周期 |
 |------|------|----------|
-| v1.2.9 | Phase 1 + 2（稳定性 + 架构优化） | 2-3 周 |
-| v1.3.0 | Phase 3 + 4（VN 补全 + UX 润色） | 2-3 周 |
-| v1.3.1 | Phase 5 + 6（测试 + 性能） | 1-2 周 |
+| v1.2.9 | Phase 1 + 2（稳定性 + 架构优化） | ✅ |
+| v1.3.0 | Phase 3 + 4（VN 补全 + UX 润色） | ✅ |
+| v1.3.1 | Phase 5 + 6 + Quick Replies 收口 | 进行中 |
 | v1.4.0+ | Phase W/X/Y/Z（新功能） | 远期 |
 
 ---

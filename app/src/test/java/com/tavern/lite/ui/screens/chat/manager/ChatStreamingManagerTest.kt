@@ -120,6 +120,85 @@ class ChatStreamingManagerTest {
         assertFalse(manager.isGenerating.value)
     }
 
+    @Test
+    fun `sendMessage emits assistant reply committed after assistant message is saved`() = runTest {
+        val character = CharacterEntity(id = characterId, name = "Test")
+        var committedCount = 0
+        var emotionContent: String? = null
+        manager.characterProvider = { character }
+        manager.onAssistantReplyCommitted = { committedCount++ }
+        manager.onEmotionUpdate = { emotionContent = it }
+        coEvery {
+            sendMessageUseCase.sendSingleMessage(chatId, character, "hello", any(), null, emptyList())
+        } returns MessageExecutionHelper.ExecutionResult(assistantMsgId = 88L, fullResponse = "reply")
+        coEvery { chatRepository.getMessageById(88L) } returns MessageEntity(
+            id = 88L,
+            chatId = chatId,
+            role = "assistant",
+            content = "reply"
+        )
+        every { proactiveDialogueUseCase.shouldScheduleProactive(any()) } returns null
+
+        manager.sendMessage("hello")
+        advanceUntilIdle()
+
+        assertEquals(1, committedCount)
+        assertEquals("reply", emotionContent)
+        coVerify(exactly = 1) { chatRepository.getMessageById(88L) }
+    }
+
+    @Test
+    fun `direct group mention emits assistant reply committed after assistant message is saved`() = runTest {
+        val alice = CharacterEntity(id = 1L, name = "Alice")
+        val bob = CharacterEntity(id = 2L, name = "Bob")
+        var committedCount = 0
+        var emotionContent: String? = null
+        manager.isGroupChatProvider = { true }
+        manager.groupCharactersProvider = { listOf(alice, bob) }
+        manager.onAssistantReplyCommitted = { committedCount++ }
+        manager.onEmotionUpdate = { emotionContent = it }
+        every { proactiveDialogueUseCase.parseAtMention("@Bob hi", listOf(alice, bob)) } returns (bob to "hi")
+        coEvery {
+            sendMessageUseCase.sendDirectMessage(chatId, listOf(alice, bob), bob, "hi", any(), emptyList())
+        } returns MessageExecutionHelper.ExecutionResult(assistantMsgId = 99L, fullResponse = "direct reply")
+        coEvery { chatRepository.getMessageById(99L) } returns MessageEntity(
+            id = 99L,
+            chatId = chatId,
+            role = "assistant",
+            content = "direct reply",
+            characterId = bob.id
+        )
+
+        manager.sendMessage("@Bob hi")
+        advanceUntilIdle()
+
+        assertEquals(1, committedCount)
+        assertEquals("direct reply", emotionContent)
+        coVerify {
+            sendMessageUseCase.sendDirectMessage(chatId, listOf(alice, bob), bob, "hi", any(), emptyList())
+        }
+    }
+
+    @Test
+    fun `direct group mention does not emit assistant reply committed without assistant message id`() = runTest {
+        val alice = CharacterEntity(id = 1L, name = "Alice")
+        val bob = CharacterEntity(id = 2L, name = "Bob")
+        var committedCount = 0
+        manager.isGroupChatProvider = { true }
+        manager.groupCharactersProvider = { listOf(alice, bob) }
+        manager.onAssistantReplyCommitted = { committedCount++ }
+        every { proactiveDialogueUseCase.parseAtMention("@Bob hi", listOf(alice, bob)) } returns (bob to "hi")
+        coEvery {
+            sendMessageUseCase.sendDirectMessage(chatId, listOf(alice, bob), bob, "hi", any(), emptyList())
+        } returns MessageExecutionHelper.ExecutionResult(fullResponse = "direct reply")
+
+        manager.sendMessage("@Bob hi")
+        advanceUntilIdle()
+
+        assertEquals(0, committedCount)
+        coVerify(exactly = 0) { chatRepository.getMessageById(any()) }
+    }
+
     // ==================== continueGeneration guards ====================
 
     @Test

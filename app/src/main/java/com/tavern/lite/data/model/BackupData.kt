@@ -24,7 +24,9 @@ data class BackupData(
     val summaries: List<SummaryBackup> = emptyList(),
     val sprites: List<SpriteBackup> = emptyList(),
     val bgms: List<BgmBackup> = emptyList(),
-    val authorNotes: List<AuthorNoteBackup> = emptyList()
+    val authorNotes: List<AuthorNoteBackup> = emptyList(),
+    val quickReplySets: List<QuickReplySetBackup> = emptyList(),
+    val quickReplies: List<QuickReplyBackup> = emptyList()
 )
 
 @Serializable
@@ -253,6 +255,35 @@ data class AuthorNoteBackup(
     val updatedAt: Long
 )
 
+@Serializable
+data class QuickReplySetBackup(
+    val id: Long,
+    val name: String,
+    val scope: String = "global",
+    val characterId: Long? = null,
+    val chatId: Long? = null,
+    val enabled: Boolean = true,
+    val displayOrder: Int = 0,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+@Serializable
+data class QuickReplyBackup(
+    val id: Long,
+    val setId: Long,
+    val label: String,
+    val script: String,
+    val icon: String? = null,
+    val automationId: String? = null,
+    val enabled: Boolean = true,
+    val requiresConfirmation: Boolean = false,
+    val allowAutoRun: Boolean = false,
+    val canSendMessages: Boolean = false,
+    val canTriggerGeneration: Boolean = false,
+    val displayOrder: Int = 0
+)
+
 data class RestoreResult(
     val charactersRestored: Int,
     val chatsRestored: Int,
@@ -269,5 +300,7 @@ data class RestoreResult(
     val spritesRestored: Int = 0,
     val bgmsRestored: Int = 0,
     val authorNotesRestored: Int = 0,
+    val quickReplySetsRestored: Int = 0,
+    val quickRepliesRestored: Int = 0,
     val backupAppVersion: String? = null
 )

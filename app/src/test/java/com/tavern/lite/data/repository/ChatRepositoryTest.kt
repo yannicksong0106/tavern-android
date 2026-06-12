@@ -128,6 +128,7 @@ private class FakeChatDao : ChatDao {
     override fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>> = flowOf(emptyList())
     override fun getChatsWithLastMessage(characterId: Long): Flow<List<ChatWithLastMessage>> = flowOf(emptyList())
     override fun getAllGroupChats(): Flow<List<ChatEntity>> = flowOf(emptyList())
+    override fun getAllChats(): Flow<List<ChatEntity>> = flowOf(insertedChats)
     override suspend fun getChatById(id: Long): ChatEntity? = insertedChats.find { it.id == id }
     override suspend fun getLatestChatForCharacter(characterId: Long): ChatEntity? = insertedChats.lastOrNull { it.characterId == characterId }
     override suspend fun insert(chat: ChatEntity): Long {
@@ -174,6 +175,9 @@ private class FakeMessageDao : MessageDao {
         messages[id] = msg
         insertedMessages.add(msg)
         return id
+    }
+    override suspend fun insertAll(messages: List<MessageEntity>) {
+        messages.forEach { insert(it) }
     }
     override suspend fun updateContent(id: Long, content: String) {
         messages[id]?.let { messages[id] = it.copy(content = content) }

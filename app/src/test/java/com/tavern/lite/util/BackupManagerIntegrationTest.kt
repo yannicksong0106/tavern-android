@@ -12,15 +12,19 @@ import com.tavern.lite.data.db.entity.ChatCharacterEntity
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
+import com.tavern.lite.data.db.entity.QuickReplyEntity
+import com.tavern.lite.data.db.entity.QuickReplySetEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import kotlin.system.measureTimeMillis
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE)
@@ -161,6 +165,32 @@ class BackupManagerIntegrationTest {
                 createdAt = 140
             )
         )
+        sourceDb.quickReplyDao().insertSet(
+            QuickReplySetEntity(
+                id = QUICK_REPLY_SET_ID,
+                name = "Chat automations",
+                scope = "chat",
+                chatId = CHAT_ID,
+                displayOrder = 3,
+                createdAt = 150,
+                updatedAt = 151
+            )
+        )
+        sourceDb.quickReplyDao().insertReply(
+            QuickReplyEntity(
+                id = QUICK_REPLY_ID,
+                setId = QUICK_REPLY_SET_ID,
+                label = "Open",
+                script = "/setvar mood calm\n/input {{mood}}",
+                icon = "!",
+                automationId = "chat_open",
+                requiresConfirmation = true,
+                allowAutoRun = true,
+                canSendMessages = false,
+                canTriggerGeneration = false,
+                displayOrder = 4
+            )
+        )
 
         val backupFile = manager(sourceDb).backup().getOrThrow()
         val result = backupFile.inputStream().use { manager(restoredDb).restore(it).getOrThrow() }
@@ -173,6 +203,8 @@ class BackupManagerIntegrationTest {
         assertEquals(1, result.summariesRestored)
         assertEquals(2, result.messagesRestored)
         assertEquals(1, result.bgmsRestored)
+        assertEquals(1, result.quickReplySetsRestored)
+        assertEquals(1, result.quickRepliesRestored)
 
         val restoredCharacter = restoredDb.characterDao().getCharacterById(CHARACTER_ID)
         assertEquals(CHARACTER_PRESET_ID, restoredCharacter?.presetId)
@@ -200,6 +232,18 @@ class BackupManagerIntegrationTest {
         val restoredBgm = restoredDb.bgmDao().getBgmById(BGM_ID)
         assertEquals("happy", restoredBgm?.emotion)
         assertEquals("/audio/happy.mp3", restoredBgm?.audioPath)
+
+        val restoredQuickReplySet = restoredDb.quickReplyDao().getSetById(QUICK_REPLY_SET_ID)
+        assertEquals("Chat automations", restoredQuickReplySet?.name)
+        assertEquals("chat", restoredQuickReplySet?.scope)
+        assertEquals(CHAT_ID, restoredQuickReplySet?.chatId)
+
+        val restoredQuickReplies = restoredDb.quickReplyDao().getEnabledRepliesForSet(QUICK_REPLY_SET_ID)
+        assertEquals(1, restoredQuickReplies.size)
+        assertEquals("chat_open", restoredQuickReplies.single().automationId)
+        assertEquals("/setvar mood calm\n/input {{mood}}", restoredQuickReplies.single().script)
+        assertEquals(true, restoredQuickReplies.single().requiresConfirmation)
+        assertEquals(true, restoredQuickReplies.single().allowAutoRun)
     }
 
     @Test
@@ -258,6 +302,63 @@ class BackupManagerIntegrationTest {
         assertEquals("", restoredDb.bgmDao().getBgmById(BGM_ID)?.emotion)
     }
 
+    @Test
+    fun `backup then restore handles large chat history within performance budget`() = runTest {
+        sourceDb.characterDao().insert(
+            CharacterEntity(
+                id = CHARACTER_ID,
+                name = "Large History",
+                createdAt = 100,
+                updatedAt = 100
+            )
+        )
+        sourceDb.chatDao().insert(
+            ChatEntity(
+                id = CHAT_ID,
+                characterId = CHARACTER_ID,
+                name = "1200 message chat",
+                createdAt = 110,
+                updatedAt = 120
+            )
+        )
+        sourceDb.messageDao().insertAll(
+            (1..LARGE_MESSAGE_COUNT).map { index ->
+                MessageEntity(
+                    id = LARGE_MESSAGE_ID_BASE + index,
+                    chatId = CHAT_ID,
+                    role = if (index % 2 == 0) "assistant" else "user",
+                    content = "Message $index with enough body to resemble a real chat turn.",
+                    characterId = if (index % 2 == 0) CHARACTER_ID else null,
+                    createdAt = 1_000L + index,
+                    isPinned = index % 250 == 0,
+                    imagePaths = if (index % 300 == 0) """["/images/large-$index.png"]""" else "[]"
+                )
+            }
+        )
+
+        var restoredMessages = 0
+        val elapsedMs = measureTimeMillis {
+            val backupFile = manager(sourceDb).backup().getOrThrow()
+            assertTrue(backupFile.length() > 0)
+
+            val result = backupFile.inputStream().use { manager(restoredDb).restore(it).getOrThrow() }
+            restoredMessages = result.messagesRestored
+        }
+
+        assertTrue("Large backup/restore took ${elapsedMs}ms", elapsedMs < LARGE_BACKUP_BUDGET_MS)
+        assertEquals(LARGE_MESSAGE_COUNT, restoredMessages)
+        assertEquals(LARGE_MESSAGE_COUNT, restoredDb.messageDao().getMessageCount(CHAT_ID))
+
+        val restored = restoredDb.messageDao().getAllActiveMessagesForChat(CHAT_ID)
+        assertEquals("Message 1 with enough body to resemble a real chat turn.", restored.first().content)
+        assertEquals(
+            "Message $LARGE_MESSAGE_COUNT with enough body to resemble a real chat turn.",
+            restored.last().content
+        )
+        assertEquals("""["/images/large-1200.png"]""", restored.last().imagePaths)
+        assertEquals(4, restored.count { it.isPinned })
+    }
+
     private fun createDatabase(): TavernDatabase =
         Room.inMemoryDatabaseBuilder(context, TavernDatabase::class.java)
             .allowMainThreadQueries()
@@ -281,7 +382,8 @@ class BackupManagerIntegrationTest {
             branchDao = db.branchDao(),
             summaryDao = db.summaryDao(),
             spriteDao = db.spriteDao(),
-            bgmDao = db.bgmDao()
+            bgmDao = db.bgmDao(),
+            quickReplyDao = db.quickReplyDao()
         )
 
     private companion object {
@@ -296,7 +398,12 @@ class BackupManagerIntegrationTest {
         const val BRANCH_ID = 40L
         const val PARENT_MESSAGE_ID = 99L
         const val MESSAGE_ID = 100L
+        const val LARGE_MESSAGE_ID_BASE = 1_000L
+        const val LARGE_MESSAGE_COUNT = 1_200
+        const val LARGE_BACKUP_BUDGET_MS = 5_000L
         const val SUMMARY_ID = 150L
         const val BGM_ID = 200L
+        const val QUICK_REPLY_SET_ID = 300L
+        const val QUICK_REPLY_ID = 301L
     }
 }

@@ -1,7 +1,7 @@
 # 酒馆 AI (TavernAndroid) 开发计划
 
-> 更新于 2026-06-06 | 基于当前工作区核对 + Phase 4.3 实施结果
-> 当前状态：220 .kt 文件（main 151 / test 69），773 testcases（全绿），DB Schema v29
+> 更新于 2026-06-10 | 基于当前工作区深度评估 + Quick Replies 收口优化
+> 当前状态：Quick Replies / STscript Lite 已完成核心接入与多轮收口；DB Schema v31；核心定向测试、`compileDebugKotlin`、`lintDebug` 通过
 > **核心原则：扩展功能永远往后推，重点永远是优化目前版本，确保目前的功能能够使用，并且尽量使这些功能获得更好的体验。**
 
 ---
@@ -26,13 +26,15 @@
 
 ### 进行中
 - V VN 模式 (立绘 ✅ + 情感检测 ✅ + 输入框 ✅ + BGM 播放器 ✅ + EmotionDetector 增强 ✅ + 测试 ✅ + 3.4 进入优化 ✅)
-- Phase 6 性能优化（Room 查询 / 图片内存 / 大数据备份恢复 / 长 prompt 构建验证）
+- v1.3.1 收口验证（全量测试 / lint / assembleDebug / 真实 smoke）
+- 覆盖率报告核算 ✅（Kover debug：业务代码 line 70.19%，branch 42.85%）
+- Quick Replies / STscript Lite（持久化 ✅ + 聊天页 ✅ + 管理页 ✅ + 自动触发 ✅ + 备份恢复 ✅ + 多轮稳定性收口 ✅）
 
 ### 待优化（本计划重点）
 - ~~PromptBuilder 628 行 DRY 违例 + 测试盲区~~ ✅ 已完成（559 行，33 测试）
 - ~~Repository 层线程安全 + 语义错误~~ ✅ 已完成（2 bug 修复 + 34 测试）
-- 测试覆盖率 35.8% → 目标 60%+（需引入覆盖率报告重新核算）
-- ChatViewModel 继续瘦身 + ChatScreen 拆分
+- 测试覆盖率目标已用 Kover 重算：业务代码 line 70.19% / branch 42.85%；下一步按热点补分支测试
+- ChatViewModel / ChatScreen 后续只做小步拆分，优先等覆盖率报告指出风险区域后再动
 
 ### 待完成（远期）
 - W 图像生成增强 | X STscript | Y 扩展框架 | Z 发布准备
@@ -56,10 +58,10 @@
 
 ---
 
-## Phase 2：ChatViewModel 拆分 (v1.2.9) — 进行中
+## Phase 2：ChatViewModel 拆分 (v1.2.9) — ✅ 已完成
 
 > 降低巨型 ViewModel 的维护风险，为后续优化打基础
-> ChatViewModel: 974 行 → 379 行（-61%）
+> ChatViewModel: 974 行 → <500 行；ChatScreen 也已回到目标线内
 
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
@@ -209,10 +211,10 @@
 
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
-| 5.9 | ChatImporter/SillyTavernImporter 测试 | 导入格式兼容性，10 测试覆盖 3 种格式 + 边界 | ✅ |
+| 5.9 | ChatImporter/SillyTavernImporter 测试 | 基础导入格式、PNG metadata、导出、异常边界和无头像 PNG 占位分支已覆盖 | ✅ |
 | 5.10 | TtsHelper/SttHelper 测试 | SpeechManager 封装层覆盖 TTS/STT 委托与状态流 | ✅ |
 
-**目标**：测试覆盖率 35.8% → 60%+，测试总数 779 → 900+
+**当前 Kover 基线**：业务代码 line 70.19% / branch 42.85%。下一步不再按测试文件数量估算，改按覆盖率热点补分支测试。
 
 ---
 
@@ -222,10 +224,10 @@
 
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
-| 6.1 | Room 查询优化 | 检查 N+1 查询，添加必要索引 | ⬜ |
-| 6.2 | 图片内存池 | Coil 内存缓存配置优化 | ⬜ |
-| 6.3 | 备份大数据量验证 | 1000+ 消息对话的备份/恢复性能 | ⬜ |
-| 6.4 | PromptBuilder 长对话验证 | 100+ 消息的 prompt 构建性能 | ⬜ |
+| 6.1 | Room 查询优化 | v30 高频复合索引 + 聊天列表最后消息单查询，迁移测试覆盖 | ✅ |
+| 6.2 | 图片内存池 | Application 全局 Coil ImageLoader，20% 内存缓存 + 3% 磁盘缓存 | ✅ |
+| 6.3 | 备份大数据量验证 | 1200 条消息备份/恢复完整性 + <5s 预算测试，恢复消息批量插入 | ✅ |
+| 6.4 | PromptBuilder 长对话验证 | 150 条历史 + 动态上下文构建完整性与 <1s 预算测试 | ✅ |
 
 **验证**：1000+ 消息对话流畅加载，备份/恢复 < 5s
 
@@ -233,12 +235,12 @@
 
 ## 里程碑规划
 
-### v1.2.9（进行中）— 稳定性 + 架构优化
+### v1.2.9 — 稳定性 + 架构优化 ✅
 ```
 Phase 1: 稳定性修复（6 项）✅
-Phase 2: ChatViewModel 拆分（2.1-2.4 ✅，2.5-2.6 待做）
-Phase 2.5: PromptBuilder 重构（6 项）
-Phase 2.6: Repository 修复（6 项）
+Phase 2: ChatViewModel 拆分（2.1-2.6）✅
+Phase 2.5: PromptBuilder 重构（6 项）✅
+Phase 2.6: Repository 修复（6 项）✅
 ```
 
 ### v1.3.0（2-3 周）— 功能补全 + UX 润色
@@ -247,10 +249,11 @@ Phase 3: VN 模式补全（5 项）
 Phase 4: UX 润色（7 项）
 ```
 
-### v1.3.1（1-2 周）— 质量保障
+### v1.3.1（收口中）— 质量保障
 ```
-Phase 5: 测试补全（10 项）
-Phase 6: 性能优化（4 项）
+Phase 5: 测试补全（10 项）✅；Kover 基线已完成，下一步按热点补分支测试
+Phase 6: 性能优化（4 项）✅
+Quick Replies / STscript Lite：核心接入 + 收口验证
 ```
 
 ### v1.4.0+（远期）— 新功能扩展
@@ -268,8 +271,8 @@ Phase Z: Play Store 发布
 | 债务 | 严重度 | 归属 Phase | 状态 |
 |------|--------|-----------|------|
 | ~~ChatViewModel 974 行~~ | ~~高~~ | Phase 2 | ✅ 已减至 379 行 |
-| ~~ChatScreen 718 行~~ | ~~中~~ | Phase 2.6 | ✅ 已减至 560 行 |
-| ~~PromptBuilder 628 行 DRY 违例~~ | ~~高~~ | Phase 2.5 | ✅ 已减至 559 行 |
+| ~~ChatScreen 718 行~~ | ~~中~~ | Phase 2.6 | ✅ 已减至 553 行 |
+| ~~PromptBuilder 628 行 DRY 违例~~ | ~~高~~ | Phase 2.5 | ✅ 已减至 291 行 |
 | ~~BgmRepository.updateBgm 语义错误~~ | ~~高~~ | Phase 2.6 | ✅ 已修复 |
 | ~~ScriptRepository regexCache 线程不安全~~ | ~~中~~ | Phase 2.6 | ✅ 已修复 |
 | ~~BGM 无播放器~~ | ~~中~~ | Phase 3 | ✅ 已实现 BgmPlayer |
@@ -289,14 +292,16 @@ Phase Z: Play Store 发布
 
 | 指标 | v1.2.8 基线 | 当前 | v1.2.9 目标 | v1.3.1 目标 |
 |------|------------|------|-----------|-----------|
-| 测试数量 | 762 | 773 | 850+ | 900+ |
-| ChatViewModel 行数 | 974 | 429 | <500 | <500 |
-| ChatScreen 行数 | 718 | 616 | <600 | <500 |
-| PromptBuilder 行数 | 628 | 532 | <400 | <400 |
-| 测试文件覆盖率 | 35.8% | 待重算 | 45%+ | 60%+ |
+| 测试数量 | 762 | 约 812+ | 850+ | 900+ |
+| ChatViewModel 行数 | 974 | <500 | <500 ✅ | <500 |
+| ChatScreen 行数 | 718 | <600 | <600 ✅ | <500 |
+| QuickReplyScreen 行数 | - | 206 | <300 ✅ | <300 |
+| QuickReply 管理页组件最大行数 | - | 271 | <300 ✅ | <300 |
+| PromptBuilder 行数 | 628 | 291 | <400 ✅ | <400 ✅ |
+| 测试覆盖率（Kover 业务代码） | 35.8% 估算 | line 70.19% / branch 42.85% | 45%+ ✅ | 60%+ ✅ |
 | DAO 测试覆盖 | 0% | 100% | 100% ✅ | 100% |
-| DB Migration 测试 | 0 | 21/21 ✅ | 全部 | 全部 |
-| VN 模式可用性 | 部分 | 部分 | 部分 | 完整 |
+| DB Migration 测试 | 0 | v31 迁移链 ✅ | 全部 | 全部 |
+| VN 模式可用性 | 部分 | 可用（输入框 + BGM + 情感检测） | 部分 | 完整 |
 | Lint 错误 | 5 | 0 ✅ | 0 | 0 |
 | Lint 警告 | 103 | 32 | <50 | <20 |
 
@@ -304,9 +309,10 @@ Phase Z: Play Store 发布
 
 ## 下一步行动（优先级排序）
 
-1. **Phase 6.1** — Room 查询优化审计（检查 N+1 查询，补必要索引）
-2. **Phase 6.3** — 备份大数据量验证（1000+ 消息备份/恢复性能与完整性）
-3. **架构瘦身** — ChatScreen 继续拆分至 <600 行，PromptBuilder 继续向 <400 行推进
+1. **按覆盖率热点补测试** — `PngMetadata` / `ChatExporter` / `SillyTavernImporter` 已补；下一轮优先 `ChatRepository`、`WorldBookRepository`、`MemoryExtractorService`
+2. **BGM 播放器边界测试** — `BgmPlayer` 当前可行动覆盖为 0%，需覆盖空路径、切歌、音量、释放和失败回退
+3. **assistant_reply 扩展 smoke** — 真实发送链路确认 automation 只触发一次，并继续遵守安全边界
+4. **真实模拟器可视位置修复** — Tavern_Phone 宿主窗口仍落在 `originY=-720`，需后续单独处理 Emulator/Qt 窗口状态
 
 ---
 

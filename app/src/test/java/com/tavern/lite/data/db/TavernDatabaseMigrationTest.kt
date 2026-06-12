@@ -8,14 +8,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 验证数据库迁移链完整性：确保从 version 1 到 version 30 的所有迁移都存在且连续。
+ * 验证数据库迁移链完整性：确保从 version 1 到 version 31 的所有迁移都存在且连续。
  *
  * 这些测试在 JVM 上运行，不依赖 Android SQLite。
  * 实际的 SQL 执行验证由 TavernDatabaseSqlMigrationTest 覆盖。
  */
 class TavernDatabaseMigrationTest {
 
-    private val allMigrations = listOf(
+    private val mainMigrationChain = listOf(
         TavernDatabase.MIGRATION_1_8,
         TavernDatabase.MIGRATION_8_9,
         TavernDatabase.MIGRATION_9_10,
@@ -38,8 +38,20 @@ class TavernDatabaseMigrationTest {
         TavernDatabase.MIGRATION_26_27,
         TavernDatabase.MIGRATION_27_28,
         TavernDatabase.MIGRATION_28_29,
-        TavernDatabase.MIGRATION_29_30
+        TavernDatabase.MIGRATION_29_30,
+        TavernDatabase.MIGRATION_30_31
     )
+
+    private val earlyEntryMigrations = listOf(
+        TavernDatabase.MIGRATION_2_8,
+        TavernDatabase.MIGRATION_3_8,
+        TavernDatabase.MIGRATION_4_8,
+        TavernDatabase.MIGRATION_5_8,
+        TavernDatabase.MIGRATION_6_8,
+        TavernDatabase.MIGRATION_7_8
+    )
+
+    private val allMigrations = mainMigrationChain + earlyEntryMigrations
 
     @Test
     fun `all migrations are non-null`() {
@@ -49,23 +61,23 @@ class TavernDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration chain covers version 1 to 30 without gaps`() {
+    fun `migration chain covers version 1 to 31 without gaps`() {
         val chain = mutableMapOf<Int, Int>()
-        for (migration in allMigrations) {
+        for (migration in mainMigrationChain) {
             chain[migration.startVersion] = migration.endVersion
         }
 
-        // Walk the chain from 1 to 30
+        // Walk the chain from 1 to 31
         var current = 1
         val visited = mutableListOf(current)
-        while (current != 30) {
+        while (current != 31) {
             val next = chain[current]
                 ?: throw AssertionError("No migration found from version $current. Chain: $visited")
             visited.add(next)
             current = next
         }
 
-        assertEquals("Chain should end at version 30", 30, current)
+        assertEquals("Chain should end at version 31", 31, current)
     }
 
     @Test
@@ -77,7 +89,7 @@ class TavernDatabaseMigrationTest {
 
     @Test
     fun `no duplicate end versions in migration chain`() {
-        val endVersions = allMigrations.map { it.endVersion }
+        val endVersions = mainMigrationChain.map { it.endVersion }
         assertEquals("Each end version should appear exactly once",
             endVersions.size, endVersions.toSet().size)
     }
@@ -100,22 +112,32 @@ class TavernDatabaseMigrationTest {
     }
 
     @Test
-    fun `final migration reaches current database version 30`() {
-        val lastMigration = TavernDatabase.MIGRATION_29_30
-        assertEquals(30, lastMigration.endVersion)
+    fun `early entry migrations cover versions 2 to 7 without destructive fallback`() {
+        assertEquals((2..7).toList(), earlyEntryMigrations.map { it.startVersion })
+        earlyEntryMigrations.forEach { migration ->
+            assertEquals(8, migration.endVersion)
+        }
+    }
+
+    @Test
+    fun `final migration reaches current database version 31`() {
+        val lastMigration = TavernDatabase.MIGRATION_30_31
+        assertEquals(31, lastMigration.endVersion)
     }
 
     @Test
     fun `database version matches final migration target`() {
-        // The @Database(version = 30) should match the end of the migration chain
-        val maxVersion = allMigrations.maxOf { it.endVersion }
-        assertEquals("Final migration target should match @Database version", 30, maxVersion)
+        // The @Database(version = 31) should match the end of the migration chain
+        val maxVersion = mainMigrationChain.maxOf { it.endVersion }
+        assertEquals("Final migration target should match @Database version", 31, maxVersion)
     }
 
     @Test
     fun `total migration count is correct`() {
-        // 1→8 (jump), then 8→9→10→...→30 (step by 1) = 1 + 22 = 23
-        assertEquals(23, allMigrations.size)
+        // 1→8 (jump), then 8→9→10→...→31 (step by 1) = 1 + 23 = 24
+        assertEquals(24, mainMigrationChain.size)
+        assertEquals(6, earlyEntryMigrations.size)
+        assertEquals(30, allMigrations.size)
     }
 
     // ==================== BackupManager version comparison ====================

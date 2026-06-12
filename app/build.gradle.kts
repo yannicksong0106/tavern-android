@@ -5,10 +5,50 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "*.BuildConfig",
+                    "*.R",
+                    "*.R$*",
+                    "*_Factory",
+                    "*_MembersInjector",
+                    "*_HiltModules*",
+                    "*_GeneratedInjector",
+                    "*_Impl",
+                    "*_Impl$*",
+                    "Hilt_*",
+                    "hilt_aggregated_deps.*",
+                    "dagger.hilt.internal.aggregatedroot.codegen.*",
+                    "com.tavern.lite.MainActivity",
+                    "com.tavern.lite.MainActivity$*",
+                    "com.tavern.lite.Hilt_*",
+                    "com.tavern.lite.ComposableSingletons*",
+                    "com.tavern.lite.TavernApp",
+                    "com.tavern.lite.di.*",
+                    "com.tavern.lite.ui.theme.*",
+                    "com.tavern.lite.ui.navigation.TavernNavGraphKt*",
+                    "com.tavern.lite.ui.components.*Kt*",
+                    "com.tavern.lite.ui.screens.*.*ScreenKt*",
+                    "com.tavern.lite.ui.screens.*.*DialogKt*",
+                    "com.tavern.lite.ui.screens.*.*SheetKt*",
+                    "com.tavern.lite.ui.screens.chat.components.*Kt*",
+                    "com.tavern.lite.ui.screens.quickreply.QuickReplyDialogsKt*",
+                    "com.tavern.lite.ui.screens.quickreply.QuickReplyFormFieldsKt*",
+                    "com.tavern.lite.ui.screens.quickreply.QuickReplyListComponentsKt*"
+                )
+            }
+        }
+    }
 }
 
 android {

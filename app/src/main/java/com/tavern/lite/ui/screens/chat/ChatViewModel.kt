@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.data.db.entity.QuickReplyEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.model.BubbleStyleConfig
@@ -14,6 +15,7 @@ import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.data.repository.QuickReplyRepository
 import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.data.repository.SummaryRepository
@@ -23,7 +25,9 @@ import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.SummaryUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
+import com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
+import com.tavern.lite.domain.usecase.StScriptLiteExecutor
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.EmotionDetector
 import com.tavern.lite.network.ImageGenerationService
@@ -66,6 +70,7 @@ class ChatViewModel @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val chatRepository: ChatRepository,
     private val groupChatRepository: GroupChatRepository,
+    private val quickReplyRepository: QuickReplyRepository,
     private val apiConfigStore: ApiConfigStore,
     private val settingsStore: SettingsStore,
     private val promptInspectorBuilder: PromptInspectorBuilder,
@@ -73,6 +78,8 @@ class ChatViewModel @Inject constructor(
     private val continueGenerationUseCase: ContinueGenerationUseCase,
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
+    private val quickReplyAutomationTriggerUseCase: QuickReplyAutomationTriggerUseCase,
+    private val stScriptLiteExecutor: StScriptLiteExecutor,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
     private val summaryUseCase: SummaryUseCase,
     private val summaryRepository: SummaryRepository,
@@ -118,6 +125,11 @@ class ChatViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val quickReplies: StateFlow<List<QuickReplyEntity>> =
+        quickReplyRepository.getEnabledRepliesForContext(characterId, chatId)
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // 分页加载：只显示最近 N 条消息，滚动到顶部时加载更多
     private val _pageSize = MutableStateFlow(PAGE_SIZE)
     val displayMessages: StateFlow<List<MessageEntity>> = _pageSize.flatMapLatest { size ->
@@ -149,6 +161,9 @@ class ChatViewModel @Inject constructor(
 
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+
+    private val _assistantReplyCommitted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val assistantReplyCommitted: SharedFlow<Unit> = _assistantReplyCommitted.asSharedFlow()
 
     private val _promptInspectorState = MutableStateFlow<PromptInspectorState?>(null)
     val promptInspectorState: StateFlow<PromptInspectorState?> = _promptInspectorState.asStateFlow()
@@ -213,6 +228,7 @@ class ChatViewModel @Inject constructor(
             onRespondingCharacterChanged = { _respondingCharacter.value = it }
             onEmotionUpdate = { vnModeManager.updateEmotionFromResponse(it) }
             onToast = { _toastMessage.emit(it) }
+            onAssistantReplyCommitted = { _assistantReplyCommitted.tryEmit(Unit) }
         }
 
         // VN 模式管理器
@@ -376,10 +392,39 @@ class ChatViewModel @Inject constructor(
 
     fun estimateInputTokens(text: String): Int = TokenEstimator.estimateText(text)
 
+    fun executeQuickReply(reply: QuickReplyEntity): QuickReplyUiResult {
+        val result = stScriptLiteExecutor.execute(reply)
+        return result.toQuickReplyUiResult()
+    }
+
+    suspend fun triggerQuickReplyAutomation(automationId: String): QuickReplyUiResult {
+        val result = quickReplyAutomationTriggerUseCase(
+            automationId = automationId,
+            characterId = characterId,
+            chatId = chatId
+        )
+        return result.toQuickReplyUiResult()
+    }
+
     fun buildPromptInspector(draftInput: String) {
         viewModelScope.launch {
             _promptInspectorState.value = try {
-                buildPromptInspectorState(draftInput)
+                buildChatPromptInspectorState(
+                    draftInput = draftInput,
+                    chatId = chatId,
+                    characterId = characterId,
+                    character = _character.value,
+                    isGroupChat = _isGroupChat.value,
+                    groupCharacters = _groupCharacters.value,
+                    respondingCharacter = _respondingCharacter.value,
+                    messages = messages.value,
+                    characterRepository = characterRepository,
+                    chatRepository = chatRepository,
+                    groupChatRepository = groupChatRepository,
+                    apiConfigStore = apiConfigStore,
+                    summaryUseCase = summaryUseCase,
+                    promptInspectorBuilder = promptInspectorBuilder
+                )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 PromptInspectorState(error = e.message ?: "Prompt preview failed")
@@ -389,43 +434,6 @@ class ChatViewModel @Inject constructor(
 
     fun clearPromptInspector() {
         _promptInspectorState.value = null
-    }
-
-    private suspend fun buildPromptInspectorState(draftInput: String): PromptInspectorState {
-        val config = apiConfigStore.configFlow.first()
-        val baseCharacter = _character.value
-            ?: characterRepository.getCharacterById(characterId)
-            ?: return PromptInspectorState(error = "Character not loaded")
-        val previewInput = draftInput.ifBlank {
-            messages.value.lastOrNull { it.role == "user" }?.content ?: ""
-        }
-        val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength).reversed()
-        val summary = summaryUseCase.getLatestSummaryText(chatId)
-
-        return if (_isGroupChat.value) {
-            val characters = _groupCharacters.value.ifEmpty {
-                groupChatRepository.getCharactersForChatSync(chatId)
-            }
-            val respondingCharacter = _respondingCharacter.value ?: characters.firstOrNull() ?: baseCharacter
-            promptInspectorBuilder.buildGroup(
-                chatId = chatId,
-                characters = characters.ifEmpty { listOf(respondingCharacter) },
-                respondingCharacter = respondingCharacter,
-                userMessage = previewInput,
-                chatHistory = chatHistory,
-                userName = config.userName,
-                summary = summary
-            )
-        } else {
-            promptInspectorBuilder.buildSingle(
-                chatId = chatId,
-                character = baseCharacter,
-                userMessage = previewInput,
-                chatHistory = chatHistory,
-                userName = config.userName,
-                summary = summary
-            )
-        }
     }
 
     val pinnedMessages: StateFlow<List<MessageEntity>> = chatRepository.getPinnedMessages(chatId)

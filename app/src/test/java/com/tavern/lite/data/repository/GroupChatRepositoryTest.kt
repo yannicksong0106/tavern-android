@@ -105,6 +105,7 @@ private class FakeGroupChatDao : ChatDao {
     override fun getChatsForCharacter(characterId: Long): Flow<List<ChatEntity>> = flowOf(emptyList())
     override fun getChatsWithLastMessage(characterId: Long): Flow<List<com.tavern.lite.data.db.entity.ChatWithLastMessage>> = flowOf(emptyList())
     override fun getAllGroupChats(): Flow<List<ChatEntity>> = flowOf(inserted.filter { it.isGroup })
+    override fun getAllChats(): Flow<List<ChatEntity>> = flowOf(inserted)
     override suspend fun getChatById(id: Long): ChatEntity? = inserted.find { it.id == id }
     override suspend fun getLatestChatForCharacter(characterId: Long): ChatEntity? = null
     override suspend fun insert(chat: ChatEntity): Long {
@@ -157,6 +158,7 @@ private class FakeGroupMessageDao : MessageDao {
     override suspend fun getMessageById(id: Long): MessageEntity? = null
     override suspend fun getMessageCount(chatId: Long): Int = 0
     override suspend fun insert(message: MessageEntity): Long = 1
+    override suspend fun insertAll(messages: List<MessageEntity>) {}
     override suspend fun updateContent(id: Long, content: String) {}
     override suspend fun appendContent(id: Long, chunk: String) {}
     override suspend fun softDelete(id: Long) {}

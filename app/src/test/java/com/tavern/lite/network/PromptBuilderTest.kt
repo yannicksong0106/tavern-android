@@ -12,6 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.system.measureTimeMillis
 
 class PromptBuilderTest {
 
@@ -751,5 +752,101 @@ class PromptBuilderTest {
         assertEquals("user", userMsg.role)
         assertEquals("Look at these", userMsg.content)
         assertEquals(imageUrls, userMsg.imageUrls)
+    }
+
+    @Test
+    fun `build handles long chat history within performance budget`() {
+        PromptBuilder.invalidateCache()
+        TemplateEngine.clearCache()
+
+        val character = makeCharacter(
+            id = 42,
+            name = "Alice",
+            description = "{{char}} is a careful archivist speaking with {{user}}.",
+            personality = "Observant and concise",
+            firstMes = "I will keep track of the details.",
+            mesExample = "<START>\n{{user}}: Remember this?\n{{char}}: I remember the important parts.",
+            systemPrompt = "Keep continuity with {{personaDescription}}.",
+            postHistoryInstructions = "Answer as {{char}} while preserving prior facts."
+        )
+        val history = (1..LONG_HISTORY_COUNT).map { index ->
+            makeMessage(
+                role = if (index % 2 == 0) "assistant" else "user",
+                content = "History message $index about a long-running scene.",
+                characterId = if (index % 2 == 0) character.id else null
+            ).copy(id = index.toLong(), createdAt = 1_000L + index)
+        }
+        val atoms = listOf(
+            makeAtom(1, "character_consistency", 10, "Alice never contradicts established facts."),
+            makeAtom(2, "fact", 8, "User is tracking a multi-session mystery."),
+            makeAtom(3, "temporary", 6, "The current scene is inside the archive.")
+        )
+        val entries = listOf(
+            WorldBookEntryEntity(
+                id = 1,
+                worldBookId = 1,
+                comment = "Archive",
+                content = "The archive stores long-term clues.",
+                keys = "[\"archive\"]"
+            )
+        )
+        val persona = PersonaEntity(
+            id = 1,
+            name = "Morgan",
+            biography = "Morgan prefers compact answers and continuity."
+        )
+
+        var messages: List<ChatMessage> = emptyList()
+        val elapsedMs = measureTimeMillis {
+            messages = PromptBuilder.build(
+                character = character,
+                userMessage = "What do we know now?",
+                chatHistory = history,
+                worldBookEntries = entries,
+                memoryAtoms = atoms,
+                persona = persona,
+                summary = "The mystery has three open clues.",
+                searchResults = listOf(
+                    WebSearchResult(
+                        title = "Archive note",
+                        snippet = "External context for a clue.",
+                        url = "https://example.com/archive"
+                    )
+                )
+            )
+        }
+
+        assertTrue("Prompt build took ${elapsedMs}ms", elapsedMs < LONG_HISTORY_BUDGET_MS)
+        assertEquals("user", messages.last().role)
+        assertEquals("What do we know now?", messages.last().content)
+        assertEquals(LONG_HISTORY_COUNT + LONG_HISTORY_EXTRA_MESSAGES, messages.size)
+        assertTrue(messages.any { it.content == "History message 1 about a long-running scene." })
+        assertTrue(messages.any { it.content == "History message $LONG_HISTORY_COUNT about a long-running scene." })
+        assertTrue(messages.any { it.content.contains("The archive stores long-term clues.") })
+        assertTrue(messages.any { it.content.contains("Alice never contradicts established facts.") })
+        assertTrue(messages.any { it.content.contains("The mystery has three open clues.") })
+        assertTrue(messages.any { it.content.contains("Archive note") })
+    }
+
+    private fun makeAtom(
+        id: Long,
+        category: String,
+        importance: Int,
+        content: String
+    ) = MemoryAtomEntity(
+        id = id,
+        characterId = 42,
+        content = content,
+        category = category,
+        importance = importance,
+        source = "test",
+        createdAt = System.currentTimeMillis(),
+        lastAccessed = System.currentTimeMillis()
+    )
+
+    private companion object {
+        const val LONG_HISTORY_COUNT = 150
+        const val LONG_HISTORY_EXTRA_MESSAGES = 9
+        const val LONG_HISTORY_BUDGET_MS = 1_000L
     }
 }

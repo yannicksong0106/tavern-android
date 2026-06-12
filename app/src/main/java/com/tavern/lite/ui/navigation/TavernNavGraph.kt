@@ -19,6 +19,7 @@ import com.tavern.lite.ui.screens.home.HomeScreen
 import com.tavern.lite.ui.screens.memory.MemoryScreen
 import com.tavern.lite.ui.screens.persona.PersonaScreen
 import com.tavern.lite.ui.screens.preset.PresetScreen
+import com.tavern.lite.ui.screens.quickreply.QuickReplyScreen
 import com.tavern.lite.ui.screens.script.ScriptScreen
 import com.tavern.lite.ui.screens.settings.ApiConfigScreen
 import com.tavern.lite.ui.screens.settings.ChatStyleScreen
@@ -51,6 +52,7 @@ object Routes {
     const val SETTINGS_CHAT_STYLE = "settings_chat_style"
     const val SETTINGS_TTS = "settings_tts"
     const val SETTINGS_DATA_MANAGEMENT = "settings_data_management"
+    const val QUICK_REPLIES = "quick_replies"
     const val VN = "vn/{characterId}/{chatId}"
 
     fun chatList(characterId: Long) = "chat_list/$characterId"
@@ -192,7 +194,8 @@ fun TavernNavGraph() {
                 onGenerationParamsClick = { navController.navigate(Routes.SETTINGS_GENERATION_PARAMS) },
                 onChatStyleClick = { navController.navigate(Routes.SETTINGS_CHAT_STYLE) },
                 onTtsClick = { navController.navigate(Routes.SETTINGS_TTS) },
-                onDataManagementClick = { navController.navigate(Routes.SETTINGS_DATA_MANAGEMENT) }
+                onDataManagementClick = { navController.navigate(Routes.SETTINGS_DATA_MANAGEMENT) },
+                onQuickRepliesClick = { navController.navigate(Routes.QUICK_REPLIES) }
             )
         }
 
@@ -294,6 +297,10 @@ fun TavernNavGraph() {
 
         composable(Routes.SETTINGS_DATA_MANAGEMENT) {
             DataManagementScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.QUICK_REPLIES) {
+            QuickReplyScreen(onBack = { navController.popBackStack() })
         }
     }
 }
