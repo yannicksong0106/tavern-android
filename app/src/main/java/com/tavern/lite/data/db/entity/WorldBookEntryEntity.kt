@@ -38,5 +38,5 @@ data class WorldBookEntryEntity(
     @ColumnInfo(name = "prevent_recursion", defaultValue = "0") val preventRecursion: Boolean = false,
     @ColumnInfo(defaultValue = "") val group: String = "",
     @ColumnInfo(name = "group_override", defaultValue = "0") val groupOverride: Boolean = false,
-    @ColumnInfo(name = "group_weight", defaultValue = "100") val groupWeight: Int = 100
-)
+    @ColumnInfo(name = "group_weight", defaultValue = "100") val groupWeight: Int = 100,
+ 
