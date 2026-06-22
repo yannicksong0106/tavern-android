@@ -62,7 +62,7 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         QuickReplySetEntity::class,
         QuickReplyEntity::class,
     ],
-    version = 31,
+    version = 32,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -1431,6 +1431,13 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id ON memory_atoms(character_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_category ON memory_atoms(category)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_atoms_character_id_category ON memory_atoms(character_id, category)")
+            }
+        }
+
+       
+        val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE world_book_entries ADD COLUMN automation_id TEXT NOT NULL DEFAULT ")
             }
         }
     }
