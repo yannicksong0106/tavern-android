@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -57,7 +57,7 @@ class ApiConfigStore @Inject constructor(
      * 无激活 profile 时：从 DataStore 读取
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val configFlow: Flow<ApiConfig> = _activeProfileId.distinctUntilChanged().flatMapLatest { profileId ->
+    val configFlow: Flow<ApiConfig> = _activeProfileId.flatMapLatest { profileId ->
         if (profileId != null) {
             // 观察 Room profile 的变化，保存后自动触发
             profileDao.getProfileByIdFlow(profileId).map { profile ->

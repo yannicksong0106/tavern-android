@@ -5,6 +5,8 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.usecase.TestConnectionUseCase
 import com.tavern.lite.network.ApiConfigStore
+import com.tavern.lite.data.repository.ApiConfigProfileRepository
+import com.tavern.lite.domain.usecase.ProfileMigrationUseCase
 import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import io.mockk.MockKAnnotations
@@ -16,6 +18,7 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -36,6 +39,8 @@ class SettingsViewModelTest {
     @MockK private lateinit var settingsStore: SettingsStore
     @MockK private lateinit var proactiveWorkScheduler: ProactiveWorkScheduler
     @MockK private lateinit var backupManager: BackupManager
+    @MockK private lateinit var profileMigrationUseCase: ProfileMigrationUseCase
+    @MockK private lateinit var profileRepository: ApiConfigProfileRepository
 
     private lateinit var viewModel: SettingsViewModel
     private val testDispatcher = StandardTestDispatcher()
@@ -46,6 +51,7 @@ class SettingsViewModelTest {
         Dispatchers.setMain(testDispatcher)
 
         every { apiConfigStore.configFlow } returns flowOf(ApiConfig())
+        every { apiConfigStore.activeProfileId } returns MutableStateFlow(null)
         every { settingsStore.bubbleStyleFlow } returns flowOf(com.tavern.lite.data.model.BubbleStyleConfig())
         every { settingsStore.languageFlow } returns flowOf("system")
         every { settingsStore.backgroundProactiveFlow } returns flowOf(false)
@@ -55,8 +61,12 @@ class SettingsViewModelTest {
         tmpDir.mkdirs()
         every { context.cacheDir } returns tmpDir
         every { context.getDatabasePath(any()) } returns File(tmpDir, "tavern_db")
+        every { profileRepository.getAllProfiles() } returns flowOf(emptyList())
+        coEvery { profileMigrationUseCase.migrateIfNeeded() } returns false
+        coEvery { profileRepository.getDefaultProfile() } returns null
+        every { apiConfigStore.setActiveProfile(any()) } returns Unit
 
-        viewModel = SettingsViewModel(context, apiConfigStore, testConnectionUseCase, settingsStore, proactiveWorkScheduler, backupManager)
+        viewModel = SettingsViewModel(context, apiConfigStore, testConnectionUseCase, settingsStore, proactiveWorkScheduler, backupManager, profileMigrationUseCase, profileRepository)
     }
 
     @After

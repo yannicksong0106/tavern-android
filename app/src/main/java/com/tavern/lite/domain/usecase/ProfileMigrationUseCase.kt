@@ -5,6 +5,7 @@ import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ApiConfigProfileRepository
 import com.tavern.lite.network.ApiConfigStore
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,7 +35,7 @@ class ProfileMigrationUseCase @Inject constructor(
         }
 
         Log.d(TAG, "No profiles found, migrating DataStore config to default profile")
-        val dataStoreConfig = apiConfigStore.configFlow.value
+        val dataStoreConfig = apiConfigStore.configFlow.first()
 
         profileRepository.createProfile(
             name = DEFAULT_PROFILE_NAME,
