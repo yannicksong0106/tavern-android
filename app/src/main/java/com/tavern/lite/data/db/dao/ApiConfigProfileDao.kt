@@ -18,6 +18,9 @@ interface ApiConfigProfileDao {
     @Query("SELECT * FROM api_config_profiles WHERE id = :id")
     suspend fun getProfileById(id: Long): ApiConfigProfileEntity?
 
+    @Query("SELECT * FROM api_config_profiles WHERE id = :id")
+    fun getProfileByIdFlow(id: Long): Flow<ApiConfigProfileEntity?>
+
     @Query("SELECT * FROM api_config_profiles WHERE is_default = 1 LIMIT 1")
     suspend fun getDefaultProfile(): ApiConfigProfileEntity?
 

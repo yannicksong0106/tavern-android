@@ -10,6 +10,9 @@ import com.tavern.lite.data.model.ApiProvider
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.data.store.TtsSettings
+import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
+import com.tavern.lite.data.repository.ApiConfigProfileRepository
+import com.tavern.lite.domain.usecase.ProfileMigrationUseCase
 import com.tavern.lite.domain.usecase.TestConnectionUseCase
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.SearchEngine
@@ -53,12 +56,22 @@ class SettingsViewModel @Inject constructor(
     private val testConnectionUseCase: TestConnectionUseCase,
     private val settingsStore: SettingsStore,
     private val proactiveWorkScheduler: ProactiveWorkScheduler,
-    private val backupManager: BackupManager
+    private val backupManager: BackupManager,
+    private val profileMigrationUseCase: ProfileMigrationUseCase,
+    private val profileRepository: ApiConfigProfileRepository
 ) : ViewModel() {
 
     val config: StateFlow<ApiConfig> = apiConfigStore.configFlow
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ApiConfig())
+
+    /** 所有配置档案 */
+    val profiles: StateFlow<List<ApiConfigProfileEntity>> = profileRepository.getAllProfiles()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 当前激活的 profile ID */
+    val activeProfileId: StateFlow<Long?> = apiConfigStore.activeProfileId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val bubbleStyle: StateFlow<BubbleStyleConfig> = settingsStore.bubbleStyleFlow
         .distinctUntilChanged()
@@ -99,6 +112,23 @@ class SettingsViewModel @Inject constructor(
     private val _pendingConfig = MutableSharedFlow<ApiConfig>(extraBufferCapacity = 1)
 
     init {
+        viewModelScope.launch {
+            // 执行配置档案迁移（首次升级时将 DataStore 配置迁移到 Room）
+            val migrated = profileMigrationUseCase.migrateIfNeeded()
+            if (migrated) {
+                // 迁移完成后，设置默认 profile 为激活状态
+                val defaultProfile = profileRepository.getDefaultProfile()
+                if (defaultProfile != null) {
+                    apiConfigStore.setActiveProfile(defaultProfile.id)
+                }
+            } else {
+                // 已迁移过，激活默认 profile
+                val defaultProfile = profileRepository.getDefaultProfile()
+                if (defaultProfile != null) {
+                    apiConfigStore.setActiveProfile(defaultProfile.id)
+                }
+            }
+        }
         viewModelScope.launch {
             _pendingConfig.debounce(300).collect { config ->
                 apiConfigStore.save(config)
@@ -171,6 +201,67 @@ class SettingsViewModel @Inject constructor(
 
     fun resetTestState() {
         _testState.value = ConnectionTestState.Idle
+    }
+
+    // ========== 配置档案管理 ==========
+
+    /**
+     * 切换到指定 profile
+     */
+    fun switchProfile(profileId: Long) {
+        viewModelScope.launch {
+            apiConfigStore.setActiveProfile(profileId)
+        }
+    }
+
+    /**
+     * 创建新配置档案
+     */
+    fun createProfile(name: String, description: String = "") {
+        viewModelScope.launch {
+            val currentConfig = config.value
+            val newId = profileRepository.createProfile(
+                name = name,
+                config = currentConfig,
+                description = description,
+                isDefault = false
+            )
+            // 切换到新创建的 profile
+            apiConfigStore.setActiveProfile(newId)
+        }
+    }
+
+    /**
+     * 删除配置档案
+     */
+    fun deleteProfile(profile: ApiConfigProfileEntity) {
+        viewModelScope.launch {
+            val currentActiveId = apiConfigStore.activeProfileId.value
+            profileRepository.deleteProfile(profile)
+            // 如果删除的是当前激活的 profile，切换到默认 profile
+            if (currentActiveId == profile.id) {
+                val defaultProfile = profileRepository.getDefaultProfile()
+                apiConfigStore.setActiveProfile(defaultProfile?.id)
+            }
+        }
+    }
+
+    /**
+     * 设置默认档案
+     */
+    fun setDefaultProfile(profileId: Long) {
+        viewModelScope.launch {
+            profileRepository.setDefaultProfile(profileId)
+        }
+    }
+
+    /**
+     * 更新档案名称
+     */
+    fun updateProfileName(profile: ApiConfigProfileEntity, newName: String) {
+        viewModelScope.launch {
+            profileRepository.updateProfile(profile.copy(name = newName))
+        }
     }
 
     fun updateBubbleStyle(config: BubbleStyleConfig) {

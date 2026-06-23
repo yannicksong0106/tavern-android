@@ -30,8 +30,11 @@
 
 4. **A7 配置档案建模** ✅
    - 新增 ApiConfigProfileEntity 实体
-   - 新增 ApiConfigProfileDao DAO
+   - 新增 ApiConfigProfileDao DAO（含 getProfileByIdFlow）
    - 新增 ApiConfigProfileRepository 仓库
+   - 新增 ProfileMigrationUseCase 迁移用例
+   - 重构 ApiConfigStore 支持 profile-based 读写（flatMapLatest + Room Flow）
+   - 更新 SettingsViewModel 支持 profile 列表、切换、创建、删除
    - 新增 DB Migration v32→v33
    - 注册 Migration v32→v33
    - 注册 ApiConfigProfileDao 到 AppModule
