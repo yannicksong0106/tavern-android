@@ -828,6 +828,113 @@ class PromptBuilderTest {
         assertTrue(messages.any { it.content.contains("Archive note") })
     }
 
+    // ========== buildWithSections 测试 ==========
+
+    @Test
+    fun `buildWithSections returns messages and sections`() {
+        val character = makeCharacter()
+        val config = PromptConfig(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList()
+        )
+        val (messages, sections) = PromptBuilder.buildWithSections(config)
+
+        assertTrue(messages.isNotEmpty())
+        assertTrue(sections.isNotEmpty())
+        assertEquals(messages.size, messages.filter { it.role in listOf("system", "user", "assistant") }.size)
+    }
+
+    @Test
+    fun `buildWithSections tracks system prompt section`() {
+        val character = makeCharacter(description = "A dragon rider")
+        val config = PromptConfig(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList()
+        )
+        val (_, sections) = PromptBuilder.buildWithSections(config)
+
+        val systemSection = sections.find { it.source == PromptSource.SYSTEM }
+        assertTrue(systemSection != null)
+        assertTrue(systemSection!!.content.contains("A dragon rider"))
+    }
+
+    @Test
+    fun `buildWithSections tracks world book section`() {
+        val character = makeCharacter()
+        val entries = listOf(
+            WorldBookEntryEntity(
+                id = 1, worldBookId = 1,
+                comment = "Dragon Lore",
+                content = "Dragons are ancient.",
+                keys = "[\"dragon\"]"
+            )
+        )
+        val config = PromptConfig(
+            character = character,
+            userMessage = "Tell me about dragons",
+            chatHistory = emptyList(),
+            worldBookEntries = entries
+        )
+        val (_, sections) = PromptBuilder.buildWithSections(config)
+
+        val wbSection = sections.find { it.source == PromptSource.WORLD_BOOK }
+        assertTrue(wbSection != null)
+        assertTrue(wbSection!!.content.contains("Dragons are ancient."))
+    }
+
+    @Test
+    fun `buildWithSections tracks memory atoms sections`() {
+        val character = makeCharacter(name = "Alice")
+        val atoms = listOf(
+            MemoryAtomEntity(
+                id = 1, characterId = 1,
+                content = "Alice has blue eyes",
+                category = "character_consistency",
+                importance = 9, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            ),
+            MemoryAtomEntity(
+                id = 2, characterId = 1,
+                content = "User likes cats",
+                category = "fact",
+                importance = 7, source = "llm",
+                createdAt = System.currentTimeMillis(),
+                lastAccessed = System.currentTimeMillis()
+            )
+        )
+        val config = PromptConfig(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList(),
+            memoryAtoms = atoms
+        )
+        val (_, sections) = PromptBuilder.buildWithSections(config)
+
+        val consistencySection = sections.find { it.source == PromptSource.CHARACTER_CONSISTENCY }
+        val memorySection = sections.find { it.source == PromptSource.MEMORY }
+        assertTrue(consistencySection != null)
+        assertTrue(memorySection != null)
+        assertTrue(consistencySection!!.content.contains("Alice has blue eyes"))
+        assertTrue(memorySection!!.content.contains("User likes cats"))
+    }
+
+    @Test
+    fun `buildWithSections token estimates are positive`() {
+        val character = makeCharacter()
+        val config = PromptConfig(
+            character = character,
+            userMessage = "Hello",
+            chatHistory = emptyList()
+        )
+        val (_, sections) = PromptBuilder.buildWithSections(config)
+
+        assertTrue(sections.all { it.tokenEstimate > 0 })
+        assertTrue(sections.all { it.tokenEstimate == it.content.length / 4 })
+    }
+
     private fun makeAtom(
         id: Long,
         category: String,

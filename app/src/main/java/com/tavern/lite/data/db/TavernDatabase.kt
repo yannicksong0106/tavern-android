@@ -20,6 +20,7 @@ import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.WorldBookDao
+import com.tavern.lite.data.db.dao.ApiConfigProfileDao
 import com.tavern.lite.data.db.entity.AuthorNoteEntity
 import com.tavern.lite.data.db.entity.BgmEntity
 import com.tavern.lite.data.db.entity.BranchEntity
@@ -39,6 +40,7 @@ import com.tavern.lite.data.db.entity.SpriteEntity
 import com.tavern.lite.data.db.entity.SummaryEntity
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
+import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
 
 @Database(
     entities = [
@@ -61,8 +63,9 @@ import com.tavern.lite.data.db.entity.WorldBookEntryEntity
         BgmEntity::class,
         QuickReplySetEntity::class,
         QuickReplyEntity::class,
+        ApiConfigProfileEntity::class,
     ],
-    version = 32,
+    version = 33,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -82,6 +85,7 @@ abstract class TavernDatabase : RoomDatabase() {
     abstract fun spriteDao(): SpriteDao
     abstract fun bgmDao(): BgmDao
     abstract fun quickReplyDao(): QuickReplyDao
+    abstract fun apiConfigProfileDao(): ApiConfigProfileDao
 
     companion object {
         /**
@@ -1437,7 +1441,29 @@ abstract class TavernDatabase : RoomDatabase() {
        
         val MIGRATION_31_32 = object : Migration(31, 32) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE world_book_entries ADD COLUMN automation_id TEXT NOT NULL DEFAULT ")
+                db.execSQL("ALTER TABLE world_book_entries ADD COLUMN automation_id TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS api_config_profiles (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        config_json TEXT NOT NULL,
+                        is_default INTEGER NOT NULL DEFAULT 0,
+                        bound_character_id INTEGER,
+                        bound_chat_id INTEGER,
+                        priority INTEGER NOT NULL DEFAULT 100,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_is_default ON api_config_profiles(is_default)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_bound_character_id ON api_config_profiles(bound_character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_bound_chat_id ON api_config_profiles(bound_chat_id)")
             }
         }
     }

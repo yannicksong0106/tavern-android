@@ -7,10 +7,12 @@ import com.tavern.lite.data.db.entity.PersonaEntity
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.network.PromptSection
 import com.tavern.lite.util.TokenEstimator
 
 data class PromptInspectorState(
     val messages: List<ChatMessage> = emptyList(),
+    val sections: List<PromptSection> = emptyList(),
     val tokenEstimate: Int = 0,
     val worldBookCount: Int = 0,
     val memoryCount: Int = 0,
@@ -22,6 +24,19 @@ data class PromptInspectorState(
     val error: String? = null,
 ) {
     val messageCount: Int get() = messages.size
+
+    /**
+     * 获取按来源分组的 token 分布
+     */
+    val tokenDistribution: Map<String, Int>
+        get() = sections.groupBy { it.source }
+            .mapValues { (_, sections) -> sections.sumOf { it.tokenEstimate } }
+
+    /**
+     * 获取总 token 数（基于 sections）
+     */
+    val totalTokensFromSections: Int
+        get() = sections.sumOf { it.tokenEstimate }
 }
 
 object PromptInspectorFormatter {
@@ -48,10 +63,12 @@ data class PromptInspectorData(
     val authorNote: AuthorNoteEntity? = null,
     val persona: PersonaEntity? = null,
     val preset: PresetEntity? = null,
+    val sections: List<PromptSection> = emptyList(),
 ) {
     fun toState(messages: List<ChatMessage>, summary: String?, respondingCharacterName: String) =
         PromptInspectorState(
             messages = messages,
+            sections = sections,
             tokenEstimate = PromptInspectorFormatter.estimate(messages),
             worldBookCount = worldBookEntries.size,
             memoryCount = memoryAtoms.size + memories.size,

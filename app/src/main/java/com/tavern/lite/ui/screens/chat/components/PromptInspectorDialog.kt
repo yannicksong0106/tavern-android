@@ -79,6 +79,23 @@ private fun PromptInspectorContent(state: PromptInspectorState) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (state.sections.isNotEmpty()) {
+            Text(
+                text = "Token Distribution by Source:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            state.tokenDistribution.forEach { (source, tokens) ->
+                val percentage = if (state.totalTokensFromSections > 0) {
+                    (tokens * 100) / state.totalTokensFromSections
+                } else 0
+                Text(
+                    text = "  $source: $tokens tokens ($percentage%)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         OutlinedTextField(
             value = PromptInspectorFormatter.format(state.messages),
             onValueChange = {},

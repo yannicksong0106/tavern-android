@@ -9,6 +9,7 @@ import com.tavern.lite.data.repository.PersonaRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.network.PromptConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +31,7 @@ class PromptInspectorBuilder @Inject constructor(
         summary: String?,
     ): PromptInspectorState {
         val data = buildData(chatId, character.id, userMessage)
-        val messages = PromptBuilder.build(
+        val config = PromptConfig(
             character = character,
             userMessage = userMessage,
             chatHistory = chatHistory,
@@ -43,7 +44,8 @@ class PromptInspectorBuilder @Inject constructor(
             preset = data.preset,
             summary = summary
         )
-        return data.toState(messages, summary, character.name)
+        val (messages, sections) = PromptBuilder.buildWithSections(config)
+        return data.toState(messages, summary, character.name).copy(sections = sections)
     }
 
     suspend fun buildGroup(
@@ -57,12 +59,10 @@ class PromptInspectorBuilder @Inject constructor(
     ): PromptInspectorState {
         val data = buildData(chatId, respondingCharacter.id, userMessage)
         val effectiveCharacters = characters.ifEmpty { listOf(respondingCharacter) }
-        val messages = PromptBuilder.buildGroupChat(
-            characters = effectiveCharacters,
-            respondingCharacter = respondingCharacter,
+        val config = PromptConfig(
+            character = respondingCharacter,
             userMessage = userMessage,
             chatHistory = chatHistory,
-            characterMap = effectiveCharacters.associateBy { it.id },
             worldBookEntries = data.worldBookEntries,
             userName = userName,
             memories = data.memories,
@@ -70,9 +70,13 @@ class PromptInspectorBuilder @Inject constructor(
             persona = data.persona,
             authorNote = data.authorNote,
             preset = data.preset,
-            summary = summary
+            summary = summary,
+            characters = effectiveCharacters,
+            characterMap = effectiveCharacters.associateBy { it.id },
+            isGroupChat = true
         )
-        return data.toState(messages, summary, respondingCharacter.name)
+        val (messages, sections) = PromptBuilder.buildWithSections(config)
+        return data.toState(messages, summary, respondingCharacter.name).copy(sections = sections)
     }
 
     private suspend fun buildData(

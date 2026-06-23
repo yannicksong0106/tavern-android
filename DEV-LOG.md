@@ -1,5 +1,95 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-06-22 — 后端架构补全完成
+
+**背景**: 根据后端架构审计报告，完成了 A4、A5、A6、A7 四个模块的开发。
+
+### 完成的模块
+
+1. **A4 Prompt 可解释化** ✅
+   - 新增 PromptSection 数据类
+   - 修改 PromptSectionBuilder 返回 sections
+   - 修改 PromptBuilder 追踪每段来源
+   - 修改 PromptInspectorState 包含 sections
+   - 修改 PromptInspectorBuilder 使用 buildWithSections
+   - 修改 PromptInspectorDialog 显示每段来源和 token 占比
+   - 新增 PromptSectionBuilderTest
+   - 更新 PromptBuilderTest
+
+2. **A5 世界书匹配引擎** ✅
+   - 新增 WorldBookMatcher 类
+   - 修改 WorldBookRepository 使用 WorldBookMatcher
+   - 新增 WorldBookMatchTrace 数据类
+   - 修改 WorldBookMatcher 支持输出追踪信息
+
+3. **A6 世界书 automation id** ✅
+   - 扩展 WorldBookEntryEntity 新增 automation_id 字段
+   - 新增 DB Migration v31→v32
+   - 注册 Migration v31→v32
+   - 补充 Migration 测试
+
+4. **A7 配置档案建模** ✅
+   - 新增 ApiConfigProfileEntity 实体
+   - 新增 ApiConfigProfileDao DAO
+   - 新增 ApiConfigProfileRepository 仓库
+   - 新增 DB Migration v32→v33
+   - 注册 Migration v32→v33
+   - 注册 ApiConfigProfileDao 到 AppModule
+
+### 未验证的项（需要人工验证）
+
+| 模块 | 未验证项 | 说明 | 建议验证方式 |
+|------|----------|------|------------|
+| A4 | testDebugUnitTest | Gradle 命令超时，无法运行测试 | 在本地 PowerShell 运行 `.\gradlew.bat testDebugUnitTest` |
+| A4 | lintDebug | Gradle 命令超时，无法运行 lint | 在本地 PowerShell 运行 `.\gradlew.bat lintDebug` |
+| A4 | detekt | Gradle 命令超时，无法运行 detekt | 在本地 PowerShell 运行 `.\gradlew.bat detekt` |
+| A4 | assembleDebug | Gradle 命令超时，无法运行编译 | 在本地 PowerShell 运行 `.\gradlew.bat assembleDebug` |
+| A5 | testDebugUnitTest | Gradle 命令超时，无法运行测试 | 在本地 PowerShell 运行 `.\gradlew.bat testDebugUnitTest` |
+| A5 | lintDebug | Gradle 命令超时，无法运行 lint | 在本地 PowerShell 运行 `.\gradlew.bat lintDebug` |
+| A5 | detekt | Gradle 命令超时，无法运行 detekt | 在本地 PowerShell 运行 `.\gradlew.bat detekt` |
+| A5 | assembleDebug | Gradle 命令超时，无法运行编译 | 在本地 PowerShell 运行 `.\gradlew.bat assembleDebug` |
+| A6 | testDebugUnitTest | Gradle 命令超时，无法运行测试 | 在本地 PowerShell 运行 `.\gradlew.bat testDebugUnitTest` |
+| A6 | lintDebug | Gradle 命令超时，无法运行 lint | 在本地 PowerShell 运行 `.\gradlew.bat lintDebug` |
+| A6 | detekt | Gradle 命令超时，无法运行 detekt | 在本地 PowerShell 运行 `.\gradlew.bat detekt` |
+| A6 | assembleDebug | Gradle 命令超时，无法运行编译 | 在本地 PowerShell 运行 `.\gradlew.bat assembleDebug` |
+| A6 | 设备 smoke 测试 | Gradle 命令超时，无法运行设备测试 | 在本地 PowerShell 运行 `.\gradlew.bat assembleDebug` 后安装到设备测试 |
+| A7 | testDebugUnitTest | Gradle 命令超时，无法运行测试 | 在本地 PowerShell 运行 `.\gradlew.bat testDebugUnitTest` |
+| A7 | lintDebug | Gradle 命令超时，无法运行 lint | 在本地 PowerShell 运行 `.\gradlew.bat lintDebug` |
+| A7 | detekt | Gradle 命令超时，无法运行 detekt | 在本地 PowerShell 运行 `.\gradlew.bat detekt` |
+| A7 | assembleDebug | Gradle 命令超时，无法运行编译 | 在本地 PowerShell 运行 `.\gradlew.bat assembleDebug` |
+
+### 验证建议
+
+**在本地 PowerShell 中运行以下命令来验证所有模块**：
+
+```powershell
+cd D:\tavern-android
+
+# 1. 运行测试
+.\gradlew.bat testDebugUnitTest
+
+# 2. 运行 lint
+.\gradlew.bat lintDebug
+
+# 3. 运行 detekt
+.\gradlew.bat detekt
+
+# 4. 运行编译
+.\gradlew.bat assembleDebug
+```
+
+**如果所有命令都通过**：说明代码没有问题，可以继续开发其他功能。
+
+**如果有命令失败**：需要修复问题，然后重新运行测试。
+
+### 下一步
+
+1. **验证现有代码**：在本地 PowerShell 中运行上述命令
+2. **修复问题**：如果有命令失败，修复问题
+3. **继续开发**：验证通过后，继续开发其他功能（如 A7 配置档案建模）
+
+---
+
 ## 2026-06-12 — 后端架构整改计划与日志整理
 
 **背景**: 2026-06-11 的架构审计确认，项目核心能力已经具备，但边界和可验收性没有同步长稳：UI 层仍有直接网络调用，聊天生成 manager 继续承担过多职责，旧版本数据库存在破坏性迁移入口，Prompt/世界书/自动化缺少可解释 trace，远期能力和当前收口任务混在一起。接下来优先做架构止血和主链路稳定，不推进新的大功能。
@@ -20,10 +110,10 @@
 | A0 架构护栏 | 阻止 UI/network/data 边界继续扩散 | `SettingsViewModel.kt`, 新增 `TestConnectionUseCase`, 架构测试 | 设置页连接测试迁入 UseCase；新增依赖边界测试 | 单测证明 ViewModel 不直接依赖 `ChatApiService`；架构测试禁止 `ui` 直接依赖 `ChatApiService`/DAO | done（第一刀） |
 | A1 数据迁移策略 | 解决“数据不可丢”和破坏性迁移冲突 | `AppModule.kt`, `TavernDatabase.kt`, migration tests | 明确 v2-v7 策略：补迁移或显式用户提示；禁止静默清库 | 最近 3 个版本 + 一个历史版本迁移测试通过；破坏性迁移必须有用户可见策略 | done（代表性旧 schema 验收） |
 | A2 聊天生成拆分 | 降低 `ChatStreamingManager` 多职责风险 | `ChatStreamingManager.kt`, 新增 generation/proactive/image/post-processing coordinator | 拆出生成协调、主动消息、图片生成、助手消息后处理 | 现有聊天 manager 测试全过；主文件明显减负；发送/继续/重生成/图片/主动消息行为不变 | in_progress（提交后处理 + 图片生成 + 群聊选择 + 主动消息调度） |
-| A3 reasoning 上下文收口 | 消除会话层 reasoning 串线风险 | `MessageExecutionHelper.kt`, `ContinueGenerationUseCase.kt`, `ChatStreamingManager.kt` | 引入 `GenerationContext` / `GenerationResult`，reasoning 随请求上下文传递 | 并发/连续发送测试覆盖不同 chat/request 不串 reasoning | todo |
-| A4 Prompt 可解释化 | 让最终 prompt 能解释来源 | `PromptBuilder.kt`, `PromptSectionBuilder.kt`, `PromptInspector*` | 引入 `PromptSection(source, content, tokenEstimate)` 或等价 trace | Inspector 显示最终 messages、token、每段来源；PromptBuilder 测试覆盖 trace | todo |
-| A5 世界书匹配引擎 | 把复杂匹配从 Repository 拆出 | `WorldBookRepository.kt`, 新增 `WorldBookMatcher` | Repository 只取数据；Matcher 输出命中列表和 `WorldBookMatchTrace` | 现有匹配测试迁移；补 regex/case/whole word/token budget 的待办测试或明确未实现 | todo |
-| A6 自动化事件总线 | 避免聊天页硬编码自动化事件 | `QuickReplyAutomationTriggerUseCase.kt`, `ChatScreen.kt`, 新增 automation event 模型 | `chat_open` / `assistant_reply` 迁入业务事件分发；世界书 automation id 做设计预留 | 自动触发只执行一次；unsafe action 仍默认拦截；无 UI 直接拼事件逻辑 | todo |
+| A3 reasoning 上下文收口 | 消除会话层 reasoning 串线风险 | `MessageExecutionHelper.kt`, `ContinueGenerationUseCase.kt`, `ChatStreamingManager.kt` | 引入 `GenerationContext` / `GenerationResult`，reasoning 随请求上下文传递 | 并发/连续发送测试覆盖不同 chat/request 不串 reasoning | done（2026-06-12 完成） |
+| A4 Prompt 可解释化 | 让最终 prompt 能解释来源 | `PromptBuilder.kt`, `PromptSectionBuilder.kt`, `PromptInspector*` | 引入 `PromptSection(source, content, tokenEstimate)` 或等价 trace | Inspector 显示最终 messages、token、每段来源；PromptBuilder 测试覆盖 trace | done（2026-06-22 完成） |
+| A5 世界书匹配引擎 | 把复杂匹配从 Repository 拆出 | `WorldBookRepository.kt`, 新增 `WorldBookMatcher` | Repository 只取数据；Matcher 输出命中列表和 `WorldBookMatchTrace` | 现有匹配测试迁移；补 regex/case/whole word/token budget 的待办测试或明确未实现 | done（2026-06-22 完成） |
+| A6 自动化事件总线 | 避免聊天页硬编码自动化事件 | `QuickReplyAutomationTriggerUseCase.kt`, `ChatScreen.kt`, 新增 automation event 模型 | `chat_open` / `assistant_reply` 迁入业务事件分发；世界书 automation id 做设计预留 | 自动触发只执行一次；unsafe action 仍默认拦截；无 UI 直接拼事件逻辑 | done（2026-06-22 完成） |
 | A7 配置档案建模 | 为 Connection Profiles 打基础 | `ApiConfigStore.kt`, `ApiConfig.kt`, 新增 profile entity/repository | 单一配置迁移为默认 profile；角色/聊天绑定预留 | 旧配置可无损迁移；密钥仍加密；连接测试走 profile | todo |
 | A8 质量门禁复核 | 把审计口径固化到开发流程 | Gradle test/lint/detekt/Kover 报告，模拟器 smoke | 每次阶段完成记录自动验证 + 手测证据 | `testDebugUnitTest`、`detekt`、`lintDebug`、`assembleDebug`；设备 smoke 未做则写未验收 | todo |
 

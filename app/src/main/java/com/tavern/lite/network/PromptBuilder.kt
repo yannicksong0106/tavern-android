@@ -34,6 +34,135 @@ object PromptBuilder {
     }
 
     /**
+     * 构建带 section 追踪的 prompt
+     * 返回 Pair<List<ChatMessage>, List<PromptSection>>
+     * 第一个是消息列表，第二个是 section 列表（用于追踪来源和 token 估算）
+     */
+    fun buildWithSections(config: PromptConfig): Pair<List<ChatMessage>, List<PromptSection>> {
+        val messages = mutableListOf<ChatMessage>()
+        val sections = mutableListOf<PromptSection>()
+        val effectiveUserName = config.effectiveUserName
+        val respondingCharacter = if (config.isGroupChat) config.character else config.character
+
+        // 1. 静态系统 prompt
+        val staticPrompt = if (config.isGroupChat) {
+            PromptSectionBuilder.buildGroupStaticSystemPrompt(config.characters, respondingCharacter, effectiveUserName)
+        } else {
+            getCachedStaticPrompt(respondingCharacter, effectiveUserName)
+        }
+        val presetSysPrompt = config.preset?.systemPrompt?.takeIf { it.isNotBlank() }
+        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
+            .joinToString("\n\n")
+        if (combinedStatic.isNotBlank()) {
+            messages.add(ChatMessage(role = "system", content = combinedStatic))
+            sections.add(PromptSection.create(PromptSource.SYSTEM, combinedStatic))
+        }
+
+        // 2. 示例对话
+        val exampleMessages = PromptSectionBuilder.parseExampleDialog(respondingCharacter.mesExample, effectiveUserName, respondingCharacter.name)
+        if (exampleMessages.isNotEmpty()) {
+            messages.addAll(exampleMessages)
+            val exampleText = exampleMessages.joinToString("\n") { it.content }
+            sections.add(PromptSection.create(PromptSource.EXAMPLE_DIALOG, exampleText))
+        }
+
+        // 3. 开场白
+        if (config.isGroupChat) {
+            for (char in config.characters) {
+                if (char.firstMes.isNotBlank()) {
+                    val firstMes = PromptSectionBuilder.replacePlaceholders(char.firstMes, effectiveUserName, char.name, char, config.persona)
+                    messages.add(ChatMessage(role = "assistant", content = "[${char.name}]: $firstMes"))
+                }
+            }
+        } else if (respondingCharacter.firstMes.isNotBlank()) {
+            val firstMes = PromptSectionBuilder.replacePlaceholders(respondingCharacter.firstMes, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            messages.add(ChatMessage(role = "assistant", content = firstMes))
+        }
+
+        // 4. 聊天历史
+        config.chatHistory.forEach { msg ->
+            when {
+                config.isGroupChat && msg.role == "assistant" -> {
+                    val charName = msg.characterId?.let { config.characterMap[it]?.name }
+                    val content = if (charName != null) "[$charName]: ${msg.content}" else msg.content
+                    messages.add(ChatMessage(role = "assistant", content = content))
+                }
+                else -> {
+                    val role = when (msg.role) {
+                        "user" -> "user"
+                        "assistant" -> "assistant"
+                        else -> "system"
+                    }
+                    messages.add(ChatMessage(role = role, content = msg.content))
+                }
+            }
+        }
+        if (config.chatHistory.isNotEmpty()) {
+            sections.add(PromptSection.create(PromptSource.CHAT_HISTORY, "[Chat History]"))
+        }
+
+        // 4.5 摘要注入
+        if (!config.summary.isNullOrBlank()) {
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[Summary — 以下是之前的对话摘要，请基于此继续对话]\n${config.summary}"
+            ))
+            sections.add(PromptSection.create(PromptSource.SUMMARY, "[Summary] ${config.summary}"))
+        }
+
+        // 4.6 搜索结果注入
+        if (config.searchResults.isNotEmpty()) {
+            val searchText = config.searchResults.joinToString("\n\n") { result ->
+                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
+            }
+            messages.add(ChatMessage(
+                role = "system",
+                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
+            ))
+            sections.add(PromptSection.create(PromptSource.SEARCH, "[Web Search Results] $searchText"))
+        }
+
+        // 5. 动态上下文（世界书 + 记忆 + 人格）
+        val dynamicSections = PromptSectionBuilder.buildDynamicContextSections(respondingCharacter, config.worldBookEntries, effectiveUserName, config.memories, config.memoryAtoms, config.persona)
+        for (section in dynamicSections) {
+            if (section.content.isNotBlank()) {
+                messages.add(ChatMessage(role = "system", content = section.content))
+                sections.add(section)
+            }
+        }
+
+        // 5.5 Author's Note 注入
+        if (config.authorNote != null && config.authorNote.content.isNotBlank()) {
+            val noteContent = PromptSectionBuilder.replacePlaceholders(config.authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            val insertIndex = (messages.size - config.authorNote.depth).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+            sections.add(PromptSection.create(PromptSource.AUTHOR_NOTE, noteContent))
+        }
+
+        // 5.5.1 预设 Author Note
+        val presetAuthorNote = config.preset?.authorNote?.takeIf { it.isNotBlank() }
+        if (presetAuthorNote != null) {
+            val noteContent = PromptSectionBuilder.replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+            val insertIndex = (messages.size - 1).coerceAtLeast(1)
+            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
+            sections.add(PromptSection.create(PromptSource.AUTHOR_NOTE, "[Preset Author Note] $noteContent"))
+        }
+
+        // 5.6 历史后指令（仅单聊）
+        if (!config.isGroupChat) {
+            val postHistory = config.preset?.postHistoryInstructions?.takeIf { it.isNotBlank() }
+                ?: respondingCharacter.postHistoryInstructions
+            if (!postHistory.isNullOrBlank()) {
+                val replacedPostHistory = PromptSectionBuilder.replacePlaceholders(postHistory, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
+                messages.add(ChatMessage(role = "system", content = replacedPostHistory))
+                sections.add(PromptSection.create(PromptSource.PRESET, "[Post History Instructions] $replacedPostHistory"))
+            }
+        }
+
+        return Pair(messages, sections)
+    }
+
+    /**
      * 核心 prompt 构建逻辑，统一处理单聊和群聊的公共部分
      */
     private fun buildCore(config: PromptConfig): MutableList<ChatMessage> {

@@ -4,6 +4,7 @@ import android.util.Log
 import com.tavern.lite.data.db.dao.WorldBookDao
 import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
+import com.tavern.lite.domain.worldbook.WorldBookMatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class WorldBookRepository @Inject constructor(
     private val worldBookDao: WorldBookDao,
-    private val json: Json
+    private val json: Json,
+    private val worldBookMatcher: WorldBookMatcher
 ) {
     // Cache decoded+lowercased keys by entry ID to avoid repeated JSON parsing (LRU, max 256)
     private val keyCache = object : LinkedHashMap<Long, Pair<List<String>, List<String>>>(256, 0.75f, true) {
@@ -73,10 +75,7 @@ class WorldBookRepository @Inject constructor(
 
     suspend fun matchEntries(worldBookId: Long, text: String): List<WorldBookEntryEntity> {
         val entries = worldBookDao.getMatchableEntries(worldBookId)
-        val lowerText = text.lowercase()
-        return entries.filter { entry ->
-            entry.constant || matchEntry(entry, lowerText)
-        }
+        return worldBookMatcher.matchEntries(entries, text) { entry -> getCachedKeys(entry) }
     }
 
     /**
@@ -93,80 +92,7 @@ class WorldBookRepository @Inject constructor(
         text: String,
         maxDepth: Int = 3
     ): List<WorldBookEntryEntity> {
-        val allEntries = worldBookDao.getMatchableEntries(worldBookId)
-        val lowerText = text.lowercase()
-
-        // 第一轮：匹配 constant + 关键词命中
-        val matched = mutableListOf<WorldBookEntryEntity>()
-        val remaining = allEntries.toMutableList()
-
-        val firstRound = remaining.filter { entry ->
-            entry.constant || matchEntry(entry, lowerText)
-        }.filter { entry ->
-            // 概率过滤
-            entry.probability >= 100 || (random.nextDouble() * 100 < entry.probability)
-        }
-
-        matched.addAll(firstRound)
-        remaining.removeAll(firstRound)
-
-        // 递归匹配
-        var depth = 1
-        while (depth < maxDepth && remaining.isNotEmpty()) {
-            val matchedContent = matched
-                .filter { it.depth >= depth }  // 条目的 depth 控制最大扫描深度
-                .joinToString(" ") { it.content }
-                .lowercase()
-
-            if (matchedContent.isBlank()) break
-
-            val newMatches = remaining.filter { entry ->
-                // excludeRecursion 的条目不会被递归触发
-                !entry.excludeRecursion &&
-                // preventRecursion 的条目不会被递归触发
-                !entry.preventRecursion &&
-                // 概率过滤
-                (entry.probability >= 100 || (random.nextDouble() * 100 < entry.probability)) &&
-                // 关键词匹配
-                matchEntry(entry, matchedContent)
-            }
-
-            if (newMatches.isEmpty()) break
-
-            matched.addAll(newMatches)
-            remaining.removeAll(newMatches)
-            depth++
-        }
-
-        return matched
-    }
-
-    private fun matchEntry(entry: WorldBookEntryEntity, lowerText: String): Boolean {
-        val (primaryKeys, secondaryKeys) = getCachedKeys(entry)
-
-        if (primaryKeys.isEmpty() && secondaryKeys.isEmpty()) return false
-
-        val primaryMatches = primaryKeys.map { key -> lowerText.contains(key) }
-        val secondaryMatches = secondaryKeys.map { key -> lowerText.contains(key) }
-
-        return if (entry.selective && secondaryKeys.isNotEmpty()) {
-            // Selective mode: 使用 primary + secondary keys + logic
-            when (entry.selectiveLogic) {
-                0 -> // AND: primary AND secondary
-                    primaryMatches.any { it } && secondaryMatches.any { it }
-                1 -> // OR: primary OR secondary
-                    primaryMatches.any { it } || secondaryMatches.any { it }
-                2 -> // NOT: primary AND NOT secondary
-                    primaryMatches.any { it } && secondaryMatches.none { it }
-                else -> primaryMatches.any { it }
-            }
-        } else {
-            // 非 selective：任一 primary key 匹配即可
-            primaryMatches.any { it }
-        }
-    }
-
-    companion object {
-        private val random = kotlin.random.Random.Default
+        val entries = worldBookDao.getMatchableEntries(worldBookId)
+        return worldBookMatcher.matchEntriesRecursive(entries, text, maxDepth) { entry -> getCachedKeys(entry) }
     }
 }

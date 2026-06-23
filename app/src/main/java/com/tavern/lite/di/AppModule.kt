@@ -22,6 +22,7 @@ import com.tavern.lite.data.db.dao.BranchDao
 import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
+import com.tavern.lite.data.db.dao.ApiConfigProfileDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -77,7 +78,9 @@ object AppModule {
             TavernDatabase.MIGRATION_27_28,
             TavernDatabase.MIGRATION_28_29,
             TavernDatabase.MIGRATION_29_30,
-            TavernDatabase.MIGRATION_30_31
+            TavernDatabase.MIGRATION_30_31,
+            TavernDatabase.MIGRATION_31_32,
+            TavernDatabase.MIGRATION_32_33
         ).build()
     }
 
@@ -132,6 +135,9 @@ object AppModule {
 
     @Provides
     fun provideQuickReplyDao(db: TavernDatabase): QuickReplyDao = db.quickReplyDao()
+
+    @Provides
+    fun provideApiConfigProfileDao(db: TavernDatabase): ApiConfigProfileDao = db.apiConfigProfileDao()
 
     @Provides
     @Singleton

@@ -135,6 +135,52 @@ internal object PromptSectionBuilder {
         return parts.joinToString("\n\n")
     }
 
+    fun buildDynamicContextSections(
+        character: CharacterEntity,
+        worldBookEntries: List<WorldBookEntryEntity>,
+        userName: String,
+        memories: List<MemoryEntity> = emptyList(),
+        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
+        persona: PersonaEntity? = null
+    ): List<PromptSection> {
+        val sections = mutableListOf<PromptSection>()
+
+        if (worldBookEntries.isNotEmpty()) {
+            val worldInfo = worldBookEntries.joinToString("\n") { entry ->
+                val comment = entry.comment.ifBlank { "World Info" }
+                "[$comment]\n${entry.content}"
+            }
+            sections.add(PromptSection.create(PromptSource.WORLD_BOOK, worldInfo))
+        }
+
+        if (memoryAtoms.isNotEmpty()) {
+            val grouped = memoryAtoms.groupBy { it.category }
+
+            grouped["character_consistency"]?.let { list ->
+                val text = "[$character.name 的核心人设 — 必须严格遵守]\n${formatMemoryLines(list, MEMORY_CONTENT_LIMIT)}"
+                sections.add(PromptSection.create(PromptSource.CHARACTER_CONSISTENCY, text))
+            }
+
+            val otherCategories = memoryAtoms.filter { it.category != "character_consistency" }
+            if (otherCategories.isNotEmpty()) {
+                val atomText = formatMemoryAtoms(otherCategories, character.name)
+                if (atomText.isNotBlank()) {
+                    sections.add(PromptSection.create(PromptSource.MEMORY, atomText))
+                }
+            }
+        } else if (memories.isNotEmpty()) {
+            val memoryText = memories.joinToString("\n") { "- ${it.content}" }
+            sections.add(PromptSection.create(PromptSource.MEMORY, "[Memory]\n$memoryText"))
+        }
+
+        if (persona != null && persona.biography.isNotBlank()) {
+            val bio = replacePlaceholders(persona.biography, userName, character.name, character, persona)
+            sections.add(PromptSection.create(PromptSource.PERSONA, "[User Persona: ${persona.name}]\n$bio"))
+        }
+
+        return sections
+    }
+
     fun parseExampleDialog(mesExample: String, userName: String, charName: String): List<ChatMessage> {
         if (mesExample.isBlank()) return emptyList()
 
