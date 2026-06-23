@@ -53,8 +53,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tavern.lite.R
 import com.tavern.lite.data.model.ApiProvider
-import com.tavern.lite.network.SearchEngine
-import com.tavern.lite.network.WebSearchConfig
+import com.tavern.lite.data.model.SearchEngine
+import com.tavern.lite.data.model.WebSearchConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -682,5 +682,4 @@ private fun AboutEntrySection(onDevLogClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
+  

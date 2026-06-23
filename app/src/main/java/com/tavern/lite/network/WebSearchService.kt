@@ -1,40 +1,18 @@
 package com.tavern.lite.network
 
 import android.util.Log
+import com.tavern.lite.data.model.SearchEngine
+import com.tavern.lite.data.model.WebSearchConfig
+import com.tavern.lite.domain.model.WebSearchResult
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import kotlinx.serialization.Serializable
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 搜索引擎类型
- */
-@Serializable
-enum class SearchEngine { DUCKDUCKGO, BING, GOOGLE }
-
-/**
- * 搜索结果条目
- */
-data class WebSearchResult(
-    val title: String,
-    val snippet: String,
-    val url: String
-)
-
-/**
- * 搜索设置
- */
-@Serializable
-data class WebSearchConfig(
-    val enabled: Boolean = false,
-    val engine: SearchEngine = SearchEngine.DUCKDUCKGO,
-    val apiKey: String = "",       // Bing/Google 需要
-    val maxResults: Int = 5,
-    val autoSearch: Boolean = false // 自动检测是否需要搜索
-)
+/** Domain 层 WebSearchResult 的别名，保持网络层兼容 */
+typealias NetworkWebSearchResult = WebSearchResult
 
 /**
  * Web 搜索服务，支持 DuckDuckGo (免费无需 API key)、Bing、Google
@@ -231,3 +209,4 @@ class WebSearchService @Inject constructor(
         }
     }
 }
+                                                                                                                                                                                                                                                                                                                           

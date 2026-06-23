@@ -10,12 +10,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.db.dao.ApiConfigProfileDao
 import com.tavern.lite.data.model.ApiConfig
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.security.CryptoHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -41,7 +43,7 @@ class ApiConfigStore @Inject constructor(
     private val json: Json,
     private val cryptoHelper: CryptoHelper,
     private val profileDao: ApiConfigProfileDao
-) {
+) : LegacyConfigReaderPort {
     companion object {
         private val API_CONFIG_KEY = stringPreferencesKey("api_config_json")
         private const val TAG = "ApiConfigStore"
@@ -158,8 +160,4 @@ class ApiConfigStore @Inject constructor(
     private suspend fun saveToDataStore(config: ApiConfig) {
         val plainJson = json.encodeToString(config)
         val encrypted = cryptoHelper.encrypt(plainJson)
-        context.apiDataStore.edit { prefs ->
-            prefs[API_CONFIG_KEY] = encrypted
-        }
-    }
-}
+        context.apiDa

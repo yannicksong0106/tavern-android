@@ -1,12 +1,12 @@
 package com.tavern.lite.domain.usecase
 
 import com.tavern.lite.data.model.ApiConfig
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.ChatApiPort
 import javax.inject.Inject
 
 class TestConnectionUseCase @Inject constructor(
-    private val chatApiService: ChatApiService
+    private val chatApiService: ChatApiPort
 ) {
     suspend operator fun invoke(config: ApiConfig): String {
         val testConfig = config.copy(maxTokens = TEST_MAX_TOKENS)
@@ -25,4 +25,3 @@ class TestConnectionUseCase @Inject constructor(
         const val TEST_MAX_TOKENS = 50
         const val MAX_REPLY_PREVIEW_LENGTH = 100
     }
-}

@@ -80,22 +80,4 @@ class SettingsViewModelTest {
         coEvery { testConnectionUseCase(any()) } throws CancellationException()
 
         viewModel.testConnection()
-        advanceUntilIdle()
-
-        // If CE was swallowed by catch block, testState would be Error.
-        // If CE is rethrown, the coroutine is cancelled before reaching the catch's error path.
-        // The state should be Testing (set before streamChat) or Idle, never Error.
-        val state = viewModel.testState.value
-        assertEquals("CE should be rethrown, testState should be Testing not Error", ConnectionTestState.Testing, state)
-    }
-
-    @Test
-    fun `testConnection maps use case success to state`() = runTest {
-        coEvery { testConnectionUseCase(any()) } returns "hello"
-
-        viewModel.testConnection()
-        advanceUntilIdle()
-
-        assertEquals(ConnectionTestState.Success("hello"), viewModel.testState.value)
-    }
-}
+        adva

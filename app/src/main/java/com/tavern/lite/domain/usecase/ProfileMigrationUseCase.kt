@@ -4,8 +4,7 @@ import android.util.Log
 import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ApiConfigProfileRepository
-import com.tavern.lite.network.ApiConfigStore
-import kotlinx.coroutines.flow.first
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,7 +14,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class ProfileMigrationUseCase @Inject constructor(
-    private val apiConfigStore: ApiConfigStore,
+    private val legacyConfigReader: LegacyConfigReaderPort,
     private val profileRepository: ApiConfigProfileRepository
 ) {
     companion object {
@@ -35,7 +34,7 @@ class ProfileMigrationUseCase @Inject constructor(
         }
 
         Log.d(TAG, "No profiles found, migrating DataStore config to default profile")
-        val dataStoreConfig = apiConfigStore.configFlow.first()
+        val dataStoreConfig = legacyConfigReader.readConfig()
 
         profileRepository.createProfile(
             name = DEFAULT_PROFILE_NAME,
@@ -45,6 +44,4 @@ class ProfileMigrationUseCase @Inject constructor(
         )
 
         Log.d(TAG, "Migration complete: created default profile '${DEFAULT_PROFILE_NAME}'")
-        return true
-    }
-}
+    

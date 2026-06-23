@@ -101,40 +101,6 @@ internal object PromptSectionBuilder {
         return parts.joinToString("\n\n")
     }
 
-    fun buildDynamicContext(
-        character: CharacterEntity,
-        worldBookEntries: List<WorldBookEntryEntity>,
-        userName: String,
-        memories: List<MemoryEntity> = emptyList(),
-        memoryAtoms: List<MemoryAtomEntity> = emptyList(),
-        persona: PersonaEntity? = null
-    ): String {
-        val parts = mutableListOf<String>()
-
-        if (worldBookEntries.isNotEmpty()) {
-            val worldInfo = worldBookEntries.joinToString("\n") { entry ->
-                val comment = entry.comment.ifBlank { "World Info" }
-                "[$comment]\n${entry.content}"
-            }
-            parts.add(worldInfo)
-        }
-
-        if (memoryAtoms.isNotEmpty()) {
-            val atomText = formatMemoryAtoms(memoryAtoms, character.name)
-            if (atomText.isNotBlank()) parts.add(atomText)
-        } else if (memories.isNotEmpty()) {
-            val memoryText = memories.joinToString("\n") { "- ${it.content}" }
-            parts.add("[Memory]\n$memoryText")
-        }
-
-        if (persona != null && persona.biography.isNotBlank()) {
-            val bio = replacePlaceholders(persona.biography, userName, character.name, character, persona)
-            parts.add("[User Persona: ${persona.name}]\n$bio")
-        }
-
-        return parts.joinToString("\n\n")
-    }
-
     fun buildDynamicContextSections(
         character: CharacterEntity,
         worldBookEntries: List<WorldBookEntryEntity>,
@@ -254,3 +220,4 @@ internal object PromptSectionBuilder {
         .take(takeCount)
         .joinToString("\n") { "- ${it.content.take(contentLimit)}" }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

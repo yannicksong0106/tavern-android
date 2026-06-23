@@ -10,7 +10,8 @@ import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.repository.AuthorNoteRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.PromptBuilderPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +25,7 @@ class ContinueGenerationUseCase @Inject constructor(
     private val presetRepository: PresetRepository,
     private val memoryExtractionUseCase: MemoryExtractionUseCase,
     private val helper: MessageExecutionHelper,
+    private val promptBuilder: PromptBuilderPort,
 ) {
     /**
      * 继续生成：追加内容到最后一条 assistant 消息
@@ -54,7 +56,7 @@ class ContinueGenerationUseCase @Inject constructor(
         val persona = helper.personasafe(characterId)
         val preset = presetRepository.resolveEffectivePreset(chatId, characterId)
 
-        val promptMessages = PromptBuilder.build(
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
             character = character,
             userMessage = "",
             chatHistory = chatHistory.reversed(),
@@ -66,6 +68,7 @@ class ContinueGenerationUseCase @Inject constructor(
             persona = persona,
             preset = preset
         )
+        val promptMessages = promptBuilder.build(promptConfig)
 
         val responseBuffer = StringBuilder()
         val reasoningBuffer = StringBuilder()
@@ -140,7 +143,7 @@ class ContinueGenerationUseCase @Inject constructor(
         val persona = helper.personasafe(characterId)
         val preset = presetRepository.resolveEffectivePreset(chatId, characterId)
 
-        val promptMessages = PromptBuilder.build(
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
             character = character,
             userMessage = userMessageContent,
             chatHistory = chatHistory.reversed(),
@@ -152,6 +155,7 @@ class ContinueGenerationUseCase @Inject constructor(
             persona = persona,
             preset = preset
         )
+        val promptMessages = promptBuilder.build(promptConfig)
 
         val responseBuffer = StringBuilder()
         val reasoningBuffer = StringBuilder()
@@ -186,13 +190,3 @@ class ContinueGenerationUseCase @Inject constructor(
         val processedReply = scriptRepository.applyScripts(characterId, newContent, 1)
         if (processedReply != newContent) {
             chatRepository.updateMessageContent(messageId, processedReply)
-        }
-
-        return MessageExecutionHelper.ExecutionResult(
-            assistantMsgId = messageId,
-            fullResponse = newContent,
-            processedUserContent = userMessageContent,
-            reasoningContent = reasoningContent
-        )
-    }
-}

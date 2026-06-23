@@ -15,8 +15,8 @@ import com.tavern.lite.data.repository.ApiConfigProfileRepository
 import com.tavern.lite.domain.usecase.ProfileMigrationUseCase
 import com.tavern.lite.domain.usecase.TestConnectionUseCase
 import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.SearchEngine
-import com.tavern.lite.network.WebSearchConfig
+import com.tavern.lite.data.model.SearchEngine
+import com.tavern.lite.data.model.WebSearchConfig
 import com.tavern.lite.util.BackupManager
 import com.tavern.lite.worker.ProactiveWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -400,5 +400,4 @@ class SettingsViewModel @Inject constructor(
             bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
             else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
         }
-    }
-}
+    

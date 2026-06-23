@@ -8,9 +8,9 @@ import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PersonaRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.ChatApiPort
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
 import com.tavern.lite.util.cleanCharacterPrefix
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,7 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class MessageExecutionHelper @Inject constructor(
     val chatRepository: ChatRepository,
-    val chatApiService: ChatApiService,
+    val chatApiService: ChatApiPort,
     val worldBookRepository: WorldBookRepository,
     val memoryRepository: MemoryRepository,
     val personaRepository: PersonaRepository,
@@ -111,4 +111,3 @@ class MessageExecutionHelper @Inject constructor(
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("MessageHelper", "获取 persona 失败", e); null
         }
-}

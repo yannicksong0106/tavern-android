@@ -5,14 +5,14 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.SummaryRepository
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.ChatApiPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SummaryUseCase @Inject constructor(
-    private val chatApiService: ChatApiService,
+    private val chatApiService: ChatApiPort,
     private val summaryRepository: SummaryRepository,
     private val chatRepository: ChatRepository,
 ) {
@@ -179,4 +179,3 @@ class SummaryUseCase @Inject constructor(
         val otherChars = text.length - chineseChars
         return (chineseChars / 1.5 + otherChars / 4).toInt()
     }
-}

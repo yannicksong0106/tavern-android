@@ -11,15 +11,16 @@ import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.di.ApplicationScope
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.PromptBuilder
-import com.tavern.lite.network.WebSearchResult
-import com.tavern.lite.network.WebSearchService
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.model.WebSearchResult
+import com.tavern.lite.domain.port.ChatApiPort
+import com.tavern.lite.domain.port.PromptBuilderPort
+import com.tavern.lite.domain.port.WebSearchPort
 import com.tavern.lite.util.ImageUtils
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -35,11 +36,11 @@ class SendMessageUseCase @Inject constructor(
     private val presetRepository: PresetRepository,
     private val helper: MessageExecutionHelper,
     private val summaryUseCase: SummaryUseCase,
-    private val webSearchService: WebSearchService,
+    private val promptBuilder: PromptBuilderPort,
+    private val webSearchService: WebSearchPort,
     private val settingsStore: SettingsStore,
+    @ApplicationScope private val appScope: CoroutineScope,
 ) {
-    // Singleton 作用域，用于 fire-and-forget 后台任务（自动摘要）
-    private val summaryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /**
      * 发送单聊消息：构建 prompt → 流式 API → 保存 → 记忆提取
      */
@@ -76,7 +77,7 @@ class SendMessageUseCase @Inject constructor(
 
         val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
 
-        val promptMessages = PromptBuilder.build(
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
             character = character,
             userMessage = processedContent,
             chatHistory = chatHistory.reversed(),
@@ -91,6 +92,7 @@ class SendMessageUseCase @Inject constructor(
             summary = summary,
             searchResults = searchResults
         )
+        val promptMessages = promptBuilder.build(promptConfig)
 
         val result = helper.executeAndSave(chatId, character.id, character.name, promptMessages, config, processedContent)
 
@@ -127,7 +129,7 @@ class SendMessageUseCase @Inject constructor(
     }
 
     private fun tryTriggerSummary(chatId: Long, config: ApiConfig, characterName: String) {
-        summaryScope.launch {
+        appScope.launch {
             try {
                 if (summaryUseCase.shouldGenerateSummary(chatId)) {
                     summaryUseCase.generateSummary(chatId, config, characterName)
@@ -185,12 +187,10 @@ class SendMessageUseCase @Inject constructor(
 
             val authorNote = authorNoteRepository.getAuthorNoteSync(char.id)
 
-            val promptMessages = PromptBuilder.buildGroupChat(
-                characters = characters,
-                respondingCharacter = char,
+            val promptConfig = com.tavern.lite.domain.model.PromptConfig(
+                character = char,
                 userMessage = processedContent,
                 chatHistory = chatHistory.reversed(),
-                characterMap = characterMap,
                 worldBookEntries = worldBookEntries,
                 userName = config.userName,
                 memories = memories,
@@ -200,8 +200,12 @@ class SendMessageUseCase @Inject constructor(
                 preset = preset,
                 imageUrls = imageUrls,
                 summary = summary,
-                searchResults = searchResults
+                searchResults = searchResults,
+                characters = characters,
+                characterMap = characterMap,
+                isGroupChat = true
             )
+            val promptMessages = promptBuilder.buildGroupChat(promptConfig)
 
             val result = helper.executeAndSave(chatId, char.id, char.name, promptMessages, config, processedContent)
             if (result != null) {
@@ -263,12 +267,10 @@ class SendMessageUseCase @Inject constructor(
 
         val authorNote = authorNoteRepository.getAuthorNoteSync(targetCharacter.id)
 
-        val promptMessages = PromptBuilder.buildGroupChat(
-            characters = characters,
-            respondingCharacter = targetCharacter,
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
+            character = targetCharacter,
             userMessage = userContent,
             chatHistory = chatHistory.reversed(),
-            characterMap = characterMap,
             worldBookEntries = worldBookEntries,
             userName = config.userName,
             memories = memories,
@@ -278,15 +280,9 @@ class SendMessageUseCase @Inject constructor(
             preset = preset,
             imageUrls = imageUrls,
             summary = summary,
-            searchResults = searchResults
+            searchResults = searchResults,
+            characters = characters,
+            characterMap = characterMap,
+            isGroupChat = true
         )
-
-        val result = helper.executeAndSave(chatId, targetCharacter.id, targetCharacter.name, promptMessages, config, userContent)
-
-        if (result != null) {
-            tryTriggerSummary(chatId, config, targetCharacter.name)
-        }
-
-        return result
-    }
-}
+        val promptMessages = prom

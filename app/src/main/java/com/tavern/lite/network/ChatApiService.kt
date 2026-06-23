@@ -3,6 +3,8 @@ package com.tavern.lite.network
 import android.util.Log
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.model.ChatStreamChunk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -262,10 +264,11 @@ class ChatApiService @Inject constructor(
             })
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:streamGenerateContent?key=${provider.apiKey}"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:streamGenerateContent"
         val request = Request.Builder()
             .url(url)
             .addHeader("Content-Type", "application/json")
+            .addHeader("x-goog-api-key", provider.apiKey)
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
@@ -377,18 +380,10 @@ internal fun parseOpenAIStreamChunk(data: String): List<ChatStreamChunk> {
     return chunks
 }
 
-data class ChatMessage(
-    val role: String,
-    val content: String,
-    val reasoningContent: String? = null,
-    // 图片附件（base64 data URI 列表），非空时 content 以 multimodal 数组格式发送
-    val imageUrls: List<String> = emptyList()
-)
-
-data class ChatStreamChunk(
-    val content: String = "",
-    val reasoningContent: String? = null,
-)
+/** Domain 层 ChatMessage 的别名，保持网络层兼容 */
+typealias NetworkChatMessage = ChatMessage
+/** Domain 层 ChatStreamChunk 的别名，保持网络层兼容 */
+typealias NetworkChatStreamChunk = ChatStreamChunk
 
 class ApiException(
     val code: Int,
@@ -446,3 +441,4 @@ internal fun parseRetryAfterHeader(value: String?): Long? {
     if (value.isNullOrBlank()) return null
     return value.trim().toLongOrNull()
 }
+     

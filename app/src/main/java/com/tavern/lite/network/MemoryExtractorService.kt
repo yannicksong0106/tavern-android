@@ -5,6 +5,7 @@ import com.tavern.lite.data.db.entity.MemoryAtomEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
+import com.tavern.lite.domain.port.MemoryExtractorPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -21,7 +22,7 @@ import javax.inject.Singleton
 @Singleton
 class MemoryExtractorService @Inject constructor(
     private val client: OkHttpClient
-) {
+) : MemoryExtractorPort {
 
     companion object {
         private const val TAG = "MemoryExtractor"
@@ -458,8 +459,4 @@ $conversation
 
     private fun isValidCategory(category: String): Boolean {
         return category in listOf(
-            "fact", "emotion", "preference", "event", "habit",
-            "character_consistency", "temporary"
-        )
-    }
-}
+            "fact", "emotion", "preference", "event",

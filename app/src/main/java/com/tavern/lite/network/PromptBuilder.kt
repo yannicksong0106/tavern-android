@@ -39,10 +39,18 @@ object PromptBuilder {
      * 第一个是消息列表，第二个是 section 列表（用于追踪来源和 token 估算）
      */
     fun buildWithSections(config: PromptConfig): Pair<List<ChatMessage>, List<PromptSection>> {
+        return buildCore(config)
+    }
+
+    /**
+     * 核心 prompt 构建逻辑，统一处理单聊和群聊的公共部分
+     * 返回消息列表和 section 追踪列表
+     */
+    private fun buildCore(config: PromptConfig): Pair<MutableList<ChatMessage>, MutableList<PromptSection>> {
         val messages = mutableListOf<ChatMessage>()
         val sections = mutableListOf<PromptSection>()
         val effectiveUserName = config.effectiveUserName
-        val respondingCharacter = if (config.isGroupChat) config.character else config.character
+        val respondingCharacter = config.character
 
         // 1. 静态系统 prompt
         val staticPrompt = if (config.isGroupChat) {
@@ -105,7 +113,7 @@ object PromptBuilder {
         if (!config.summary.isNullOrBlank()) {
             messages.add(ChatMessage(
                 role = "system",
-                content = "[Summary — 以下是之前的对话摘要，请基于此继续对话]\n${config.summary}"
+                content = "[对话摘要 — 以下是之前对话的要点总结]\n${config.summary}"
             ))
             sections.add(PromptSection.create(PromptSource.SUMMARY, "[Summary] ${config.summary}"))
         }
@@ -162,118 +170,6 @@ object PromptBuilder {
         return Pair(messages, sections)
     }
 
-    /**
-     * 核心 prompt 构建逻辑，统一处理单聊和群聊的公共部分
-     */
-    private fun buildCore(config: PromptConfig): MutableList<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-        val effectiveUserName = config.effectiveUserName
-        val respondingCharacter = if (config.isGroupChat) config.character else config.character
-
-        // 1. 静态系统 prompt
-        val staticPrompt = if (config.isGroupChat) {
-            PromptSectionBuilder.buildGroupStaticSystemPrompt(config.characters, respondingCharacter, effectiveUserName)
-        } else {
-            getCachedStaticPrompt(respondingCharacter, effectiveUserName)
-        }
-        val presetSysPrompt = config.preset?.systemPrompt?.takeIf { it.isNotBlank() }
-        val combinedStatic = listOfNotNull(presetSysPrompt, staticPrompt.takeIf { it.isNotBlank() })
-            .joinToString("\n\n")
-        if (combinedStatic.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = combinedStatic))
-        }
-
-        // 2. 示例对话
-        val exampleMessages = PromptSectionBuilder.parseExampleDialog(respondingCharacter.mesExample, effectiveUserName, respondingCharacter.name)
-        messages.addAll(exampleMessages)
-
-        // 3. 开场白
-        if (config.isGroupChat) {
-            for (char in config.characters) {
-                if (char.firstMes.isNotBlank()) {
-                    val firstMes = PromptSectionBuilder.replacePlaceholders(char.firstMes, effectiveUserName, char.name, char, config.persona)
-                    messages.add(ChatMessage(role = "assistant", content = "[${char.name}]: $firstMes"))
-                }
-            }
-        } else if (respondingCharacter.firstMes.isNotBlank()) {
-            val firstMes = PromptSectionBuilder.replacePlaceholders(respondingCharacter.firstMes, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
-            messages.add(ChatMessage(role = "assistant", content = firstMes))
-        }
-
-        // 4. 聊天历史
-        config.chatHistory.forEach { msg ->
-            when {
-                config.isGroupChat && msg.role == "assistant" -> {
-                    val charName = msg.characterId?.let { config.characterMap[it]?.name }
-                    val content = if (charName != null) "[$charName]: ${msg.content}" else msg.content
-                    messages.add(ChatMessage(role = "assistant", content = content))
-                }
-                else -> {
-                    val role = when (msg.role) {
-                        "user" -> "user"
-                        "assistant" -> "assistant"
-                        else -> "system"
-                    }
-                    messages.add(ChatMessage(role = role, content = msg.content))
-                }
-            }
-        }
-
-        // 4.5 摘要注入
-        if (!config.summary.isNullOrBlank()) {
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[对话摘要 — 以下是之前对话的要点总结]\n${config.summary}"
-            ))
-        }
-
-        // 4.6 搜索结果注入
-        if (config.searchResults.isNotEmpty()) {
-            val searchText = config.searchResults.joinToString("\n\n") { result ->
-                "标题: ${result.title}\n摘要: ${result.snippet}\n来源: ${result.url}"
-            }
-            messages.add(ChatMessage(
-                role = "system",
-                content = "[Web Search Results — 以下是网络搜索结果，请基于这些信息回答用户问题]\n$searchText"
-            ))
-        }
-
-        // 5. 动态上下文（世界书 + 记忆 + 人格）
-        val dynamicContext = PromptSectionBuilder.buildDynamicContext(respondingCharacter, config.worldBookEntries, effectiveUserName, config.memories, config.memoryAtoms, config.persona)
-        if (dynamicContext.isNotBlank()) {
-            messages.add(ChatMessage(role = "system", content = dynamicContext))
-        }
-
-        // 5.5 Author's Note 注入
-        if (config.authorNote != null && config.authorNote.content.isNotBlank()) {
-            val noteContent = PromptSectionBuilder.replacePlaceholders(config.authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
-            val insertIndex = (messages.size - config.authorNote.depth).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 5.5.1 预设 Author Note
-        val presetAuthorNote = config.preset?.authorNote?.takeIf { it.isNotBlank() }
-        if (presetAuthorNote != null) {
-            val noteContent = PromptSectionBuilder.replacePlaceholders(presetAuthorNote, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
-            val insertIndex = (messages.size - 1).coerceAtLeast(1)
-            messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
-        }
-
-        // 5.6 历史后指令（仅单聊）
-        if (!config.isGroupChat) {
-            val postHistory = config.preset?.postHistoryInstructions?.takeIf { it.isNotBlank() }
-                ?: respondingCharacter.postHistoryInstructions
-            if (!postHistory.isNullOrBlank()) {
-                messages.add(ChatMessage(
-                    role = "system",
-                    content = PromptSectionBuilder.replacePlaceholders(postHistory, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
-                ))
-            }
-        }
-
-        return messages
-    }
-
     fun build(
         character: CharacterEntity,
         userMessage: String,
@@ -304,7 +200,7 @@ object PromptBuilder {
             summary = summary,
             searchResults = searchResults
         )
-        val messages = buildCore(config)
+        val (messages, _) = buildCore(config)
         // 当前用户消息（支持 multimodal 图片附件）
         messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
         return messages
@@ -349,7 +245,7 @@ object PromptBuilder {
             characterMap = characterMap,
             isGroupChat = true
         )
-        val messages = buildCore(config)
+        val (messages, _) = buildCore(config)
         // 当前用户消息
         messages.add(ChatMessage(role = "user", content = userMessage, imageUrls = imageUrls))
         return messages
@@ -376,7 +272,7 @@ object PromptBuilder {
             summary = summary,
             isProactive = true
         )
-        val messages = buildCore(config)
+        val (messages, _) = buildCore(config)
 
         // 主动对话指令（插入到历史之后、用户消息之前）
         val proactiveIndex = messages.size
@@ -446,3 +342,4 @@ object PromptBuilder {
         return messages
     }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        

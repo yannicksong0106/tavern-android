@@ -5,7 +5,7 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.domain.port.PromptBuilderPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,6 +14,7 @@ class ProactiveMessageUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val presetRepository: PresetRepository,
     private val helper: MessageExecutionHelper,
+    private val promptBuilder: PromptBuilderPort,
 ) {
     /**
      * 构建主动对话 prompt 并发送（单聊）
@@ -29,13 +30,15 @@ class ProactiveMessageUseCase @Inject constructor(
         val persona = helper.personasafe(character.id)
         val preset = presetRepository.resolveEffectivePreset(chatId, character.id)
 
-        val promptMessages = PromptBuilder.buildProactive(
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
             character = character,
             chatHistory = chatHistory.reversed(),
             userName = config.userName,
             persona = persona,
-            preset = preset
+            preset = preset,
+            isProactive = true
         )
+        val promptMessages = promptBuilder.buildProactive(promptConfig)
 
         return helper.executeAndSave(chatId, character.id, character.name, promptMessages, config, "")
     }
@@ -56,16 +59,10 @@ class ProactiveMessageUseCase @Inject constructor(
         val characterMap = characters.associateBy { it.id }
         val preset = presetRepository.resolveEffectivePreset(chatId, character.id)
 
-        val promptMessages = PromptBuilder.buildGroupProactive(
-            characters = characters,
-            respondingCharacter = character,
+        val promptConfig = com.tavern.lite.domain.model.PromptConfig(
+            character = character,
             chatHistory = chatHistory.reversed(),
-            characterMap = characterMap,
             userName = config.userName,
             persona = persona,
-            preset = preset
-        )
-
-        return helper.executeAndSave(chatId, character.id, character.name, promptMessages, config, "")
-    }
-}
+            preset = preset,
+            characters = chara
