@@ -381,9 +381,9 @@ internal fun parseOpenAIStreamChunk(data: String): List<ChatStreamChunk> {
 }
 
 /** Domain 层 ChatMessage 的别名，保持网络层兼容 */
-typealias NetworkChatMessage = ChatMessage
+typealias ChatMessage = com.tavern.lite.domain.model.ChatMessage
 /** Domain 层 ChatStreamChunk 的别名，保持网络层兼容 */
-typealias NetworkChatStreamChunk = ChatStreamChunk
+typealias ChatStreamChunk = com.tavern.lite.domain.model.ChatStreamChunk
 
 class ApiException(
     val code: Int,
@@ -439,6 +439,4 @@ private suspend fun <T> retryWithBackoff(
  */
 internal fun parseRetryAfterHeader(value: String?): Long? {
     if (value.isNullOrBlank()) return null
-    return value.trim().toLongOrNull()
-}
-     
+  
