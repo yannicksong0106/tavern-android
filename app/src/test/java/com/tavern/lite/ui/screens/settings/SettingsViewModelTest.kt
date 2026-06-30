@@ -3,8 +3,8 @@ package com.tavern.lite.ui.screens.settings
 import android.content.Context
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.domain.port.ApiConfigStorePort
 import com.tavern.lite.domain.usecase.TestConnectionUseCase
-import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.data.repository.ApiConfigProfileRepository
 import com.tavern.lite.domain.usecase.ProfileMigrationUseCase
 import com.tavern.lite.util.BackupManager
@@ -34,7 +34,7 @@ import org.junit.Test
 class SettingsViewModelTest {
 
     @MockK private lateinit var context: Context
-    @MockK private lateinit var apiConfigStore: ApiConfigStore
+    @MockK private lateinit var apiConfigStore: ApiConfigStorePort
     @MockK private lateinit var testConnectionUseCase: TestConnectionUseCase
     @MockK private lateinit var settingsStore: SettingsStore
     @MockK private lateinit var proactiveWorkScheduler: ProactiveWorkScheduler
@@ -56,7 +56,7 @@ class SettingsViewModelTest {
         every { settingsStore.languageFlow } returns flowOf("system")
         every { settingsStore.backgroundProactiveFlow } returns flowOf(false)
         every { settingsStore.ttsSettingsFlow } returns flowOf(com.tavern.lite.data.store.TtsSettings())
-        every { settingsStore.webSearchConfigFlow } returns flowOf(com.tavern.lite.network.WebSearchConfig())
+        every { settingsStore.webSearchConfigFlow } returns flowOf(com.tavern.lite.data.model.WebSearchConfig())
         val tmpDir = File(System.getProperty("java.io.tmpdir"), "test_settings_${System.nanoTime()}")
         tmpDir.mkdirs()
         every { context.cacheDir } returns tmpDir
@@ -80,4 +80,22 @@ class SettingsViewModelTest {
         coEvery { testConnectionUseCase(any()) } throws CancellationException()
 
         viewModel.testConnection()
-        adva
+        advanceUntilIdle()
+
+        // If CE was swallowed by catch block, testState would be Error.
+        // If CE is rethrown, the coroutine is cancelled before reaching the catch's error path.
+        // The state should be Testing (set before streamChat) or Idle, never Error.
+        val state = viewModel.testState.value
+        assertEquals("CE should be rethrown, testState should be Testing not Error", ConnectionTestState.Testing, state)
+    }
+
+    @Test
+    fun `testConnection maps use case success to state`() = runTest {
+        coEvery { testConnectionUseCase(any()) } returns "hello"
+
+        viewModel.testConnection()
+        advanceUntilIdle()
+
+        assertEquals(ConnectionTestState.Success("hello"), viewModel.testState.value)
+    }
+}

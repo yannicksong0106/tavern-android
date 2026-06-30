@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">酒馆 Lite</string>
 
@@ -247,7 +247,6 @@
     <string name="logic_and">AND（全部匹配）</string>
     <string name="logic_or">OR（任一匹配）</string>
     <string name="logic_not">NOT（排除匹配）</string>
-    <string name="keywords_label">关键词: %s</string>
     <string name="world_book_match_preview">匹配预览</string>
     <string name="world_book_match_preview_hint">输入一段对话，查看哪些条目会被触发</string>
     <string name="matched_tag">已命中</string>
@@ -280,7 +279,9 @@
     <string name="memory_count">%d 条记忆</string>
     <string name="expires_in">将在 %s 后过期</string>
     <string name="search_memories">搜索记忆</string>
-    <string name="expires_hours">%d 小时</string>
+    <plurals name="expires_hours">
+        <item quantity="other">%d 小时</item>
+    </plurals>
 
     <!-- 用户角色 / Persona -->
     <string name="persona_title">用户角色</string>

@@ -80,6 +80,7 @@ fun PresetScreen(
     if (showAddDialog) {
         PresetEditDialog(
             preset = null,
+            buildPreview = viewModel::buildTemplatePreview,
             onConfirm = { name, desc, sysPrompt, postHistory, authorNote, scope ->
                 viewModel.insertPreset(
                     PresetEntity(
@@ -100,6 +101,7 @@ fun PresetScreen(
     editingPreset?.let { preset ->
         PresetEditDialog(
             preset = preset,
+            buildPreview = viewModel::buildTemplatePreview,
             onConfirm = { name, desc, sysPrompt, postHistory, authorNote, scope ->
                 viewModel.updatePreset(
                     preset.copy(
@@ -306,6 +308,7 @@ private fun PresetItem(
 @Composable
 private fun PresetEditDialog(
     preset: PresetEntity?,
+    buildPreview: (systemPrompt: String, postHistoryInstructions: String, authorNote: String) -> PresetTemplatePreview,
     onConfirm: (name: String, desc: String, sysPrompt: String, postHistory: String, authorNote: String, scope: String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -317,8 +320,8 @@ private fun PresetEditDialog(
     var scope by remember { mutableStateOf(preset?.scope ?: "global") }
     var scopeExpanded by remember { mutableStateOf(false) }
     var previewExpanded by remember { mutableStateOf(false) }
-    val preview = remember(systemPrompt, postHistoryInstructions, authorNote) {
-        buildPresetTemplatePreview(systemPrompt, postHistoryInstructions, authorNote)
+    val preview = remember(systemPrompt, postHistoryInstructions, authorNote, buildPreview) {
+        buildPreview(systemPrompt, postHistoryInstructions, authorNote)
     }
 
     val scopeOptions = listOf("global", "character", "chat")

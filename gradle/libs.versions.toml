@@ -28,6 +28,9 @@ turbine = "1.2.0"
 robolectric = "4.14.1"
 detekt = "1.23.7"
 kover = "0.9.8"
+imageCropper = "4.7.0"
+androidxTestCore = "1.6.1"
+orgJson = "20231013"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -74,6 +77,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 # Image loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+image-cropper = { group = "com.vanniktech", name = "android-image-cropper", version.ref = "imageCropper" }
 
 # Markdown
 markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
@@ -103,6 +107,8 @@ mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mo
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version = "5.4.0" }
 mockk = { group = "io.mockk", name = "mockk", version = "1.13.13" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 # Template
 handlebars = { group = "com.github.jknack", name = "handlebars", version = "4.4.0" }

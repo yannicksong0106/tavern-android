@@ -65,4 +65,13 @@ class ProactiveMessageUseCase @Inject constructor(
             userName = config.userName,
             persona = persona,
             preset = preset,
-            characters = chara
+            characters = characters,
+            characterMap = characterMap,
+            isGroupChat = true,
+            isProactive = true
+        )
+        val promptMessages = promptBuilder.buildGroupProactive(promptConfig)
+
+        return helper.executeAndSave(chatId, character.id, character.name, promptMessages, config, "")
+    }
+}

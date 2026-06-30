@@ -93,4 +93,6 @@ class WorldBookRepository @Inject constructor(
         maxDepth: Int = 3
     ): List<WorldBookEntryEntity> {
         val entries = worldBookDao.getMatchableEntries(worldBookId)
-        return worldBookMatcher.matchEntriesRecursive(entries, text, maxDepth, keysForEntry = { entry -> getCachedKeys(entry
+        return worldBookMatcher.matchEntriesRecursive(entries, text, maxDepth, keysForEntry = { entry -> getCachedKeys(entry) })
+    }
+}

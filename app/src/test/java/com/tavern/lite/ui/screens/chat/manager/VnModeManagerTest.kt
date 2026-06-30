@@ -5,7 +5,7 @@ import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.SpriteEntity
 import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.SpriteRepository
-import com.tavern.lite.network.EmotionDetector
+import com.tavern.lite.domain.port.EmotionDetectionPort
 import com.tavern.lite.ui.screens.vn.BgmPlayer
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -33,7 +33,7 @@ import org.junit.Test
 class VnModeManagerTest {
 
     @MockK private lateinit var spriteRepository: SpriteRepository
-    @MockK private lateinit var emotionDetector: EmotionDetector
+    @MockK private lateinit var emotionDetector: EmotionDetectionPort
     @MockK private lateinit var bgmRepository: BgmRepository
     @MockK private lateinit var bgmPlayer: BgmPlayer
 

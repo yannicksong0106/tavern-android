@@ -5,9 +5,8 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.repository.CharacterRepository
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.GroupChatRepository
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.SummaryUseCase
-import com.tavern.lite.network.ApiConfigStore
-import kotlinx.coroutines.flow.first
 
 suspend fun buildChatPromptInspectorState(
     draftInput: String,
@@ -21,11 +20,11 @@ suspend fun buildChatPromptInspectorState(
     characterRepository: CharacterRepository,
     chatRepository: ChatRepository,
     groupChatRepository: GroupChatRepository,
-    apiConfigStore: ApiConfigStore,
+    configReader: LegacyConfigReaderPort,
     summaryUseCase: SummaryUseCase,
     promptInspectorBuilder: PromptInspectorBuilder
 ): PromptInspectorState {
-    val config = apiConfigStore.configFlow.first()
+    val config = configReader.readConfig()
     val baseCharacter = character
         ?: characterRepository.getCharacterById(characterId)
         ?: return PromptInspectorState(error = "Character not loaded")

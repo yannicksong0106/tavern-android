@@ -190,3 +190,13 @@ class ContinueGenerationUseCase @Inject constructor(
         val processedReply = scriptRepository.applyScripts(characterId, newContent, 1)
         if (processedReply != newContent) {
             chatRepository.updateMessageContent(messageId, processedReply)
+        }
+
+        return MessageExecutionHelper.ExecutionResult(
+            assistantMsgId = messageId,
+            fullResponse = newContent,
+            processedUserContent = userMessageContent,
+            reasoningContent = reasoningContent
+        )
+    }
+}

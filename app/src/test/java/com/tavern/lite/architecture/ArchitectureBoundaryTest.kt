@@ -9,7 +9,7 @@ import org.junit.Test
 class ArchitectureBoundaryTest {
 
     @Test
-    fun `ui layer does not import direct network services or daos`() {
+    fun `ui layer does not import network implementations or daos`() {
         val uiRoot = existingPath(
             Paths.get("src/main/java/com/tavern/lite/ui"),
             Paths.get("app/src/main/java/com/tavern/lite/ui")
@@ -22,7 +22,7 @@ class ArchitectureBoundaryTest {
                 .forEach { path ->
                     Files.readAllLines(path).forEachIndexed { index, line ->
                         val trimmed = line.trim()
-                        if (trimmed == DIRECT_CHAT_API_IMPORT || trimmed.startsWith(DAO_IMPORT_PREFIX)) {
+                        if (trimmed.startsWith(NETWORK_IMPORT_PREFIX) || trimmed.startsWith(DAO_IMPORT_PREFIX)) {
                             violations += "${uiRoot.relativize(path)}:${index + 1}: $trimmed"
                         }
                     }
@@ -31,7 +31,7 @@ class ArchitectureBoundaryTest {
 
         if (violations.isNotEmpty()) {
             fail(
-                "UI layer must depend on UseCase/Coordinator boundaries instead of ChatApiService or DAO imports:\n" +
+                "UI layer must depend on UseCase/Coordinator/domain port boundaries instead of network implementations or DAO imports:\n" +
                     violations.joinToString(separator = "\n")
             )
         }
@@ -42,7 +42,7 @@ class ArchitectureBoundaryTest {
             ?: error("None of the expected source roots exist: ${candidates.joinToString()}")
 
     private companion object {
-        const val DIRECT_CHAT_API_IMPORT = "import com.tavern.lite.network.ChatApiService"
+        const val NETWORK_IMPORT_PREFIX = "import com.tavern.lite.network."
         const val DAO_IMPORT_PREFIX = "import com.tavern.lite.data.db.dao."
     }
 }

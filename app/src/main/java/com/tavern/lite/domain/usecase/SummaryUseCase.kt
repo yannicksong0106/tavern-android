@@ -179,3 +179,4 @@ class SummaryUseCase @Inject constructor(
         val otherChars = text.length - chineseChars
         return (chineseChars / 1.5 + otherChars / 4).toInt()
     }
+}

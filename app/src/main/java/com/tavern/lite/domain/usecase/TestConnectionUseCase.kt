@@ -25,3 +25,4 @@ class TestConnectionUseCase @Inject constructor(
         const val TEST_MAX_TOKENS = 50
         const val MAX_REPLY_PREVIEW_LENGTH = 100
     }
+}

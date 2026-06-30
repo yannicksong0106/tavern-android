@@ -111,3 +111,4 @@ class MessageExecutionHelper @Inject constructor(
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("MessageHelper", "获取 persona 失败", e); null
         }
+}

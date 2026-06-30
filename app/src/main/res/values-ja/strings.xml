@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Tavern Lite</string>
 
@@ -247,7 +247,6 @@
     <string name="logic_and">AND（すべて一致）</string>
     <string name="logic_or">OR（いずれか一致）</string>
     <string name="logic_not">NOT（一致を除外）</string>
-    <string name="keywords_label">キーワード: %s</string>
     <string name="world_book_match_preview">マッチプレビュー</string>
     <string name="world_book_match_preview_hint">会話文を入力して、発火するエントリを確認</string>
     <string name="matched_tag">一致</string>
@@ -280,7 +279,9 @@
     <string name="memory_count">%d件のメモリ</string>
     <string name="expires_in">%s後に期限切れ</string>
     <string name="search_memories">メモリを検索</string>
-    <string name="expires_hours">%d時間</string>
+    <plurals name="expires_hours">
+        <item quantity="other">%d時間</item>
+    </plurals>
 
     <!-- ペルソナ -->
     <string name="persona_title">ユーザーペルソナ</string>

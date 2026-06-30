@@ -144,3 +144,4 @@ class SettingsStore @Inject constructor(
             prefs[WEB_SEARCH_CONFIG_KEY] = json.encodeToString(config)
         }
     }
+}

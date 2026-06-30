@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,23 +39,37 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Detekt
-        run: ./gradlew detekt
-
-      - name: Lint
-        run: ./gradlew lintDebug
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --console=plain
 
       - name: Unit Tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest --no-daemon --console=plain
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Lint
+        run: ./gradlew lintDebug --no-daemon --console=plain
+
+      - name: Detekt
+        run: ./gradlew detekt --no-daemon --console=plain
+
+      - name: Kover XML
+        run: ./gradlew :app:koverXmlReportDebug --no-daemon --console=plain
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/kover/
+          if-no-files-found: ignore
 
   release:
     needs: build
@@ -78,7 +99,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-daemon --console=plain
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4

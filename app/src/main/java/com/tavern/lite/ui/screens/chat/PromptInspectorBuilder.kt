@@ -8,8 +8,8 @@ import com.tavern.lite.data.repository.MemoryRepository
 import com.tavern.lite.data.repository.PersonaRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.WorldBookRepository
-import com.tavern.lite.network.PromptBuilder
-import com.tavern.lite.network.PromptConfig
+import com.tavern.lite.domain.model.PromptConfig
+import com.tavern.lite.domain.port.PromptBuilderPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,6 +21,7 @@ class PromptInspectorBuilder @Inject constructor(
     private val authorNoteRepository: AuthorNoteRepository,
     private val personaRepository: PersonaRepository,
     private val presetRepository: PresetRepository,
+    private val promptBuilder: PromptBuilderPort,
 ) {
     suspend fun buildSingle(
         chatId: Long,
@@ -44,7 +45,7 @@ class PromptInspectorBuilder @Inject constructor(
             preset = data.preset,
             summary = summary
         )
-        val (messages, sections) = PromptBuilder.buildWithSections(config)
+        val (messages, sections) = promptBuilder.buildWithSections(config)
         return data.toState(messages, summary, character.name).copy(sections = sections)
     }
 
@@ -75,7 +76,7 @@ class PromptInspectorBuilder @Inject constructor(
             characterMap = effectiveCharacters.associateBy { it.id },
             isGroupChat = true
         )
-        val (messages, sections) = PromptBuilder.buildWithSections(config)
+        val (messages, sections) = promptBuilder.buildWithSections(config)
         return data.toState(messages, summary, respondingCharacter.name).copy(sections = sections)
     }
 

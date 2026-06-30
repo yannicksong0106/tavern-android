@@ -102,6 +102,7 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     buildFeatures {
@@ -159,7 +160,7 @@ dependencies {
 
     // Image
     implementation(libs.coil.compose)
-    implementation("com.vanniktech:android-image-cropper:4.7.0")
+    implementation(libs.image.cropper)
 
     // Markdown
     implementation(libs.markwon.core)
@@ -187,8 +188,10 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.robolectric)
-    testImplementation("androidx.test:core:1.6.1")
-    testImplementation("org.json:json:20231013")
+    testImplementation(libs.androidx.test.core)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test)
+    testImplementation(libs.org.json)
 
     // Android Instrumented Test
     androidTestImplementation(libs.androidx.test.ext)

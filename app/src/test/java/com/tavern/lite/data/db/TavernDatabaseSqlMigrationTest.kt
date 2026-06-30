@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -111,6 +112,41 @@ class TavernDatabaseSqlMigrationTest {
                 assertEquals(110L, cursor.getLong(2))
                 assertEquals(120L, cursor.getLong(3))
             }
+        }
+    }
+
+    @Test
+    fun `migration 32 to 33 removes legacy reasoning column and preserves messages`() {
+        withSchemaDatabase(version = 32) { db ->
+            insertCoreChatData(db, hasImagePaths = true)
+            db.execSQL("UPDATE messages SET reasoning_content = 'legacy trace', is_pinned = 1 WHERE id = 100")
+
+            TavernDatabase.MIGRATION_32_33.migrate(db)
+
+            val messageColumns = getTableColumns(db, "messages")
+            assertFalse(messageColumns.contains("reasoning_content"))
+            assertTrue(messageColumns.contains("image_paths"))
+            assertTrue(getTableColumns(db, "world_book_entries").contains("automation_id"))
+
+            db.query(
+                """
+                SELECT content, image_paths, swipe_content, swipe_index, is_pinned
+                FROM messages
+                WHERE id = 100
+                """.trimIndent()
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Hello", cursor.getString(0))
+                assertEquals("""["/files/a.png"]""", cursor.getString(1))
+                assertEquals("""["Hi again"]""", cursor.getString(2))
+                assertEquals(0, cursor.getInt(3))
+                assertEquals(1, cursor.getInt(4))
+            }
+
+            val profileColumns = getTableColumns(db, "api_config_profiles")
+            assertTrue(profileColumns.contains("config_json"))
+            assertTrue(profileColumns.contains("bound_chat_id"))
+            assertTrue(getIndexNames(db, "api_config_profiles").isEmpty())
         }
     }
 
@@ -229,6 +265,17 @@ class TavernDatabaseSqlMigrationTest {
             }
         }
         return columns
+    }
+
+    private fun getIndexNames(db: SupportSQLiteDatabase, table: String): Set<String> {
+        val indices = mutableSetOf<String>()
+        db.query("PRAGMA index_list($table)").use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) {
+                indices += cursor.getString(nameIndex)
+            }
+        }
+        return indices
     }
 
     private companion object {

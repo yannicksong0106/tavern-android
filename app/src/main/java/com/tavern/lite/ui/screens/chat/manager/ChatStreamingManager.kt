@@ -4,19 +4,18 @@ import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.ChatRepository
+import com.tavern.lite.domain.port.ImageGenerationPort
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
-import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.ImageGenerationService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -32,12 +31,12 @@ class ChatStreamingManager(
     private val chatId: Long,
     private val characterId: Long,
     private val chatRepository: ChatRepository,
-    private val apiConfigStore: ApiConfigStore,
+    private val configReader: LegacyConfigReaderPort,
     private val sendMessageUseCase: SendMessageUseCase,
     private val continueGenerationUseCase: ContinueGenerationUseCase,
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
-    private val imageGenerationService: ImageGenerationService,
+    private val imageGenerationService: ImageGenerationPort,
     private val scope: CoroutineScope
 ) {
     // ==================== 状态 ====================
@@ -66,7 +65,7 @@ class ChatStreamingManager(
     private val generationReasoningContext = GenerationReasoningContext()
     private val proactiveDialogueCoordinator = ProactiveDialogueCoordinator(
         chatId = chatId,
-        apiConfigStore = apiConfigStore,
+        configReader = configReader,
         proactiveMessageUseCase = proactiveMessageUseCase,
         proactiveDialogueUseCase = proactiveDialogueUseCase,
         scope = scope,
@@ -132,6 +131,31 @@ class ChatStreamingManager(
 
     // ==================== 公开方法 ====================
 
+    private fun launchGenerationJob(
+        clearRespondingOnExit: Boolean = false,
+        onFinally: (suspend () -> Unit)? = null,
+        block: suspend () -> Unit
+    ) {
+        wasCancelled = false
+        streamingJob?.cancel()
+        streamingJob = scope.launch {
+            streamingMutex.withLock {
+                _isGenerating.value = true
+                try {
+                    block()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    onToast(classifyError(e))
+                } finally {
+                    _isGenerating.value = false
+                    if (clearRespondingOnExit) onRespondingCharacterChanged(null)
+                    streamingJob = null
+                    onFinally?.invoke()
+                }
+            }
+        }
+    }
+
     fun sendMessage(content: String, imagePaths: List<String> = emptyList()) {
         if ((content.isBlank() && imagePaths.isEmpty()) || _isGenerating.value) return
 
@@ -168,32 +192,18 @@ class ChatStreamingManager(
         val request = generationContinuationCoordinator.resolveContinueRequest(messagesProvider())
         if (request == null || _isGenerating.value) return
 
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                try {
-                    val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = generationContinuationCoordinator.continueGeneration(
-                        request = request,
-                        character = character,
-                        config = config,
-                        previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
-                    )
-                    if (result != null) {
-                        generationReasoningContext.record(result)
-                        onAssistantReplyCommitted()
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    streamingJob = null
-                }
+        launchGenerationJob {
+            val character = characterProvider() ?: return@launchGenerationJob
+            val config = configReader.readConfig()
+            val result = generationContinuationCoordinator.continueGeneration(
+                request = request,
+                character = character,
+                config = config,
+                previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
+            )
+            if (result != null) {
+                generationReasoningContext.record(result)
+                onAssistantReplyCommitted()
             }
         }
     }
@@ -202,32 +212,18 @@ class ChatStreamingManager(
         val request = generationContinuationCoordinator.resolveRegenerateRequest(messagesProvider(), messageId)
         if (request == null) return
 
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                try {
-                    val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = generationContinuationCoordinator.regenerate(
-                        request = request,
-                        character = character,
-                        config = config,
-                        previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
-                    )
-                    if (result != null) {
-                        generationReasoningContext.record(result)
-                        onAssistantReplyCommitted()
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    streamingJob = null
-                }
+        launchGenerationJob {
+            val character = characterProvider() ?: return@launchGenerationJob
+            val config = configReader.readConfig()
+            val result = generationContinuationCoordinator.regenerate(
+                request = request,
+                character = character,
+                config = config,
+                previousReasoningContent = generationReasoningContext.previousFor(request.assistantMessageId)
+            )
+            if (result != null) {
+                generationReasoningContext.record(result)
+                onAssistantReplyCommitted()
             }
         }
     }
@@ -258,7 +254,7 @@ class ChatStreamingManager(
                 _isGenerating.value = true
                 try {
                     val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
+                    val config = configReader.readConfig()
 
                     val generationResult = imageGenerationCoordinator.generateImageReply(
                         prompt = prompt,
@@ -302,104 +298,49 @@ class ChatStreamingManager(
     // ==================== 内部方法 ====================
 
     private fun sendSingleChatMessage(content: String, imagePaths: List<String> = emptyList()) {
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                try {
-                    val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = generationSendCoordinator.sendSingle(
-                        character = character,
-                        content = content,
-                        config = config,
-                        imagePaths = imagePaths
-                    )
-                    generationReasoningContext.record(result)
-                    if (commitAssistantReply(result?.assistantMsgId)) {
-                        scheduleProactiveDialogue()
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    streamingJob = null
-                }
+        launchGenerationJob {
+            val character = characterProvider() ?: return@launchGenerationJob
+            val config = configReader.readConfig()
+            val result = generationSendCoordinator.sendSingle(character, content, config, imagePaths)
+            generationReasoningContext.record(result)
+            if (commitAssistantReply(result?.assistantMsgId)) {
+                scheduleProactiveDialogue()
             }
         }
     }
 
     private fun sendGroupChatMessage(content: String, imagePaths: List<String> = emptyList()) {
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                try {
-                    val characters = groupCharactersProvider()
-                    if (characters.isEmpty()) return@withLock
-                    val config = apiConfigStore.configFlow.first()
-
-                    val groupResult = generationSendCoordinator.sendGroup(
-                        characters = characters,
-                        content = content,
-                        config = config,
-                        imagePaths = imagePaths,
-                        schedulingStrategy = schedulingStrategyProvider(),
-                        chattinessByCharacterId = groupCharacterChattinessProvider(),
-                        intervalMs = messageIntervalProvider(),
-                        isCancelled = { wasCancelled },
-                        onRespondingCharacterChanged = onRespondingCharacterChanged,
-                        onAssistantReplyCommit = { assistantMsgId -> commitAssistantReply(assistantMsgId) }
-                    )
-                    generationReasoningContext.recordAll(groupResult.results.map { it.second })
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    onRespondingCharacterChanged(null)
-                    streamingJob = null
-                    if (!wasCancelled) {
-                        scheduleGroupProactiveDialogue()
-                    }
-                }
-            }
+        launchGenerationJob(
+            clearRespondingOnExit = true,
+            onFinally = { if (!wasCancelled) scheduleGroupProactiveDialogue() }
+        ) {
+            val characters = groupCharactersProvider()
+            if (characters.isEmpty()) return@launchGenerationJob
+            val config = configReader.readConfig()
+            val groupResult = generationSendCoordinator.sendGroup(
+                characters = characters,
+                content = content,
+                config = config,
+                imagePaths = imagePaths,
+                schedulingStrategy = schedulingStrategyProvider(),
+                chattinessByCharacterId = groupCharacterChattinessProvider(),
+                intervalMs = messageIntervalProvider(),
+                isCancelled = { wasCancelled },
+                onRespondingCharacterChanged = onRespondingCharacterChanged,
+                onAssistantReplyCommit = { assistantMsgId -> commitAssistantReply(assistantMsgId) }
+            )
+            generationReasoningContext.recordAll(groupResult.results.map { it.second })
         }
     }
 
     private fun sendDirectMessage(content: String, targetCharacter: CharacterEntity, imagePaths: List<String> = emptyList()) {
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                onRespondingCharacterChanged(targetCharacter)
-                try {
-                    val characters = groupCharactersProvider()
-                    val config = apiConfigStore.configFlow.first()
-
-                    val result = generationSendCoordinator.sendDirect(
-                        characters = characters,
-                        targetCharacter = targetCharacter,
-                        content = content,
-                        config = config,
-                        imagePaths = imagePaths
-                    )
-                    generationReasoningContext.record(result)
-                    commitAssistantReply(result?.assistantMsgId)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    onRespondingCharacterChanged(null)
-                    streamingJob = null
-                }
-            }
+        launchGenerationJob(clearRespondingOnExit = true) {
+            onRespondingCharacterChanged(targetCharacter)
+            val characters = groupCharactersProvider()
+            val config = configReader.readConfig()
+            val result = generationSendCoordinator.sendDirect(characters, targetCharacter, content, config, imagePaths)
+            generationReasoningContext.record(result)
+            commitAssistantReply(result?.assistantMsgId)
         }
     }
 

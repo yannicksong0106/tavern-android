@@ -67,6 +67,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -679,7 +680,7 @@ private fun MemoryCard(
                     if (remaining > 0) {
                         val hours = (remaining / 3600_000L).toInt()
                         Text(
-                            text = "\u23F0 ${stringResource(R.string.expires_in, stringResource(R.string.expires_hours, hours))}",
+                            text = "\u23F0 ${stringResource(R.string.expires_in, pluralStringResource(R.plurals.expires_hours, hours, hours))}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.padding(top = 2.dp)

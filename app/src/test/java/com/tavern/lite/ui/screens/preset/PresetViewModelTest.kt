@@ -2,6 +2,7 @@ package com.tavern.lite.ui.screens.preset
 
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.repository.PresetRepository
+import com.tavern.lite.domain.port.TemplateRendererPort
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -24,6 +25,7 @@ import org.junit.Test
 class PresetViewModelTest {
 
     @MockK private lateinit var presetRepository: PresetRepository
+    @MockK private lateinit var templateRenderer: TemplateRendererPort
 
     private lateinit var viewModel: PresetViewModel
     private val testDispatcher = StandardTestDispatcher()
@@ -35,7 +37,8 @@ class PresetViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
         every { presetRepository.getAllPresets() } returns flowOf(emptyList())
-        viewModel = PresetViewModel(presetRepository)
+        every { templateRenderer.render(any(), any()) } answers { firstArg() }
+        viewModel = PresetViewModel(presetRepository, templateRenderer)
     }
 
     @After

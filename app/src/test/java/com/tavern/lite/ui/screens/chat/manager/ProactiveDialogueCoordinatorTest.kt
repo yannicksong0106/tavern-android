@@ -4,9 +4,9 @@ import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.domain.helper.MessageExecutionHelper
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
-import com.tavern.lite.network.ApiConfigStore
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -15,7 +15,6 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -30,7 +29,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProactiveDialogueCoordinatorTest {
 
-    @MockK private lateinit var apiConfigStore: ApiConfigStore
+    @MockK private lateinit var configReader: LegacyConfigReaderPort
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
 
@@ -40,7 +39,7 @@ class ProactiveDialogueCoordinatorTest {
     @Before
     fun setup() {
         MockKAnnotations.init(this, relaxed = true)
-        every { apiConfigStore.configFlow } returns MutableStateFlow(config)
+        coEvery { configReader.readConfig() } returns config
     }
 
     @Test
@@ -134,7 +133,7 @@ class ProactiveDialogueCoordinatorTest {
 
     private fun createCoordinator(dispatcher: TestDispatcher) = ProactiveDialogueCoordinator(
         chatId = chatId,
-        apiConfigStore = apiConfigStore,
+        configReader = configReader,
         proactiveMessageUseCase = proactiveMessageUseCase,
         proactiveDialogueUseCase = proactiveDialogueUseCase,
         scope = CoroutineScope(dispatcher),

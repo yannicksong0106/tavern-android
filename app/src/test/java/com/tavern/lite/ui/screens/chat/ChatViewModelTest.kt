@@ -15,6 +15,7 @@ import com.tavern.lite.data.repository.GroupChatRepository
 import com.tavern.lite.data.repository.QuickReplyRepository
 import com.tavern.lite.data.repository.SummaryRepository
 import com.tavern.lite.data.store.SettingsStore
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.MemoryExtractionUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
@@ -28,9 +29,8 @@ import com.tavern.lite.domain.usecase.StScriptBlockedCommand
 import com.tavern.lite.domain.usecase.StScriptExecutionResult
 import com.tavern.lite.domain.usecase.StScriptLiteExecutor
 import com.tavern.lite.domain.usecase.SummaryUseCase
-import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.EmotionDetector
-import com.tavern.lite.network.ImageGenerationService
+import com.tavern.lite.domain.port.EmotionDetectionPort
+import com.tavern.lite.domain.port.ImageGenerationPort
 import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.SpriteRepository
 import com.tavern.lite.ui.screens.vn.BgmPlayer
@@ -71,7 +71,7 @@ class ChatViewModelTest {
     @MockK private lateinit var chatRepository: ChatRepository
     @MockK private lateinit var groupChatRepository: GroupChatRepository
     @MockK private lateinit var quickReplyRepository: QuickReplyRepository
-    @MockK private lateinit var apiConfigStore: ApiConfigStore
+    @MockK private lateinit var configReader: LegacyConfigReaderPort
     @MockK private lateinit var settingsStore: SettingsStore
     @MockK private lateinit var promptInspectorBuilder: PromptInspectorBuilder
     @MockK private lateinit var sendMessageUseCase: SendMessageUseCase
@@ -85,9 +85,9 @@ class ChatViewModelTest {
     @MockK private lateinit var summaryRepository: SummaryRepository
     @MockK private lateinit var spriteRepository: SpriteRepository
     @MockK private lateinit var bgmRepository: BgmRepository
-    @MockK private lateinit var emotionDetector: EmotionDetector
+    @MockK private lateinit var emotionDetector: EmotionDetectionPort
     @MockK private lateinit var bgmPlayer: BgmPlayer
-    @MockK private lateinit var imageGenerationService: ImageGenerationService
+    @MockK private lateinit var imageGenerationService: ImageGenerationPort
     @MockK private lateinit var ttsHelper: TtsHelper
     @MockK private lateinit var sttHelper: SttHelper
     @MockK private lateinit var markwon: Markwon
@@ -135,7 +135,7 @@ class ChatViewModelTest {
         coEvery { bgmRepository.getDefaultBgm(any()) } returns null
         every { emotionDetector.detectEmotion(any()) } returns "neutral"
         every { emotionDetector.getSupportedEmotions() } returns listOf("happy", "sad", "angry", "surprised", "scared", "disgusted", "confused", "embarrassed", "love", "neutral")
-        every { apiConfigStore.configFlow } returns MutableStateFlow(testConfig)
+        coEvery { configReader.readConfig() } returns testConfig
         every { ttsHelper.isSpeaking } returns MutableStateFlow(false)
         every { ttsHelper.speakingMessageId } returns MutableStateFlow(null)
         every { ttsHelper.stop() } returns Unit
@@ -154,7 +154,7 @@ class ChatViewModelTest {
             chatRepository,
             groupChatRepository,
             quickReplyRepository,
-            apiConfigStore,
+            configReader,
             settingsStore,
             promptInspectorBuilder,
             sendMessageUseCase,
@@ -779,6 +779,34 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun `displayMessages updates when messages flow emits new chat turns`() = runTest {
+        val messageFlow = MutableStateFlow(
+            listOf(
+                MessageEntity(id = 1, chatId = CHAT_ID, role = "assistant", content = "Smoke chat is ready.")
+            )
+        )
+        every { chatRepository.getMessagesForChat(CHAT_ID) } returns messageFlow
+        viewModel = createViewModel()
+        val displayJob = launch(Dispatchers.Unconfined) { viewModel.displayMessages.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(listOf("Smoke chat is ready."), viewModel.displayMessages.value.map { it.content })
+
+        messageFlow.value = listOf(
+            MessageEntity(id = 1, chatId = CHAT_ID, role = "assistant", content = "Smoke chat is ready."),
+            MessageEntity(id = 2, chatId = CHAT_ID, role = "user", content = "real_smoke_send_clean"),
+            MessageEntity(id = 3, chatId = CHAT_ID, role = "assistant", content = "Smoke reply from local stream.")
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("Smoke chat is ready.", "real_smoke_send_clean", "Smoke reply from local stream."),
+            viewModel.displayMessages.value.map { it.content }
+        )
+        displayJob.cancel()
+    }
+
+    @Test
     fun `allMessagesLoaded is true when page size exceeds total`() = runTest {
         val msgs = (1..30).map { i ->
             MessageEntity(id = i.toLong(), chatId = CHAT_ID, role = "user", content = "Msg $i")
@@ -1026,7 +1054,7 @@ class ChatViewModelTest {
             chatRepository,
             groupChatRepository,
             quickReplyRepository,
-            apiConfigStore,
+            configReader,
             settingsStore,
             promptInspectorBuilder,
             sendMessageUseCase,

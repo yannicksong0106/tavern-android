@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Icon-related: cosmetic, Play Store listing concerns, not code quality -->
+    <issue id="IconLauncherShape" severity="ignore" />
+    <issue id="MonochromeLauncherIcon" severity="ignore" />
+    <issue id="IconDipSize" severity="ignore" />
+    <issue id="IconDuplicates" severity="ignore" />
+
+    <!-- SDK/build-config: non-actionable on current minSdk -->
+    <issue id="ObsoleteSdkInt" severity="ignore" />
+    <issue id="DataExtractionRules" severity="ignore" />
+    <issue id="UnusedAttribute" severity="ignore" />
+</lint>

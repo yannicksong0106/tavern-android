@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.tavern.lite.data.db.dao.ApiConfigProfileDao
 import com.tavern.lite.data.model.ApiConfig
+import com.tavern.lite.domain.port.ApiConfigStorePort
 import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.security.CryptoHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -43,43 +43,48 @@ class ApiConfigStore @Inject constructor(
     private val json: Json,
     private val cryptoHelper: CryptoHelper,
     private val profileDao: ApiConfigProfileDao
-) : LegacyConfigReaderPort {
+) : LegacyConfigReaderPort, ApiConfigStorePort {
     companion object {
         private val API_CONFIG_KEY = stringPreferencesKey("api_config_json")
         private const val TAG = "ApiConfigStore"
     }
 
-    /** 当前激活的 profile ID（null 表示使用旧模式） */
+    /** 当前激活的 profile ID（null 时优先使用默认 profile，若不存在再使用旧模式） */
     private val _activeProfileId = MutableStateFlow<Long?>(null)
-    val activeProfileId: StateFlow<Long?> = _activeProfileId.asStateFlow()
+    override val activeProfileId: StateFlow<Long?> = _activeProfileId.asStateFlow()
 
     /**
      * 配置 Flow
      * 有激活 profile 时：观察 Room profile 变化（保存后自动触发）
-     * 无激活 profile 时：从 DataStore 读取
+     * 无激活 profile 时：优先观察默认 Room profile，未迁移时再从 DataStore 读取
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val configFlow: Flow<ApiConfig> = _activeProfileId.flatMapLatest { profileId ->
+    override val configFlow: Flow<ApiConfig> = _activeProfileId.flatMapLatest { profileId ->
         if (profileId != null) {
             // 观察 Room profile 的变化，保存后自动触发
             profileDao.getProfileByIdFlow(profileId).map { profile ->
                 if (profile != null) {
                     parseProfileConfig(profile.configJson)
                 } else {
-                    Log.w(TAG, "Profile $profileId not found, falling back to DataStore")
-                    loadFromDataStore()
+                    Log.w(TAG, "Profile $profileId not found, falling back to default profile")
+                    loadDefaultProfileConfigOrDataStore()
                 }
             }
         } else {
-            // 旧模式：从 DataStore 读取
-            flow { emit(loadFromDataStore()) }
+            profileDao.getDefaultProfileFlow().map { defaultProfile ->
+                if (defaultProfile != null) {
+                    parseProfileConfig(defaultProfile.configJson)
+                } else {
+                    loadFromDataStore()
+                }
+            }
         }
     }
 
     /**
      * 设置激活的 profile
      */
-    fun setActiveProfile(profileId: Long?) {
+    override fun setActiveProfile(profileId: Long?) {
         Log.d(TAG, "Setting active profile: $profileId")
         _activeProfileId.value = profileId
     }
@@ -118,12 +123,26 @@ class ApiConfigStore @Inject constructor(
         }
     }
 
+    private suspend fun loadDefaultProfileConfigOrDataStore(): ApiConfig {
+        return try {
+            val defaultProfile = profileDao.getDefaultProfile()
+            if (defaultProfile != null) {
+                parseProfileConfig(defaultProfile.configJson)
+            } else {
+                loadFromDataStore()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "默认配置档案读取失败，回退旧配置", e)
+            loadFromDataStore()
+        }
+    }
+
     /**
      * 保存配置
      * 如果有激活的 profile，保存到 Room；否则保存到 DataStore
      */
-    suspend fun save(config: ApiConfig) {
-        val profileId = _activeProfileId.value
+    override suspend fun save(config: ApiConfig) {
+        val profileId = _activeProfileId.value ?: profileDao.getDefaultProfile()?.id
         if (profileId != null) {
             saveToProfile(profileId, config)
         } else {
@@ -160,4 +179,16 @@ class ApiConfigStore @Inject constructor(
     private suspend fun saveToDataStore(config: ApiConfig) {
         val plainJson = json.encodeToString(config)
         val encrypted = cryptoHelper.encrypt(plainJson)
-        context.apiDa
+        context.apiDataStore.edit { prefs ->
+            prefs[API_CONFIG_KEY] = encrypted
+        }
+    }
+
+    /**
+     * 读取当前配置（LegacyConfigReaderPort 实现）
+     * 用于迁移场景：从 Flow 中获取当前配置
+     */
+    override suspend fun readConfig(): ApiConfig {
+        return configFlow.first()
+    }
+}

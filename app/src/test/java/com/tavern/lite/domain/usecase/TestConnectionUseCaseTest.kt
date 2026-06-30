@@ -1,8 +1,8 @@
 package com.tavern.lite.domain.usecase
 
 import com.tavern.lite.data.model.ApiConfig
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.ChatApiPort
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -13,7 +13,7 @@ import org.junit.Test
 
 class TestConnectionUseCaseTest {
 
-    private val chatApiService: ChatApiService = mockk()
+    private val chatApiService: ChatApiPort = mockk()
     private val useCase = TestConnectionUseCase(chatApiService)
 
     @Test

@@ -1,5 +1,6 @@
 package com.tavern.lite.network
 
+import com.tavern.lite.domain.port.EmotionDetectionPort
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,7 +13,7 @@ import javax.inject.Singleton
  * 3. 关键词匹配（长词权重 > 短词权重）
  */
 @Singleton
-class EmotionDetector @Inject constructor() {
+class EmotionDetector @Inject constructor() : EmotionDetectionPort {
 
     /** 动作描述模式：星号包裹的动作描述中的关键词 */
     private val actionKeywords = mapOf(
@@ -114,7 +115,7 @@ class EmotionDetector @Inject constructor() {
      * 检测文本中的情感。
      * 返回最匹配的情感标签，如果没有匹配则返回 "neutral"。
      */
-    fun detectEmotion(text: String): String {
+    override fun detectEmotion(text: String): String {
         if (text.isBlank()) return "neutral"
 
         val normalizedText = text.lowercase().trim()
@@ -178,5 +179,5 @@ class EmotionDetector @Inject constructor() {
     /**
      * 获取支持的情感列表。
      */
-    fun getSupportedEmotions(): List<String> = emotionKeywords.keys.toList()
+    override fun getSupportedEmotions(): List<String> = emotionKeywords.keys.toList()
 }

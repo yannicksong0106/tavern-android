@@ -6,7 +6,7 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.SummaryRepository
-import com.tavern.lite.network.ChatApiService
+import com.tavern.lite.domain.port.ChatApiPort
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -32,7 +32,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SummaryUseCaseTest {
 
-    @MockK private lateinit var chatApiService: ChatApiService
+    @MockK private lateinit var chatApiService: ChatApiPort
     @MockK private lateinit var summaryRepository: SummaryRepository
     @MockK private lateinit var chatRepository: ChatRepository
 

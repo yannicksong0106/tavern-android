@@ -56,6 +56,35 @@ A native Android reimplementation of [SillyTavern](https://github.com/SillyTaver
 ./gradlew testDebugUnitTest
 ```
 
+## Development Gate / 开发门禁
+
+Before committing v1.3.x stabilization work, run the local gate from the repository root and record real evidence in `DEV-LOG.md`.
+GitHub Actions mirrors this gate in `.github/workflows/ci.yml` for pushes to `main` and pull requests targeting `main`.
+
+PowerShell on Windows:
+
+```powershell
+.\gradlew.bat assembleDebug --no-daemon --console=plain
+.\gradlew.bat testDebugUnitTest --no-daemon --console=plain
+.\gradlew.bat lintDebug --no-daemon --console=plain
+.\gradlew.bat detekt --no-daemon --console=plain
+```
+
+For coverage-sensitive changes, also refresh Kover:
+
+```powershell
+.\gradlew.bat :app:koverXmlReportDebug --no-daemon --console=plain
+```
+
+Before staging or committing, check repository hygiene:
+
+```powershell
+git diff --cached --check
+git diff --check
+```
+
+Manual device smoke is tracked separately in `DEV-LOG.md`; do not mark streaming chat, stop/continue/regenerate, VN/BGM, settings profile, or preset preview as verified without a real device or emulator pass.
+
 ## API Support / API 支持
 
 | Provider | Status |

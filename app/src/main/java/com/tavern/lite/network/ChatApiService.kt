@@ -439,4 +439,5 @@ private suspend fun <T> retryWithBackoff(
  */
 internal fun parseRetryAfterHeader(value: String?): Long? {
     if (value.isNullOrBlank()) return null
-  
+    return value.trim().toLongOrNull()
+}

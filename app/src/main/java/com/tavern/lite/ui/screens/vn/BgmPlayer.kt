@@ -20,9 +20,18 @@ import javax.inject.Singleton
  * - 进入时 loadBgm，离开时 stop。
  */
 @Singleton
-class BgmPlayer @Inject constructor(
-    @ApplicationContext private val context: Context
+class BgmPlayer internal constructor(
+    private val mediaPlayerFactory: () -> MediaPlayer,
+    private val audioManager: AudioManager
 ) {
+    @Inject
+    constructor(
+        @ApplicationContext context: Context
+    ) : this(
+        mediaPlayerFactory = { MediaPlayer() },
+        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    )
+
     companion object {
         private const val TAG = "BgmPlayer"
         private const val FADE_DURATION_MS = 800L
@@ -39,7 +48,6 @@ class BgmPlayer @Inject constructor(
     private var fadeRunnable: Runnable? = null
 
     // AudioFocus
-    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hadAudioFocus: Boolean = false
 
@@ -92,7 +100,7 @@ class BgmPlayer @Inject constructor(
         currentPath = audioPath
 
         try {
-            mediaPlayer = MediaPlayer().apply {
+            mediaPlayer = mediaPlayerFactory().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_GAME)

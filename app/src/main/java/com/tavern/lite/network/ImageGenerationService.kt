@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.ApiProvider
+import com.tavern.lite.domain.port.ImageGenerationPort
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +23,7 @@ import javax.inject.Singleton
 class ImageGenerationService @Inject constructor(
     private val client: OkHttpClient,
     @ApplicationContext private val context: Context
-) {
+) : ImageGenerationPort {
     companion object {
         private const val TAG = "ImageGenerationService"
         private const val DEFAULT_OPENAI_IMAGE_MODEL = "dall-e-3"
@@ -35,8 +36,13 @@ class ImageGenerationService @Inject constructor(
      */
     suspend fun generateImage(
         prompt: String,
+        config: ApiConfig
+    ): String? = generateImage(prompt, config, "1024x1024")
+
+    override suspend fun generateImage(
+        prompt: String,
         config: ApiConfig,
-        size: String = "1024x1024"
+        size: String
     ): String? = withContext(Dispatchers.IO) {
         val provider = config.provider
         try {

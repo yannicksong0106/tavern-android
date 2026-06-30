@@ -74,4 +74,45 @@ class MemoryExtractorServiceTest {
         val facts = service.extractQuickFacts(1, "我叫小明", 1, 1)
         assertTrue(facts.all { it.source == "regex" })
     }
+
+    @Test
+    fun `extractQuickFacts returns empty for empty message`() {
+        val facts = service.extractQuickFacts(1, "", 1, 1)
+        assertTrue(facts.isEmpty())
+    }
+
+    @Test
+    fun `extractQuickFacts returns empty for whitespace only`() {
+        val facts = service.extractQuickFacts(1, "   \n\t  ", 1, 1)
+        assertTrue(facts.isEmpty())
+    }
+
+    @Test
+    fun `shouldExtract returns false for negative message count`() {
+        assertFalse(service.shouldExtract(-1))
+        assertFalse(service.shouldExtract(-10))
+    }
+
+    @Test
+    fun `shouldExtract returns false for 1 message`() {
+        assertFalse(service.shouldExtract(1))
+    }
+
+    @Test
+    fun `extractQuickFacts extracts multiple facts from one message`() {
+        val facts = service.extractQuickFacts(1, "我叫小明，我今年20岁，我喜欢猫", 1, 1)
+        assertTrue(facts.size >= 2)
+    }
+
+    @Test
+    fun `extractQuickFacts extracts event from commitment`() {
+        val facts = service.extractQuickFacts(1, "我一定会去看你", 1, 1)
+        assertTrue(facts.any { it.category == "event" })
+    }
+
+    @Test
+    fun `extractQuickFacts extracts event from promise`() {
+        val facts = service.extractQuickFacts(1, "我答应会帮助你", 1, 1)
+        assertTrue(facts.any { it.category == "event" })
+    }
 }

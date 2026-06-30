@@ -23,15 +23,22 @@ import com.tavern.lite.data.db.dao.BgmDao
 import com.tavern.lite.data.db.dao.SpriteDao
 import com.tavern.lite.data.db.dao.SummaryDao
 import com.tavern.lite.data.db.dao.ApiConfigProfileDao
+import com.tavern.lite.domain.port.ApiConfigStorePort
 import com.tavern.lite.domain.port.ChatApiPort
+import com.tavern.lite.domain.port.EmotionDetectionPort
+import com.tavern.lite.domain.port.ImageGenerationPort
 import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.port.MemoryExtractorPort
 import com.tavern.lite.domain.port.PromptBuilderPort
+import com.tavern.lite.domain.port.TemplateRendererPort
 import com.tavern.lite.domain.port.WebSearchPort
 import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.network.ChatApiServiceAdapter
+import com.tavern.lite.network.EmotionDetector
+import com.tavern.lite.network.ImageGenerationService
 import com.tavern.lite.network.MemoryExtractorService
 import com.tavern.lite.network.PromptBuilderAdapter
+import com.tavern.lite.network.TemplateRendererAdapter
 import com.tavern.lite.network.WebSearchServiceAdapter
 import dagger.Binds
 import dagger.Module
@@ -58,7 +65,11 @@ abstract class DomainBindingsModule {
     @Binds @Singleton abstract fun bindWebSearchPort(impl: WebSearchServiceAdapter): WebSearchPort
     @Binds @Singleton abstract fun bindPromptBuilderPort(impl: PromptBuilderAdapter): PromptBuilderPort
     @Binds @Singleton abstract fun bindLegacyConfigReader(impl: ApiConfigStore): LegacyConfigReaderPort
+    @Binds @Singleton abstract fun bindApiConfigStore(impl: ApiConfigStore): ApiConfigStorePort
     @Binds @Singleton abstract fun bindMemoryExtractor(impl: MemoryExtractorService): MemoryExtractorPort
+    @Binds @Singleton abstract fun bindImageGeneration(impl: ImageGenerationService): ImageGenerationPort
+    @Binds @Singleton abstract fun bindEmotionDetection(impl: EmotionDetector): EmotionDetectionPort
+    @Binds @Singleton abstract fun bindTemplateRenderer(impl: TemplateRendererAdapter): TemplateRendererPort
 }
 
 @Module
@@ -157,4 +168,51 @@ object AppModule {
     @Provides
     fun provideBgmDao(db: TavernDatabase): BgmDao = db.bgmDao()
 
-    @Provides
+    @Provides
+    fun provideQuickReplyDao(db: TavernDatabase): QuickReplyDao = db.quickReplyDao()
+
+    @Provides
+    fun provideApiConfigProfileDao(db: TavernDatabase): ApiConfigProfileDao = db.apiConfigProfileDao()
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(300, TimeUnit.SECONDS) // reasoning 模型 (DeepSeek-R1 等) 可能长时间无输出
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideJson(): Json {
+        return Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            encodeDefaults = true
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideMarkwon(@ApplicationContext context: Context): Markwon {
+        return Markwon.builder(context)
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(HtmlPlugin.create())
+            .usePlugin(JLatexMathPlugin.create(40f))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope {
+        return CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    }
+}

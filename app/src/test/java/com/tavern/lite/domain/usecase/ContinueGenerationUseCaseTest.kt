@@ -11,10 +11,10 @@ import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.ChatMessage
-import com.tavern.lite.network.ChatStreamChunk
-import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.model.ChatStreamChunk
+import com.tavern.lite.domain.port.ChatApiPort
+import com.tavern.lite.domain.port.PromptBuilderPort
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -22,7 +22,6 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
-import io.mockk.mockkObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -50,7 +49,8 @@ class ContinueGenerationUseCaseTest {
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
     @MockK private lateinit var helper: MessageExecutionHelper
-    @MockK private lateinit var chatApiService: ChatApiService
+    @MockK private lateinit var chatApiService: ChatApiPort
+    @MockK private lateinit var promptBuilder: PromptBuilderPort
 
     private lateinit var useCase: ContinueGenerationUseCase
     private val testDispatcher = StandardTestDispatcher()
@@ -63,9 +63,8 @@ class ContinueGenerationUseCaseTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
 
-        // Mock static PromptBuilder
-        mockkObject(PromptBuilder)
-        every { PromptBuilder.build(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns listOf(
+        // Mock PromptBuilderPort
+        every { promptBuilder.build(any<com.tavern.lite.domain.model.PromptConfig>()) } returns listOf(
             ChatMessage("system", "You are Alice"),
             ChatMessage("user", "Hello")
         )
@@ -92,7 +91,7 @@ class ContinueGenerationUseCaseTest {
 
         useCase = ContinueGenerationUseCase(
             chatRepository, worldBookRepository, memoryRepository,
-            authorNoteRepository, scriptRepository, presetRepository, memoryExtractionUseCase, helper
+            authorNoteRepository, scriptRepository, presetRepository, memoryExtractionUseCase, helper, promptBuilder
         )
     }
 

@@ -1,6 +1,6 @@
 package com.tavern.lite.ui.screens.preset
 
-import com.tavern.lite.network.TemplateEngine
+import com.tavern.lite.domain.port.TemplateRendererPort
 
 data class PresetTemplatePreview(
     val systemPrompt: String,
@@ -17,12 +17,13 @@ fun buildPresetTemplatePreview(
     systemPrompt: String,
     postHistoryInstructions: String,
     authorNote: String,
+    templateRenderer: TemplateRendererPort,
     variables: Map<String, Any?> = samplePresetVariables,
 ): PresetTemplatePreview {
     return PresetTemplatePreview(
-        systemPrompt = TemplateEngine.render(systemPrompt, variables),
-        postHistoryInstructions = TemplateEngine.render(postHistoryInstructions, variables),
-        authorNote = TemplateEngine.render(authorNote, variables)
+        systemPrompt = templateRenderer.render(systemPrompt, variables),
+        postHistoryInstructions = templateRenderer.render(postHistoryInstructions, variables),
+        authorNote = templateRenderer.render(authorNote, variables)
     )
 }
 

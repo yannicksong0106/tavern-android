@@ -6,14 +6,13 @@ import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.PresetRepository
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.ChatMessage
-import com.tavern.lite.network.PromptBuilder
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.port.PromptBuilderPort
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,6 +32,7 @@ class ProactiveMessageUseCaseTest {
     @MockK private lateinit var chatRepository: ChatRepository
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var helper: MessageExecutionHelper
+    @MockK private lateinit var promptBuilder: PromptBuilderPort
 
     private lateinit var useCase: ProactiveMessageUseCase
     private val testDispatcher = StandardTestDispatcher()
@@ -44,14 +44,12 @@ class ProactiveMessageUseCaseTest {
     fun setup() {
         MockKAnnotations.init(this, relaxed = true)
         Dispatchers.setMain(testDispatcher)
-        mockkObject(PromptBuilder)
-        useCase = ProactiveMessageUseCase(chatRepository, presetRepository, helper)
+        useCase = ProactiveMessageUseCase(chatRepository, presetRepository, helper, promptBuilder)
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
-        unmockkObject(PromptBuilder)
     }
 
     // ==================== sendProactiveMessage ====================
@@ -74,15 +72,7 @@ class ProactiveMessageUseCaseTest {
         coEvery { helper.personasafe(42L) } returns null
         coEvery { presetRepository.resolveEffectivePreset(1L, 42L) } returns null
         val promptMessages = listOf(ChatMessage("user", "hello"))
-        coEvery {
-            PromptBuilder.buildProactive(
-                character = character,
-                chatHistory = any(),
-                userName = "User",
-                persona = null,
-                preset = null
-            )
-        } returns promptMessages
+        every { promptBuilder.buildProactive(any()) } returns promptMessages
         val expectedResult = MessageExecutionHelper.ExecutionResult(
             assistantMsgId = 10L, fullResponse = "hi"
         )
@@ -118,17 +108,7 @@ class ProactiveMessageUseCaseTest {
         coEvery { helper.personasafe(42L) } returns null
         coEvery { presetRepository.resolveEffectivePreset(1L, 42L) } returns null
         val promptMessages = listOf(ChatMessage("user", "hello"))
-        coEvery {
-            PromptBuilder.buildGroupProactive(
-                characters = characters,
-                respondingCharacter = character,
-                chatHistory = any(),
-                characterMap = any(),
-                userName = "User",
-                persona = null,
-                preset = null
-            )
-        } returns promptMessages
+        every { promptBuilder.buildGroupProactive(any()) } returns promptMessages
         val expectedResult = MessageExecutionHelper.ExecutionResult(
             assistantMsgId = 11L, fullResponse = "group reply"
         )

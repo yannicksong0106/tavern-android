@@ -39,6 +39,9 @@ screen.png
 settings3.xml
 smoke_seed.sql
 
+# Smoke test artifacts
+tmp/
+
 # Screenshots (keep for README)
 
 # Room schema export

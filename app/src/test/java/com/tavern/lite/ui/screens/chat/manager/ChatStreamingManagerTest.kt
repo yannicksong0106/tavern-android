@@ -5,13 +5,13 @@ import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.model.GroupSchedulingStrategy
 import com.tavern.lite.data.repository.ChatRepository
+import com.tavern.lite.domain.port.ImageGenerationPort
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.ContinueGenerationUseCase
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.ImageGenerationService
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -22,7 +22,6 @@ import io.mockk.runs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -39,12 +38,12 @@ import org.junit.Test
 class ChatStreamingManagerTest {
 
     @MockK private lateinit var chatRepository: ChatRepository
-    @MockK private lateinit var apiConfigStore: ApiConfigStore
+    @MockK private lateinit var configReader: LegacyConfigReaderPort
     @MockK private lateinit var sendMessageUseCase: SendMessageUseCase
     @MockK private lateinit var continueGenerationUseCase: ContinueGenerationUseCase
     @MockK private lateinit var proactiveMessageUseCase: ProactiveMessageUseCase
     @MockK private lateinit var proactiveDialogueUseCase: ProactiveDialogueUseCase
-    @MockK private lateinit var imageGenerationService: ImageGenerationService
+    @MockK private lateinit var imageGenerationService: ImageGenerationPort
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var manager: ChatStreamingManager
@@ -56,14 +55,13 @@ class ChatStreamingManagerTest {
         MockKAnnotations.init(this, relaxed = true)
         Dispatchers.setMain(testDispatcher)
 
-        val configFlow = MutableStateFlow(ApiConfig())
-        every { apiConfigStore.configFlow } returns configFlow
+        coEvery { configReader.readConfig() } returns ApiConfig()
 
         manager = ChatStreamingManager(
             chatId = chatId,
             characterId = characterId,
             chatRepository = chatRepository,
-            apiConfigStore = apiConfigStore,
+            configReader = configReader,
             sendMessageUseCase = sendMessageUseCase,
             continueGenerationUseCase = continueGenerationUseCase,
             proactiveMessageUseCase = proactiveMessageUseCase,

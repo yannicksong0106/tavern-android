@@ -28,9 +28,9 @@ import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
 import com.tavern.lite.domain.usecase.QuickReplyAutomationTriggerUseCase
 import com.tavern.lite.domain.usecase.SendMessageUseCase
 import com.tavern.lite.domain.usecase.StScriptLiteExecutor
-import com.tavern.lite.network.ApiConfigStore
-import com.tavern.lite.network.EmotionDetector
-import com.tavern.lite.network.ImageGenerationService
+import com.tavern.lite.domain.port.EmotionDetectionPort
+import com.tavern.lite.domain.port.ImageGenerationPort
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.ui.screens.chat.manager.BranchManager
 import com.tavern.lite.ui.screens.chat.manager.ChatStreamingManager
 import com.tavern.lite.ui.screens.chat.manager.GroupChatSettingsManager
@@ -55,15 +55,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -71,7 +66,7 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val groupChatRepository: GroupChatRepository,
     private val quickReplyRepository: QuickReplyRepository,
-    private val apiConfigStore: ApiConfigStore,
+    private val configReader: LegacyConfigReaderPort,
     private val settingsStore: SettingsStore,
     private val promptInspectorBuilder: PromptInspectorBuilder,
     private val sendMessageUseCase: SendMessageUseCase,
@@ -85,9 +80,9 @@ class ChatViewModel @Inject constructor(
     private val summaryRepository: SummaryRepository,
     private val spriteRepository: SpriteRepository,
     private val bgmRepository: BgmRepository,
-    private val emotionDetector: EmotionDetector,
+    private val emotionDetector: EmotionDetectionPort,
     private val bgmPlayer: BgmPlayer,
-    private val imageGenerationService: ImageGenerationService,
+    private val imageGenerationService: ImageGenerationPort,
     private val ttsHelper: TtsHelper,
     private val sttHelper: SttHelper,
     val markwon: Markwon
@@ -132,11 +127,10 @@ class ChatViewModel @Inject constructor(
 
     // 分页加载：只显示最近 N 条消息，滚动到顶部时加载更多
     private val _pageSize = MutableStateFlow(PAGE_SIZE)
-    val displayMessages: StateFlow<List<MessageEntity>> = _pageSize.flatMapLatest { size ->
-        flow {
-            emit(chatRepository.getMessagesPage(chatId, size))
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val displayMessages: StateFlow<List<MessageEntity>> = combine(
+        messages, _pageSize
+    ) { all, size -> all.takeLast(size) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allMessagesLoaded: StateFlow<Boolean> = combine(
         messages, _pageSize
@@ -210,7 +204,7 @@ class ChatViewModel @Inject constructor(
             chatId = chatId,
             characterId = characterId,
             chatRepository = chatRepository,
-            apiConfigStore = apiConfigStore,
+            configReader = configReader,
             sendMessageUseCase = sendMessageUseCase,
             continueGenerationUseCase = continueGenerationUseCase,
             proactiveMessageUseCase = proactiveMessageUseCase,
@@ -421,7 +415,7 @@ class ChatViewModel @Inject constructor(
                     characterRepository = characterRepository,
                     chatRepository = chatRepository,
                     groupChatRepository = groupChatRepository,
-                    apiConfigStore = apiConfigStore,
+                    configReader = configReader,
                     summaryUseCase = summaryUseCase,
                     promptInspectorBuilder = promptInspectorBuilder
                 )
@@ -456,7 +450,7 @@ class ChatViewModel @Inject constructor(
             _isGeneratingSummary.value = true
             try {
                 val character = _character.value ?: return@launch
-                val config = apiConfigStore.configFlow.first()
+                val config = configReader.readConfig()
                 summaryUseCase.generateManualSummary(chatId, config, character.name)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e

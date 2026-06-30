@@ -3,12 +3,12 @@ package com.tavern.lite.ui.screens.chat.manager
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.domain.helper.MessageExecutionHelper
+import com.tavern.lite.domain.port.ImageGenerationPort
 import com.tavern.lite.domain.usecase.SendMessageUseCase
-import com.tavern.lite.network.ImageGenerationService
 
 internal class ImageGenerationCoordinator(
     private val chatId: Long,
-    private val imageGenerationService: ImageGenerationService,
+    private val imageGenerationService: ImageGenerationPort,
     private val sendMessageUseCase: SendMessageUseCase
 ) {
     suspend fun generateImageReply(

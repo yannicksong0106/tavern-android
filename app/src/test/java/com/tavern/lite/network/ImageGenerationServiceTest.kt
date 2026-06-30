@@ -406,6 +406,30 @@ class ImageGenerationServiceTest {
         }
     }
 
+    @Test
+    fun `generateImage returns null for Ollama provider`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.Ollama())
+        assertNull(service.generateImage("test", config))
+    }
+
+    @Test
+    fun `generateImage returns null for KoboldAI provider`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.KoboldAI())
+        assertNull(service.generateImage("test", config))
+    }
+
+    @Test
+    fun `generateImage returns null for OpenRouter provider`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.OpenRouter())
+        assertNull(service.generateImage("test", config))
+    }
+
+    @Test
+    fun `generateImage returns null for Custom provider`() = runTest {
+        val config = ApiConfig(provider = ApiProvider.Custom())
+        assertNull(service.generateImage("test", config))
+    }
+
     private fun requestBody(request: Request): String {
         val buffer = okio.Buffer()
         request.body!!.writeTo(buffer)

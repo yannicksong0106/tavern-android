@@ -12,11 +12,12 @@ import com.tavern.lite.data.repository.ScriptRepository
 import com.tavern.lite.data.repository.WorldBookRepository
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.domain.helper.MessageExecutionHelper
-import com.tavern.lite.network.ChatApiService
-import com.tavern.lite.network.WebSearchConfig
-import com.tavern.lite.network.WebSearchService
-import com.tavern.lite.network.ChatMessage
-import com.tavern.lite.network.ChatStreamChunk
+import com.tavern.lite.domain.model.ChatMessage
+import com.tavern.lite.domain.model.ChatStreamChunk
+import com.tavern.lite.domain.port.ChatApiPort
+import com.tavern.lite.domain.port.PromptBuilderPort
+import com.tavern.lite.domain.port.WebSearchPort
+import com.tavern.lite.data.model.WebSearchConfig
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -28,6 +29,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.runs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -47,7 +50,7 @@ import java.net.UnknownHostException
 class SendMessageUseCaseIntegrationTest {
 
     @MockK private lateinit var chatRepository: ChatRepository
-    @MockK private lateinit var chatApiService: ChatApiService
+    @MockK private lateinit var chatApiService: ChatApiPort
     @MockK private lateinit var worldBookRepository: WorldBookRepository
     @MockK private lateinit var memoryRepository: MemoryRepository
     @MockK private lateinit var authorNoteRepository: AuthorNoteRepository
@@ -55,8 +58,9 @@ class SendMessageUseCaseIntegrationTest {
     @MockK private lateinit var presetRepository: PresetRepository
     @MockK private lateinit var memoryExtractionUseCase: MemoryExtractionUseCase
     @MockK private lateinit var summaryUseCase: SummaryUseCase
-    @MockK private lateinit var webSearchService: WebSearchService
+    @MockK private lateinit var webSearchService: WebSearchPort
     @MockK private lateinit var settingsStore: SettingsStore
+    @MockK private lateinit var promptBuilder: PromptBuilderPort
 
     private lateinit var helper: MessageExecutionHelper
     private lateinit var useCase: SendMessageUseCase
@@ -96,8 +100,10 @@ class SendMessageUseCaseIntegrationTest {
             presetRepository = presetRepository,
             helper = helper,
             summaryUseCase = summaryUseCase,
+            promptBuilder = promptBuilder,
             webSearchService = webSearchService,
-            settingsStore = settingsStore
+            settingsStore = settingsStore,
+            appScope = CoroutineScope(Dispatchers.Unconfined)
         )
     }
 
@@ -118,6 +124,10 @@ class SendMessageUseCaseIntegrationTest {
         coEvery { chatRepository.appendToMessage(any(), any()) } just runs
         coEvery { chatRepository.updateMessageContent(any(), any()) } just runs
         coEvery { chatRepository.addSwipe(any(), any()) } just runs
+        every { promptBuilder.build(any()) } returns listOf(ChatMessage("system", "test"))
+        every { promptBuilder.buildGroupChat(any()) } returns listOf(ChatMessage("system", "test"))
+        every { promptBuilder.buildProactive(any()) } returns listOf(ChatMessage("system", "test"))
+        every { promptBuilder.buildGroupProactive(any()) } returns listOf(ChatMessage("system", "test"))
         coEvery { memoryExtractionUseCase.extractIfNeeded(any(), any(), any(), any(), any()) } just runs
         coEvery { summaryUseCase.getLatestSummaryText(any()) } returns null
         coEvery { summaryUseCase.shouldGenerateSummary(any(), any()) } returns false

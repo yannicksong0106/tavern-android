@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Tavern Lite</string>
 
@@ -241,7 +241,6 @@
     <string name="logic_and">AND (match all)</string>
     <string name="logic_or">OR (match any)</string>
     <string name="logic_not">NOT (exclude match)</string>
-    <string name="keywords_label">Keywords: %s</string>
     <string name="world_book_match_preview">Match Preview</string>
     <string name="world_book_match_preview_hint">Enter sample chat text to see which entries trigger</string>
     <string name="matched_tag">Matched</string>
@@ -280,7 +279,10 @@
     <string name="memory_count">%d memories</string>
     <string name="expires_in">Expires in %s</string>
     <string name="search_memories">Search memories</string>
-    <string name="expires_hours">%d hours</string>
+    <plurals name="expires_hours">
+        <item quantity="one">1 hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
 
     <!-- Persona -->
     <string name="persona_title">User Personas</string>

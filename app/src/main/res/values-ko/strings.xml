@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Tavern Lite</string>
 
@@ -247,7 +247,6 @@
     <string name="logic_and">AND (전부 일치)</string>
     <string name="logic_or">OR (하나라도 일치)</string>
     <string name="logic_not">NOT (일치 제외)</string>
-    <string name="keywords_label">키워드: %s</string>
     <string name="world_book_match_preview">매칭 미리보기</string>
     <string name="world_book_match_preview_hint">대화 예시를 입력해 어떤 항목이 발동되는지 확인</string>
     <string name="matched_tag">매칭됨</string>
@@ -280,7 +279,9 @@
     <string name="memory_count">%d개 메모리</string>
     <string name="expires_in">%s 후 만료</string>
     <string name="search_memories">메모리 검색</string>
-    <string name="expires_hours">%d시간</string>
+    <plurals name="expires_hours">
+        <item quantity="other">%d시간</item>
+    </plurals>
 
     <!-- 페르소나 -->
     <string name="persona_title">사용자 페르소나</string>

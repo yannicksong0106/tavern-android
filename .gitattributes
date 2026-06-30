@@ -1,0 +1,29 @@
+# Kotlin sources — enforce UTF-8, block NUL pollution, line diffs
+*.kt     working-tree-encoding=UTF-8 diff=kotlin text eol=lf
+*.kts    working-tree-encoding=UTF-8 diff=kotlin text eol=lf
+
+# Other text sources
+*.md     text eol=lf
+*.xml    text eol=lf
+*.json   text eol=lf
+*.toml   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.sql    text eol=lf
+*.pro    text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Binary resources
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ico    binary
+*.apk    binary
+*.jar    binary
+*.class  binary
+
+# Gradle wrapper (preserve as-is)
+gradlew     text eol=lf
+gradlew.bat text eol=crlf

@@ -1,6 +1,8 @@
 package com.tavern.lite.network
 
 import android.util.Log
+import com.tavern.lite.data.model.SearchEngine
+import com.tavern.lite.data.model.WebSearchConfig
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic

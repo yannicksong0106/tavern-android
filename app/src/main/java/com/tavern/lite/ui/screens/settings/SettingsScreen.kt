@@ -682,4 +682,5 @@ private fun AboutEntrySection(onDevLogClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-  
+    }
+}

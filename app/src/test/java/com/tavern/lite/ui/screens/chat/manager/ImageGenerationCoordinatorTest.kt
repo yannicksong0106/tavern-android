@@ -3,8 +3,8 @@ package com.tavern.lite.ui.screens.chat.manager
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.domain.helper.MessageExecutionHelper
+import com.tavern.lite.domain.port.ImageGenerationPort
 import com.tavern.lite.domain.usecase.SendMessageUseCase
-import com.tavern.lite.network.ImageGenerationService
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -17,7 +17,7 @@ import org.junit.Test
 
 class ImageGenerationCoordinatorTest {
 
-    @MockK private lateinit var imageGenerationService: ImageGenerationService
+    @MockK private lateinit var imageGenerationService: ImageGenerationPort
     @MockK private lateinit var sendMessageUseCase: SendMessageUseCase
 
     private val chatId = 10L

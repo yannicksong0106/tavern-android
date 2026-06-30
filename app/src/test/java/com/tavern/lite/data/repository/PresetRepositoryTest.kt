@@ -3,8 +3,12 @@ package com.tavern.lite.data.repository
 import com.tavern.lite.data.db.dao.CharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.PresetDao
+import com.tavern.lite.data.db.entity.CharacterEntity
+import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.store.SettingsStore
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -12,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -19,15 +24,21 @@ class PresetRepositoryTest {
 
     private lateinit var repository: PresetRepository
     private lateinit var fakeDao: FakePresetDao
+    private lateinit var characterDao: CharacterDao
+    private lateinit var chatDao: ChatDao
+    private lateinit var settingsStore: SettingsStore
 
     @Before
     fun setup() {
         fakeDao = FakePresetDao()
+        characterDao = mockk(relaxed = true)
+        chatDao = mockk(relaxed = true)
+        settingsStore = mockk(relaxed = true)
         repository = PresetRepository(
             presetDao = fakeDao,
-            characterDao = mockk(relaxed = true),
-            chatDao = mockk(relaxed = true),
-            settingsStore = mockk(relaxed = true)
+            characterDao = characterDao,
+            chatDao = chatDao,
+            settingsStore = settingsStore
         )
     }
 
@@ -87,6 +98,94 @@ class PresetRepositoryTest {
         repository.updatePreset(preset)
         assertNotNull(fakeDao.updatedPreset)
         assertEquals("Updated", fakeDao.updatedPreset!!.name)
+    }
+
+    // ==================== resolveEffectivePreset ====================
+
+    @Test
+    fun `resolveEffectivePreset returns null when no presets configured`() = runTest {
+        every { settingsStore.globalPresetIdFlow } returns flowOf(0L)
+        coEvery { characterDao.getCharacterById(any()) } returns null
+        coEvery { chatDao.getChatById(any()) } returns null
+        assertNull(repository.resolveEffectivePreset(1, 1))
+    }
+
+    @Test
+    fun `resolveEffectivePreset returns global when only global set`() = runTest {
+        val global = PresetEntity(id = 10, name = "Global", systemPrompt = "Global prompt")
+        fakeDao.inserted.add(global)
+        every { settingsStore.globalPresetIdFlow } returns flowOf(10L)
+        coEvery { characterDao.getCharacterById(any()) } returns null
+        coEvery { chatDao.getChatById(any()) } returns null
+        val result = repository.resolveEffectivePreset(1, 1)
+        assertNotNull(result)
+        assertEquals("Global prompt", result!!.systemPrompt)
+    }
+
+    @Test
+    fun `resolveEffectivePreset returns null when globalPresetId is 0 and no char or chat preset`() = runTest {
+        every { settingsStore.globalPresetIdFlow } returns flowOf(0L)
+        coEvery { characterDao.getCharacterById(any()) } returns CharacterEntity(id = 1, name = "Alice")
+        coEvery { chatDao.getChatById(any()) } returns ChatEntity(id = 1, characterId = 1)
+        assertNull(repository.resolveEffectivePreset(1, 1))
+    }
+
+    @Test
+    fun `resolveEffectivePreset merges character preset over global`() = runTest {
+        val global = PresetEntity(id = 10, name = "Global", systemPrompt = "Global prompt", authorNote = "Global note")
+        val charPreset = PresetEntity(id = 20, name = "Char", systemPrompt = "Char prompt")
+        fakeDao.inserted.add(global)
+        fakeDao.inserted.add(charPreset)
+        every { settingsStore.globalPresetIdFlow } returns flowOf(10L)
+        coEvery { characterDao.getCharacterById(any()) } returns CharacterEntity(id = 1, name = "Alice", presetId = 20)
+        coEvery { chatDao.getChatById(any()) } returns ChatEntity(id = 1, characterId = 1)
+        val result = repository.resolveEffectivePreset(1, 1)
+        assertNotNull(result)
+        assertEquals("Char prompt", result!!.systemPrompt)
+        assertEquals("Global note", result.authorNote)
+    }
+
+    @Test
+    fun `resolveEffectivePreset merges chat preset over character over global`() = runTest {
+        val global = PresetEntity(id = 10, name = "Global", systemPrompt = "Global", postHistoryInstructions = "Global post")
+        val charPreset = PresetEntity(id = 20, name = "Char", systemPrompt = "Char", postHistoryInstructions = "Char post")
+        val chatPreset = PresetEntity(id = 30, name = "Chat", systemPrompt = "Chat")
+        fakeDao.inserted.add(global)
+        fakeDao.inserted.add(charPreset)
+        fakeDao.inserted.add(chatPreset)
+        every { settingsStore.globalPresetIdFlow } returns flowOf(10L)
+        coEvery { characterDao.getCharacterById(any()) } returns CharacterEntity(id = 1, name = "Alice", presetId = 20)
+        coEvery { chatDao.getChatById(any()) } returns ChatEntity(id = 1, characterId = 1, presetId = 30)
+        val result = repository.resolveEffectivePreset(1, 1)
+        assertNotNull(result)
+        assertEquals("Chat", result!!.systemPrompt)
+        assertEquals("Char post", result.postHistoryInstructions)
+    }
+
+    @Test
+    fun `resolveEffectivePreset returns single character preset when no global`() = runTest {
+        val charPreset = PresetEntity(id = 20, name = "Char", systemPrompt = "Char only")
+        fakeDao.inserted.add(charPreset)
+        every { settingsStore.globalPresetIdFlow } returns flowOf(0L)
+        coEvery { characterDao.getCharacterById(any()) } returns CharacterEntity(id = 1, name = "Alice", presetId = 20)
+        coEvery { chatDao.getChatById(any()) } returns null
+        val result = repository.resolveEffectivePreset(1, 1)
+        assertNotNull(result)
+        assertEquals("Char only", result!!.systemPrompt)
+    }
+
+    @Test
+    fun `resolveEffectivePreset isDefault merges via OR`() = runTest {
+        val global = PresetEntity(id = 10, name = "Global", isDefault = true)
+        val charPreset = PresetEntity(id = 20, name = "Char", isDefault = false)
+        fakeDao.inserted.add(global)
+        fakeDao.inserted.add(charPreset)
+        every { settingsStore.globalPresetIdFlow } returns flowOf(10L)
+        coEvery { characterDao.getCharacterById(any()) } returns CharacterEntity(id = 1, name = "Alice", presetId = 20)
+        coEvery { chatDao.getChatById(any()) } returns null
+        val result = repository.resolveEffectivePreset(1, 1)
+        assertNotNull(result)
+        assertTrue(result!!.isDefault)
     }
 }
 

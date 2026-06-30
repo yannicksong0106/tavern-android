@@ -1,6 +1,6 @@
 package com.tavern.lite.ui.screens.chat
 
-import com.tavern.lite.network.ChatMessage
+import com.tavern.lite.domain.model.ChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

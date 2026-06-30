@@ -44,4 +44,6 @@ class ProfileMigrationUseCase @Inject constructor(
         )
 
         Log.d(TAG, "Migration complete: created default profile '${DEFAULT_PROFILE_NAME}'")
-    
+        return true
+    }
+}

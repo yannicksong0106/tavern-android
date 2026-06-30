@@ -1447,6 +1447,75 @@ abstract class TavernDatabase : RoomDatabase() {
 
         val MIGRATION_32_33 = object : Migration(32, 33) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                addColumnIfMissing(
+                    db,
+                    "world_book_entries",
+                    "automation_id",
+                    "automation_id TEXT NOT NULL DEFAULT ''"
+                )
+
+                db.execSQL("ALTER TABLE messages RENAME TO _messages_old")
+                db.execSQL("""
+                    CREATE TABLE messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        chat_id INTEGER NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        character_id INTEGER,
+                        parent_id INTEGER,
+                        branch_id INTEGER,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at INTEGER NOT NULL,
+                        swipe_content TEXT NOT NULL DEFAULT '[]',
+                        swipe_index INTEGER NOT NULL DEFAULT 0,
+                        reply_to_id INTEGER,
+                        is_pinned INTEGER NOT NULL DEFAULT 0,
+                        image_paths TEXT NOT NULL DEFAULT '[]',
+                        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO messages (
+                        id,
+                        chat_id,
+                        role,
+                        content,
+                        character_id,
+                        parent_id,
+                        branch_id,
+                        is_active,
+                        created_at,
+                        swipe_content,
+                        swipe_index,
+                        reply_to_id,
+                        is_pinned,
+                        image_paths
+                    )
+                    SELECT
+                        id,
+                        chat_id,
+                        role,
+                        content,
+                        character_id,
+                        parent_id,
+                        branch_id,
+                        is_active,
+                        created_at,
+                        swipe_content,
+                        swipe_index,
+                        reply_to_id,
+                        is_pinned,
+                        image_paths
+                    FROM _messages_old
+                """.trimIndent())
+                db.execSQL("DROP TABLE _messages_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_id ON messages(chat_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_parent_id ON messages(parent_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_character_id ON messages(character_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_branch_id ON messages(branch_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_created ON messages(chat_id, is_active, created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_chat_active_pinned ON messages(chat_id, is_active, is_pinned)")
+
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS api_config_profiles (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -1461,9 +1530,9 @@ abstract class TavernDatabase : RoomDatabase() {
                         updated_at INTEGER NOT NULL
                     )
                 """.trimIndent())
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_is_default ON api_config_profiles(is_default)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_bound_character_id ON api_config_profiles(bound_character_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_api_config_profiles_bound_chat_id ON api_config_profiles(bound_chat_id)")
+                db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_is_default")
+                db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_bound_character_id")
+                db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_bound_chat_id")
             }
         }
     }

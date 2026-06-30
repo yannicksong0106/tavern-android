@@ -12,9 +12,9 @@ import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.data.store.TtsSettings
 import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
 import com.tavern.lite.data.repository.ApiConfigProfileRepository
+import com.tavern.lite.domain.port.ApiConfigStorePort
 import com.tavern.lite.domain.usecase.ProfileMigrationUseCase
 import com.tavern.lite.domain.usecase.TestConnectionUseCase
-import com.tavern.lite.network.ApiConfigStore
 import com.tavern.lite.data.model.SearchEngine
 import com.tavern.lite.data.model.WebSearchConfig
 import com.tavern.lite.util.BackupManager
@@ -52,7 +52,7 @@ sealed class ConnectionTestState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val apiConfigStore: ApiConfigStore,
+    private val apiConfigStore: ApiConfigStorePort,
     private val testConnectionUseCase: TestConnectionUseCase,
     private val settingsStore: SettingsStore,
     private val proactiveWorkScheduler: ProactiveWorkScheduler,
@@ -400,4 +400,5 @@ class SettingsViewModel @Inject constructor(
             bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
             else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
         }
-    
+    }
+}

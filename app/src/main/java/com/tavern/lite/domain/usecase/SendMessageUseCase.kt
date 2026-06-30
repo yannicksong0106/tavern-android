@@ -285,4 +285,14 @@ class SendMessageUseCase @Inject constructor(
             characterMap = characterMap,
             isGroupChat = true
         )
-        val promptMessages = prom
+        val promptMessages = promptBuilder.buildGroupChat(promptConfig)
+
+        val result = helper.executeAndSave(chatId, targetCharacter.id, targetCharacter.name, promptMessages, config, userContent)
+
+        if (result != null) {
+            tryTriggerSummary(chatId, config, targetCharacter.name)
+        }
+
+        return result
+    }
+}

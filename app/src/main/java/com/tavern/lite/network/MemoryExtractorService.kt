@@ -56,7 +56,7 @@ class MemoryExtractorService @Inject constructor(
     /**
      * Determine if extraction should run based on message count.
      */
-    fun shouldExtract(totalMessages: Int): Boolean {
+    override fun shouldExtract(totalMessages: Int): Boolean {
         return totalMessages > 0 && totalMessages % EXTRACTION_INTERVAL == 0
     }
 
@@ -64,7 +64,7 @@ class MemoryExtractorService @Inject constructor(
      * Quick regex-based extraction from a single user message.
      * Returns facts that can be stored immediately without LLM call.
      */
-    fun extractQuickFacts(
+    override fun extractQuickFacts(
         characterId: Long,
         userMessage: String,
         chatId: Long?,
@@ -169,7 +169,7 @@ class MemoryExtractorService @Inject constructor(
      * LLM-based batch extraction from recent conversation.
      * Extracts structured facts in all categories.
      */
-    suspend fun extractWithLLM(
+    override suspend fun extractWithLLM(
         characterId: Long,
         messages: List<MessageEntity>,
         characterName: String,
@@ -459,4 +459,8 @@ $conversation
 
     private fun isValidCategory(category: String): Boolean {
         return category in listOf(
-            "fact", "emotion", "preference", "event",
+            "fact", "emotion", "preference", "event", "habit",
+            "character_consistency", "temporary"
+        )
+    }
+}

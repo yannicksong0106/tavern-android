@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tavern.lite.data.db.entity.PresetEntity
 import com.tavern.lite.data.repository.PresetRepository
+import com.tavern.lite.domain.port.TemplateRendererPort
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PresetViewModel @Inject constructor(
-    private val presetRepository: PresetRepository
+    private val presetRepository: PresetRepository,
+    private val templateRenderer: TemplateRendererPort
 ) : ViewModel() {
 
     val presets: StateFlow<List<PresetEntity>> = presetRepository.getAllPresets()
@@ -43,5 +45,18 @@ class PresetViewModel @Inject constructor(
         viewModelScope.launch {
             presetRepository.setDefaultPreset(id)
         }
+    }
+
+    fun buildTemplatePreview(
+        systemPrompt: String,
+        postHistoryInstructions: String,
+        authorNote: String
+    ): PresetTemplatePreview {
+        return buildPresetTemplatePreview(
+            systemPrompt = systemPrompt,
+            postHistoryInstructions = postHistoryInstructions,
+            authorNote = authorNote,
+            templateRenderer = templateRenderer
+        )
     }
 }

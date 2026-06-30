@@ -2,20 +2,19 @@ package com.tavern.lite.ui.screens.chat.manager
 
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.MessageEntity
+import com.tavern.lite.domain.port.LegacyConfigReaderPort
 import com.tavern.lite.domain.usecase.ProactiveDialogueUseCase
 import com.tavern.lite.domain.usecase.ProactiveMessageUseCase
-import com.tavern.lite.network.ApiConfigStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class ProactiveDialogueCoordinator(
     private val chatId: Long,
-    private val apiConfigStore: ApiConfigStore,
+    private val configReader: LegacyConfigReaderPort,
     private val proactiveMessageUseCase: ProactiveMessageUseCase,
     private val proactiveDialogueUseCase: ProactiveDialogueUseCase,
     private val scope: CoroutineScope,
@@ -99,7 +98,7 @@ class ProactiveDialogueCoordinator(
                 isProactiveMessage = true
                 try {
                     val character = characterProvider() ?: return@withLock
-                    val config = apiConfigStore.configFlow.first()
+                    val config = configReader.readConfig()
                     val result = proactiveMessageUseCase.sendProactiveMessage(chatId, character, config)
                     onAssistantReplyCommit(
                         result?.assistantMsgId,
@@ -127,7 +126,7 @@ class ProactiveDialogueCoordinator(
                 isProactiveMessage = true
                 try {
                     val characters = groupCharactersProvider()
-                    val config = apiConfigStore.configFlow.first()
+                    val config = configReader.readConfig()
                     val result = proactiveMessageUseCase.sendProactiveGroupMessage(chatId, characters, character, config)
                     onAssistantReplyCommit(
                         result?.assistantMsgId,

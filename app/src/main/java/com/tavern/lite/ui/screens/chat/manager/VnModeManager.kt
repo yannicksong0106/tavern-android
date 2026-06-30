@@ -3,7 +3,7 @@ package com.tavern.lite.ui.screens.chat.manager
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.repository.BgmRepository
 import com.tavern.lite.data.repository.SpriteRepository
-import com.tavern.lite.network.EmotionDetector
+import com.tavern.lite.domain.port.EmotionDetectionPort
 import com.tavern.lite.ui.screens.vn.BgmPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  */
 class VnModeManager(
     private val spriteRepository: SpriteRepository,
-    private val emotionDetector: EmotionDetector,
+    private val emotionDetector: EmotionDetectionPort,
     private val bgmRepository: BgmRepository,
     private val bgmPlayer: BgmPlayer,
     private val scope: CoroutineScope
