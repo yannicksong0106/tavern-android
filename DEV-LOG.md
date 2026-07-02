@@ -1,5 +1,64 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-02 — v1.3.1 打 tag + Phase X1/X2 STscript 命令引擎扩展 ✅
+
+**背景**: v1.3.1 收口加固全量完成，CI 首次通过后打 tag 正式收口，开始 v1.4.0 新功能开发。Phase X（STscript 命令引擎）是 STscript Lite 的自然扩展，在现有 /send /trigger /continue /setvar /getvar /echo /input 基础上新增 4 个高频命令。
+
+### v1.3.1 收口
+
+| 项目 | 说明 |
+|------|------|
+| 版本号 | `versionCode 23`, `versionName "1.3.1"` |
+| tag | `v1.3.1` pushed |
+| README | 版本号同步更新 |
+
+### Phase X1/X2 改动范围
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 新增命令类型 | `StScriptLite.kt` | `StScriptCommandType` 新增 `Delay` / `Cancel` / `ClearVar` / `If`；autoRunSafeCommands 补入 Delay/ClearVar/If（Cancel 不安全） |
+| 解析器扩展 | `StScriptLiteExecutor.kt` | parser 识别 `/delay`(别名 `/sleep` `/wait`)、`/cancel`(别名 `/stop`)、`/clearvar`(别名 `/clear`)、`/if` |
+| 执行器扩展 | `StScriptLiteExecutor.kt` | executor 处理 4 个新命令；`/if` 条件为假时通过 `skipNext` 跳过紧接的下一行命令（ST 风格单行 if） |
+| 新增 Action | `StScriptLiteExecutor.kt` | `StScriptAction.Delay(millis)` / `StScriptAction.CancelGeneration` |
+| UI 适配 | `QuickReplyResultHandler.kt` | `when` 分支补 `Delay`（当前忽略，UI 异步处理）和 `CancelGeneration`（调 `onCancelGeneration`） |
+| 条件评估 | `StScriptLiteExecutor.kt` | `evaluateCondition` 支持 `==` `!=` `contains` `>` `<` `>=` `<=` 和无操作符 truthy/falsy |
+| 测试 | `StScriptLiteExecutorTest.kt` | 新增 28 个测试覆盖解析/执行/权限/auto-run/分支跳转 |
+
+### /if 命令实现
+
+```
+/if {{mood}} == happy
+/send You look happy!
+```
+- 条件为真：正常执行下一行
+- 条件为假：跳过下一行（`skipNext` 标志）
+- 支持：`==` `!=` `contains` `>` `<` `>=` `<=` 和无操作符（非空/非零/非 false 为真）
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL |
+| `lintDebug` | BUILD SUCCESSFUL — 0 errors, 14 warnings |
+| `detekt` | BUILD SUCCESSFUL — 0 code smells |
+
+### 提交
+
+| commit | 说明 |
+|--------|------|
+| `db57cc6` | release: v1.3.1 版本号升级 |
+| `880bdcb` | feat(X): STscript 命令引擎扩展 — /delay /cancel /clearvar /if |
+| 本轮 | fix(X): /if 分支跳转改进 + 测试更新 |
+
+### 后续
+
+- Phase X3：宏系统（`/macro` 定义和展开）
+- Phase X4：STscript 编辑 UI（命令辅助/语法高亮）
+- M3 剩余设备 smoke 后补
+
+---
+
 ## 2026-07-02 — 首次 CI run 通过 + .gitignore 修复 ✅
 
 **背景**: push 到 GitHub 后 CI 连续失败 2 次，根因都是 `.gitignore` 误排除关键文件。修复后首次 CI run 全量通过。

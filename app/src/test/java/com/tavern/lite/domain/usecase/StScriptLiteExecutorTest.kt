@@ -354,50 +354,84 @@ class StScriptLiteExecutorTest {
     }
 
     @Test
-    fun `if command with equality false produces empty echo`() {
+    fun `if command with equality false skips next command`() {
         val result = executor.execute(
-            source = "/if {{mood}} == sad",
+            source = "/if {{mood}} == sad\n/send should_not_send",
+            permissions = StScriptPermissions(canSendMessages = true),
             initialVariables = mapOf("mood" to "happy")
         )
-        // if 条件为假，产生空 echo（当前简化实现）
-        assertFalse(result.hasBlockedCommands)
+        // 条件为假，下一行 /send 被跳过
+        assertTrue(result.actions.isEmpty())
+    }
+
+    @Test
+    fun `if command with equality true executes next command`() {
+        val result = executor.execute(
+            source = "/if {{mood}} == happy\n/send should_send",
+            permissions = StScriptPermissions(canSendMessages = true),
+            initialVariables = mapOf("mood" to "happy")
+        )
+        // 条件为真，下一行 /send 正常执行
+        assertEquals(1, result.actions.size)
+        assertTrue(result.actions[0] is StScriptAction.SendMessage)
+        assertEquals("should_send", (result.actions[0] as StScriptAction.SendMessage).content)
     }
 
     @Test
     fun `if command with contains operator`() {
         val result = executor.execute(
-            source = "/if {{text}} contains hello",
+            source = "/if {{text}} contains hello\n/echo matched",
             initialVariables = mapOf("text" to "hello world")
         )
-        assertFalse(result.hasBlockedCommands)
+        // 条件为真，/echo 执行
+        assertTrue(result.echoes.contains("matched"))
+    }
+
+    @Test
+    fun `if command with contains false skips next`() {
+        val result = executor.execute(
+            source = "/if {{text}} contains goodbye\n/echo should_skip",
+            initialVariables = mapOf("text" to "hello world")
+        )
+        // 条件为假，/echo 被跳过
+        assertFalse(result.echoes.contains("should_skip"))
     }
 
     @Test
     fun `if command with numeric comparison`() {
         val result = executor.execute(
-            source = "/if {{count}} > 5",
+            source = "/if {{count}} > 5\n/echo big",
             initialVariables = mapOf("count" to "10")
         )
-        assertFalse(result.hasBlockedCommands)
+        assertTrue(result.echoes.contains("big"))
+    }
+
+    @Test
+    fun `if command with numeric comparison false skips next`() {
+        val result = executor.execute(
+            source = "/if {{count}} > 5\n/echo should_skip",
+            initialVariables = mapOf("count" to "3")
+        )
+        assertFalse(result.echoes.contains("should_skip"))
     }
 
     @Test
     fun `if command with non-zero value is truthy`() {
         val result = executor.execute(
-            source = "/if {{flag}}",
+            source = "/if {{flag}}\n/echo truthy",
             initialVariables = mapOf("flag" to "1")
         )
-        assertFalse(result.hasBlockedCommands)
+        assertTrue(result.echoes.contains("truthy"))
     }
 
     @Test
-    fun `if command with zero value is falsy`() {
+    fun `if command with zero value is falsy skips next`() {
         val result = executor.execute(
-            source = "/if {{flag}}",
+            source = "/if {{flag}}\n/echo should_skip",
             initialVariables = mapOf("flag" to "0")
         )
-        // 0 视为假，产生空 echo
-        assertFalse(result.hasBlockedCommands)
+        // 0 视为假，跳过下一行
+        assertFalse(result.echoes.contains("should_skip"))
     }
 
     @Test

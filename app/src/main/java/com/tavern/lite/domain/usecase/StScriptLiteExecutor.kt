@@ -107,8 +107,14 @@ class StScriptLiteExecutor @Inject constructor(
         val echoes = mutableListOf<String>()
         val blockedCommands = mutableListOf<StScriptBlockedCommand>()
         val unknownCommands = mutableListOf<StScriptCommand>()
+        var skipNext = false
 
-        for (command in program.commands) {
+        for ((index, command) in program.commands.withIndex()) {
+            if (skipNext) {
+                skipNext = false
+                continue
+            }
+
             val autoRunBlockReason = autoRunBlockReason(command, program.permissions, autoRun)
             if (autoRunBlockReason != null) {
                 blockedCommands += StScriptBlockedCommand(command, autoRunBlockReason)
@@ -186,13 +192,10 @@ class StScriptLiteExecutor @Inject constructor(
                     }
                 }
                 StScriptCommandType.If -> {
-                    // /if {{var}} operator value then-command
-                    // 简单条件：解析 argument，如果条件为真则执行 then 后的命令
+                    // /if {{var}} operator value — 条件为假时跳过紧接的下一行命令
                     val conditionResult = evaluateCondition(command.argument, variables)
                     if (!conditionResult) {
-                        // 条件为假，跳过下一行命令（由 executor 外层处理）
-                        // 当前实现：条件为假时记录 echo，真正分支需要更复杂的解析器
-                        echoes += ""
+                        skipNext = true
                     }
                 }
                 StScriptCommandType.Unknown -> {
