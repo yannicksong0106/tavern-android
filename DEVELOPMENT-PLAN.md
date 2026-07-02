@@ -1,7 +1,7 @@
 # 酒馆 AI (TavernAndroid) 开发计划
 
-> 更新于 2026-06-30 | 基于 DEV-LOG 深度复盘 + 仓库健康扫描（322 文件 NUL 审计）+ P2-3 UI network 依赖收敛现状 + A8 本地门禁复跑 + M1 提交边界/CRLF 二次复核 + README/CI 开发门禁固化 + M3 旧库迁移与核心可见流式对话 smoke 验证
-> 当前状态：A0–A7 架构整改已完成；P2-2/P2-3 已扫到 domain/UI 主代码 0 个 `network` 直接 import，UI 主代码 0 个 DAO 直接 import；A8 本地 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已刷新；README 与现有 `.github/workflows/ci.yml` 已固化本地/CI 门禁；设备 smoke 已完成旧库覆盖安装启动、Room 32→33 迁移、首页渲染与核心流式对话可见验收，停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览与 push/PR 后真实 CI run 仍待验收；工作树 `app/src` 311 个 .kt 已扫到 0 NUL，但 HEAD 中 6 个 .kt 污染需提交后才闭合
+> 更新于 2026-07-01 | 基于 DEV-LOG 深度复盘 + 仓库健康扫描（322 文件 NUL 审计）+ P2-3 UI network 依赖收敛现状 + A8 本地门禁复跑 + M1 提交闭合复核 + README/CI 开发门禁固化 + M3 旧库迁移与核心可见流式对话 smoke 验证
+> 当前状态：A0–A7 架构整改已完成；P2-2/P2-3 已扫到 domain/UI 主代码 0 个 `network` 直接 import，UI 主代码 0 个 DAO 直接 import；P0-1/P0-2/P0-3 已随 `d24700c` 提交闭合，HEAD 中 6 个历史 NUL 污染 `.kt` 文件已复扫为 0，`.gitattributes` 已落入 HEAD；A8 本地 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已刷新；README 与现有 `.github/workflows/ci.yml` 已固化本地/CI 门禁；设备 smoke 已完成旧库覆盖安装启动、Room 32→33 迁移、首页渲染与核心流式对话可见验收，停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览与 push/PR 后真实 CI run 仍待验收；当前未提交改动仅为 `DEV-LOG.md` / `DEVELOPMENT-PLAN.md` 文档状态同步。
 > **核心原则：扩展功能永远往后推，重点永远是优化目前版本，确保目前的功能能够使用，并且尽量使这些功能获得更好的体验。**
 > **验收原则：没有证据只能写"未验收"，文档勾选不算结果；"通过"只能来自实际命令、测试报告、设备手测或代码证据。**
 
@@ -27,17 +27,15 @@
 - A7 配置档案建模 ✅（ApiConfigProfile + 迁移 + SettingsVM 接入）
 
 ### 进行中
-- **端口-适配器架构迁移收尾**：domain/usecase 与 UI 主代码均已改为经 domain port 访问 network 实现；当前工作树仍有较多未提交改动，提交前需整理暂存区/工作树混合状态、确认 CRLF→LF 规范化提示是否纳入同一批提交。
+- **端口-适配器架构迁移收尾**：domain/usecase 与 UI 主代码均已改为经 domain port 访问 network 实现，并已随 `d24700c` 提交；后续只保留边界回归扫描与必要测试复跑。
 - **A8 质量门禁复核**：本轮 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已生成；README 已新增本地开发门禁清单，现有 GitHub Actions CI 已同步覆盖本地 4 条门禁与 Kover；旧库覆盖安装启动、Room 迁移、首页渲染与核心流式对话 smoke 已通过，剩余主交互 smoke 与 push/PR 后真实 CI run 仍待验收。
 
-### 本轮新增发现（待处理）
-- HEAD 中 6 个 .kt 文件含 NUL 字节污染（PromptConfig 88.8% / PromptBuilder 26.3% / PromptSectionBuilder 12.3% 等），git 视为二进制，diff/blame 断裂；当前工作树 `app/src` 311 个 .kt 复扫为 0 NUL，需提交后让 HEAD 闭合
-- HEAD 无 `.gitattributes`；工作树已新增，`git check-attr` 抽查 Kotlin 文件已显示 UTF-8 / kotlin diff / text set / LF
-- 提交前复核发现：2026-06-29 README/CI 门禁文档补充后，当前为 `git status --short` 103 行，已暂存 32 个文件、未暂存 65 个文件、未跟踪 14 个文件；`git diff --cached --check` 退出码 0 且无输出，`git diff --check` 退出码 0，无 whitespace error，但未暂存侧仍有 20 个 CRLF→LF 规范化提示
+### 当前风险与待验收
+- P0 仓库健康已闭合：`d24700c` 已提交 107 文件改动，HEAD 中 6 个历史 NUL 污染 `.kt` 文件复扫均为 0，`.gitattributes` 已落入 HEAD。
 - 设备 smoke 首轮使用 `Tavern_Phone` 保留旧数据覆盖安装，复现并修复 v32→v33 Room schema 校验崩溃；`MIGRATION_32_33` 已补齐 `messages` 重建、`world_book_entries.automation_id` 兜底与 `api_config_profiles` 索引一致性，迁移测试、构建、安装启动、logcat 与截图证据已写入 `DEV-LOG.md`
 - 2026-06-30 核心流式对话设备 smoke 已补证：截图 `tmp/m3_fresh_dialog_bottom_visible.png` 同屏可见用户消息 `real_dialog_visible_20260630_025758` 与助手回复 `Smoke reply from local stream at 03:00:55.`；API 日志与设备数据库记录已写入 `DEV-LOG.md`
-- v2-v7 真实迁移样本仍缺失（A1 自标未验收）
-- UI 层残余 network 包直接依赖已清到 0，并由 `ArchitectureBoundaryTest` 锁住回归；本轮全量本地门禁已补跑通过，仍需剩余主交互设备 smoke 与提交前复核。
+- P3-1 已降级 done：v2-v7 从未正式发布，真实迁移样本缺失作为历史风险保留，不再阻塞 v1.3.1；若后续拿到 dev build 用户库，再补真实样本迁移测试。
+- UI 层残余 network 包直接依赖已清到 0，并由 `ArchitectureBoundaryTest` 锁住回归；本轮全量本地门禁已补跑通过，仍需剩余主交互设备 smoke，并在后续提交前按改动范围复核。
 - branch 覆盖率、BgmPlayer 覆盖、UI Compose 测试破零均已补强；README 与现有 CI workflow 已补门禁清单，后续重点回到停止/继续/重生等剩余主交互 smoke、真实 CI run 验证与提交前边界整理。
 
 ### 待完成（远期，v1.4.0+）
@@ -61,11 +59,11 @@
 
 ---
 
-### P0 — 仓库健康与数据完整性（立即处理）
+### P0 — 仓库健康与数据完整性（已闭合，保持防护）
 
-#### P0-1 提交未完成的端口-适配器迁移 + 审计修复
+#### P0-1 提交未完成的端口-适配器迁移 + 审计修复 ✅
 
-**问题证据**：`git status` 显示 24 文件改动未提交，对应 A4–A7 收尾 + 审计修复 + 端口适配接线。工作树游离在版本控制外，任何回退/分支操作都会丢失这批架构整改。
+**历史问题证据**：`git status` 曾显示多文件改动未提交，对应 A4–A7 收尾 + 审计修复 + 端口适配接线。工作树游离在版本控制外，任何回退/分支操作都会丢失这批架构整改。
 
 **改动范围**（代码已完成，只需验证+提交）：
 - `domain/port/` 5 端口接口（ChatApiPort / PromptBuilderPort / WebSearchPort / MemoryExtractorPort / LegacyConfigReaderPort）
@@ -82,13 +80,13 @@
 4. 提交，commit message 反映 "feat: 端口-适配器架构迁移 + A4-A7 收尾 + 审计修复"
 5. DEV-LOG 追加命令输出摘要
 
-**风险**：若本地 Gradle 仍超时，先做 P1-1 再回来提交。
+**结果**：已随 `d24700c` 提交，commit 为 `feat: v1.3.1 收口加固 — M1-M5 全量完成`，共 107 files changed。
 
-**当前复核（2026-06-29）**：README/CI 门禁文档补充后，`git status --short` 103 行，暂存区 32 个文件、未暂存 65 个文件、未跟踪 14 个文件；本轮没有改动暂存区，也没有提交。暂存区 `git diff --cached --check` 已确认无输出；未暂存区 `git diff --check` 仅剩 20 个 CRLF→LF 规范化提示，具体清单已写入 `DEV-LOG.md` 的 2026-06-29 记录。
+**当前复核（2026-07-01）**：当前 HEAD 为 `d24700c`；`git status --short` 仅剩 `DEV-LOG.md` / `DEVELOPMENT-PLAN.md` 文档同步改动，P0-1 已闭合。
 
-#### P0-2 修复 HEAD 中 6 个 Kotlin 文件的 NUL 字节污染
+#### P0-2 修复 HEAD 中 6 个 Kotlin 文件的 NUL 字节污染 ✅
 
-**问题证据**：全仓库扫描 HEAD 的 322 文件，6 个 .kt 含 NUL 字节（10 个 PNG 的 NUL 是正常二进制，忽略）：
+**历史问题证据**：提交前全仓库扫描 HEAD 的 322 文件，6 个 .kt 含 NUL 字节（10 个 PNG 的 NUL 是正常二进制，忽略）：
 
 | 文件 | HEAD 大小 | NUL 字节 | 占比 | 工作树状态 |
 |------|----------|---------|------|-----------|
@@ -101,9 +99,9 @@
 
 **影响**：git 把这些文件当二进制，`git diff` / `git log -p` / `git blame` 全部断裂，code review 无法逐行看历史。
 
-**修复路径**：6 文件工作树版本均已 NUL-free 且 modified — **随 P0-1 一起提交即可清除污染**，无需额外改动。
+**修复结果**：6 文件 NUL-free 版本已随 `d24700c` 落入 HEAD。
 
-**当前复核（2026-06-29）**：工作树 `app/src` 下 311 个 `.kt` 文件已复扫，NUL 污染文件数仍为 0。该证据只能证明当前工作树已清理；HEAD 仍需等提交后复扫，才能把本项从"待提交闭合"改为 done。
+**当前复核（2026-07-01）**：对 6 个历史污染文件的 HEAD blob 复扫，NUL 计数均为 0。P0-2 已闭合。
 
 **验收方式**：提交后重新扫描 HEAD 所有 .kt，NUL 计数应为 0：
 ```powershell
@@ -117,9 +115,9 @@ git ls-files "app/src/**/*.kt" | ForEach-Object {
 # 期望：无输出
 ```
 
-#### P0-3 加 .gitattributes 防止再次污染
+#### P0-3 加 .gitattributes 防止再次污染 ✅
 
-**问题证据**：仓库无 `.gitattributes`，无 `working-tree-encoding` 约束，无 pre-commit hook 拦截 NUL。NUL 污染源头不明（疑似某编辑器/工具写入），无防护会复发。
+**历史问题证据**：仓库曾无 `.gitattributes`，无 `working-tree-encoding` 约束，无 pre-commit hook 拦截 NUL。NUL 污染源头不明（疑似某编辑器/工具写入），无防护会复发。
 
 **改动范围**：新增 `.gitattributes`：
 ```
@@ -136,6 +134,8 @@ git ls-files "app/src/**/*.kt" | ForEach-Object {
 **当前复核（2026-06-28）**：`.gitattributes` 已在工作树新增；`git check-attr working-tree-encoding diff text eol -- PromptBuilder.kt ChatViewModel.kt ArchitectureBoundaryTest.kt` 抽查均显示 `working-tree-encoding: UTF-8`、`diff: kotlin`、`text: set`、`eol: lf`。仍需随提交落库。
 
 **当前复核（2026-06-29）**：`.gitattributes` 仍处于未跟踪状态；防护尚未落入 HEAD，不能标为 done。
+
+**当前复核（2026-07-01）**：`.gitattributes` 已随 `d24700c` 落入 HEAD，P0-3 已闭合。
 
 **风险**：`working-tree-encoding=UTF-8` 要求工作树必须是 UTF-8，若将来有编辑器存成 UTF-16 会被 git 拒绝 — 正是我们要的防护。
 
@@ -260,15 +260,13 @@ rg "import com.tavern.lite.network." app/src/main/java/com/tavern/lite/ui
 
 ### P3 — 历史风险与代码卫生
 
-#### P3-1 v2-v7 真实迁移样本补齐（或明确降级）
+#### P3-1 v2-v7 真实迁移样本补齐（或明确降级）— 降级决策 ✅
 
 **问题证据**：DEV-LOG A1 自标"未验收" — "仓库只有 21.json 到 31.json，没有 v2-v7 Room schema，也没有真实旧库样本；当前只验证代表性旧 schema"。
 
-**改动范围**：二选一：
-- **路径 A（推荐）**：从 GitHub Releases 找 v1.2.x 旧 APK，解压取 `tavern_db` 真实样本，写迁移测试
-- **路径 B**：在 DEV-LOG 明确降级为"代表性 schema 验收，真实样本待用户提供"，风险登记
+**决策**：路径 B（降级）。`git tag -l` 显示最早正式发布为 `v1.0.0-beta1`（DB v8），v2-v7 从未正式发布（DEV-LOG 2026-05-23 已说明）。当前迁移链已覆盖 v2→v8 到 v33，代表性 schema 验收已足够。风险登记：若将来有用户使用未发布的 v2-v7 dev build，需补真实样本。
 
-**验收方式**：路径 A 需真实样本迁移测试通过；路径 B 需风险清单更新。
+**验收方式**：风险清单更新，P3-1 标为降级 done。
 
 #### P3-2 Lint 警告清理（32 → <15）
 
@@ -409,14 +407,14 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 | ~~ChatApiService 零测试~~ | ~~高~~ | Phase 5 | ✅ 已补 |
 | ~~图像生成仅 DALL-E~~ | ~~低~~ | Phase 4 | ✅ 已支持 Gemini |
 | ~~搜索失败无提示~~ | ~~低~~ | Phase 4 | ✅ 已补 |
-| **HEAD 中 6 .kt 文件 NUL 污染** | **高** | P0-2 | 🔴 待修复（工作树已清理，待提交） |
-| **多文件架构整改未提交** | **高** | P0-1 | 🔴 待整理边界并提交（暂存 32 / 未暂存 65 / 未跟踪 14） |
-| **仓库 .gitattributes 防护** | 中 | P0-3 | 🟡 工作树已新增，待随提交落库 |
+| ~~HEAD 中 6 .kt 文件 NUL 污染~~ | ~~高~~ | P0-2 | ✅ 已随 `d24700c` 清到 0 |
+| ~~多文件架构整改未提交~~ | ~~高~~ | P0-1 | ✅ 已随 `d24700c` 提交 |
+| ~~仓库 .gitattributes 防护~~ | ~~中~~ | P0-3 | ✅ 已落入 HEAD |
 | **A8 设备 smoke partial** | 高 | P1/M3 | 🟡 本地 4 条门禁已全通，README + CI 已固化流程；旧库启动/迁移/首页渲染与核心流式对话已通过，剩余主交互 smoke 与真实 CI run 待验收 |
 | **A2 send/continue/regenerate 未外提** | 中 | P2-1 | ⚠️ 未验收 |
 | **domain 残余 network 直接依赖** | 中 | P2-2 | ✅ 当前扫描 0 匹配 |
 | **UI 残余 network 直接依赖** | 中 | P2-3 | ✅ 当前扫描 0 匹配，架构测试已锁住 |
-| **v2-v7 真实迁移样本缺失** | 中 | P3-1 | ⚠️ 未验收 |
+| **v2-v7 真实迁移样本缺失** | 中 | P3-1 | ✅ 降级 done；真实样本作为历史风险保留 |
 | **Lint 警告** | 低 | P3-2 | ✅ 已清到 14（<15） |
 | **模拟器窗口位置异常** | 低 | P3-3 | ⚠️ 已知问题 |
 | ~~branch 覆盖率 42.85%~~ | ~~中~~ | P4-1 | ✅ 已提升到 55.52% |
@@ -434,16 +432,16 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 | ChatScreen 行数 | 718 | 553 | <500 | P2 后再评估 |
 | ChatStreamingManager 行数 | — | 391 | <300 | P2-1 后续评估 |
 | PromptBuilder 行数 | 628 | 291 | <400 ✅ | — |
-| 测试覆盖率 line（Kover 业务）| 35.8% 估算 | 76.26% | 72%+ ✅ | P4-1 |
-| 测试覆盖率 branch | — | 55.52% | 55%+ ✅ | P4-1 |
+| 测试覆盖率 line（Kover 业务）| 35.8% 估算 | 76.78% | 72%+ ✅ | P4-1 |
+| 测试覆盖率 branch | — | 55.81% | 55%+ ✅ | P4-1 |
 | DAO 测试覆盖 | 0% | 100% | 100% ✅ | — |
-| DB Migration 测试 | 0 | v33 链 | 全部 | P3-1 补真实样本 |
+| DB Migration 测试 | 0 | v33 链；P3-1 降级 done | 全部 | P3-1 风险保留 |
 | BgmPlayer 覆盖 | 0% | line 86.96% / branch 59.02% | 70%+ ✅ | P4-2 |
 | UI Compose 测试 | 0 | 3 | ≥2 tests ✅ | P4-3 |
 | Lint 错误 | 5 | 0 | 0 ✅ | — |
 | Lint 警告 | 103 | 14 | <15 ✅ | P3-2 |
-| HEAD 中 NUL 污染文件 | — | HEAD 6；工作树 app/src 0 | 0 | P0-2 |
-| `.gitattributes` 防护 | 无 | 工作树已新增 | 有 | P0-3 |
+| HEAD 中 NUL 污染文件 | — | 0 ✅ | 0 | P0-2 |
+| `.gitattributes` 防护 | 无 | HEAD 已生效 ✅ | 有 | P0-3 |
 | domain→network 直接依赖 | 多处 | 0 ✅ | 0 | P2-2 |
 | ui→network 实现直接依赖 | 多处 | 0 ✅ | 0 | P2-3 |
 | Gradle 门禁本地跑通 | — | 4 条全通 ✅ | 4 条全通 | P1-1 |
@@ -453,10 +451,10 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 
 ## 七、下一步行动（优先级排序）
 
-1. **M1 提交前复核**（P0-1/2/3 + P2-3）— 梳理当前多文件改动，确认 NUL 清理、`.gitattributes` 与端口收口都在同一批可审查差异内
-2. **M3 设备 smoke** — 旧库覆盖安装启动、Room 迁移、首页渲染与一次真实可见流式对话已通过；下一步手动验证停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览等剩余主路径
-3. **M2 门禁固化**（P1-2）— 本地 4 条门禁已通过，README 与现有 CI workflow 已补命令清单，旧库启动与核心流式对话 smoke 证据已补；后续等 push/PR 验证真实 CI run，并在提交前按改动范围重跑必要门禁
-4. **M4 剩余代码卫生**（P3-1/3）— v2-v7 真实迁移样本决策 + 模拟器窗口问题处理
+1. **M3 剩余设备 smoke** — 旧库覆盖安装启动、Room 迁移、首页渲染与一次真实可见流式对话已通过；下一步手动验证停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览等剩余主路径
+2. **M2 真实 CI run 验证**（P1-2）— 本地 4 条门禁已通过，README 与现有 CI workflow 已补命令清单；后续等 push/PR 验证真实 CI run，并在提交前按改动范围重跑必要门禁
+3. **M4 剩余代码卫生**（P3-3）— 模拟器窗口问题处理；P3-1 已降级 done，真实 v2-v7 样本作为历史风险保留
+4. **P2-1 后续评估** — A2 send/continue/regenerate 外提仍为中风险未验收项，等剩余 smoke 稳定后决定是否继续拆分
 5. **M5 v1.3.1 正式收口** — 全部 done 后提交/tag，再评估 v1.4.0
 
 ### 每步完成必做

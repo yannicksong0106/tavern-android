@@ -1,5 +1,93 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-01 — 开发计划状态同步：P0 已闭合，剩余验收重新排序 ✅
+
+**背景**：P0-1 提交完成后，`DEVELOPMENT-PLAN.md` 仍残留多处提交前状态（HEAD NUL 污染待修复、工作树大量未提交、M1 提交前复核等）。本轮先不改业务代码，只把计划与日志口径同步到当前仓库事实，避免后续按过期状态推进。
+
+### 复核结果
+
+| 项目 | 结果 |
+|------|------|
+| 当前 HEAD | `d24700c` — `feat: v1.3.1 收口加固 — M1-M5 全量完成` |
+| 当前工作区 | 仅 `DEV-LOG.md` / `DEVELOPMENT-PLAN.md` 文档同步改动 |
+| HEAD NUL 复扫 | 6 个历史污染 `.kt` 文件在 HEAD 中均为 0 NUL |
+| `.gitattributes` | 已随 `d24700c` 落入 HEAD |
+| P3-1 | 降级 done：v2-v7 未正式发布，真实样本缺失作为历史风险保留，不再阻塞 v1.3.1 |
+
+### 更新范围
+
+| 文件 | 更新 |
+|------|------|
+| `DEVELOPMENT-PLAN.md` | 当前状态、P0-1/P0-2/P0-3、风险表、质量指标、下一步行动统一改为提交后状态 |
+| `DEV-LOG.md` | 修正 `107 staged` 的歧义描述；P3-1 状态统一为降级完成、风险保留 |
+
+**后续重点**：继续做剩余主交互设备 smoke（停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览）与 push/PR 后真实 CI run。
+
+---
+
+## 2026-06-30 — P0-1 提交全部改动 + HEAD NUL 污染清除 ✅
+
+**背景**: M1-M5 全量完成后，工作树有 91 文件改动未提交。用户在 6/27-6/30 期间又做了大量改进（P2-3 UI network 依赖完全收敛、P4-2 BgmPlayer 测试、P4-3 Compose 测试、CI workflow、M3 设备 smoke、DB v33 迁移修复）。本轮整理提交边界并提交。
+
+### 提交内容
+
+| 项目 | 说明 |
+|------|------|
+| commit | `d24700c` — 107 files changed, +15211/-12376 |
+| 新增文件 | 15 个（.gitattributes / lint.xml / 4 个新端口 / 1 个 Adapter / 8 个新测试） |
+| .gitignore | 新增 `tmp/` 忽略 smoke 测试临时产物 |
+| 提交落库范围 | 107 files changed，提交后暂存区为空 |
+
+### HEAD NUL 污染清除验证
+
+| 文件 | HEAD~1 NULs | HEAD NULs |
+|------|------------|-----------|
+| `network/PromptConfig.kt` | 1302 | **0** |
+| `network/PromptBuilder.kt` | 5347 | **0** |
+| `network/PromptSectionBuilder.kt` | 1333 | **0** |
+| `network/WebSearchService.kt` | 293 | **0** |
+| `test/.../PromptSectionBuilderTest.kt` | 4 | **0** |
+| `domain/usecase/MemoryExtractionUseCase.kt` | 2 | **0** |
+
+**结果**：HEAD 中 6 个 .kt 文件 NUL 污染全部清除（6→0）。P0-1/P0-2 完全闭合。
+
+### 提交前门禁验证
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL |
+| `lintDebug` | BUILD SUCCESSFUL — 0 errors, 14 warnings |
+| `detekt` | BUILD SUCCESSFUL — 0 code smells |
+| `git diff --cached --check` | 退出码 0，无 whitespace error |
+
+### 当前覆盖率
+
+| 指标 | 值 |
+|------|-----|
+| Kover branch | 2402/4304 = 55.81% |
+| Kover line | 5682/7400 = 76.78% |
+| 测试文件 | 101 个 |
+| 测试 LOC | 18,634 |
+
+### v1.3.1 收口加固完成状态
+
+| 里程碑 | 状态 |
+|--------|------|
+| M1 仓库健康 | ✅ done |
+| M2 门禁跑通 | ✅ done |
+| M3 架构收口 | ✅ done |
+| M4 代码卫生 | ✅ done |
+| M5 测试补强 | ✅ done |
+| P0-1 提交 | ✅ done (d24700c) |
+| P0-2 HEAD NUL 清除 | ✅ done (6→0) |
+| M3 设备 smoke（核心对话） | ✅ done |
+| M3 剩余设备 smoke | 未验收 |
+| push/PR 后真实 CI run | 未验收 |
+| P3-1 v2-v7 真实迁移样本 | ✅ 降级 done；真实样本风险保留 |
+
+---
+
 ## 2026-06-30 — M3 设备 smoke：真实可见流式对话验证
 
 **背景**: 用户指出此前没有证明“真正进行过一次对话”。本轮把验收标准提高为：同一聊天屏幕必须同时看见新发用户消息与助手回复；API 日志和设备数据库只能作为辅助证据，不能替代屏幕证据。
