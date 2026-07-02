@@ -1,5 +1,39 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-02 — 首次 CI run 通过 + .gitignore 修复 ✅
+
+**背景**: push 到 GitHub 后 CI 连续失败 2 次，根因都是 `.gitignore` 误排除关键文件。修复后首次 CI run 全量通过。
+
+### 修复内容
+
+| commit | 问题 | 修复 |
+|--------|------|------|
+| `9b5ec3f` | `*.jar` 规则误排除 `gradle/wrapper/gradle-wrapper.jar`，CI 无法启动 gradlew | `.gitignore` 加 `!gradle/wrapper/gradle-wrapper.jar` 例外 |
+| `5a2b8ea` | `schemas/` 规则误排除 `app/schemas/` 目录，`TavernDatabaseSqlMigrationTest` 找不到 schema JSON | `.gitignore` 改为只忽略根目录 `/schemas/`，保留 `app/schemas/` |
+
+### CI run 结果
+
+| 指标 | 值 |
+|------|-----|
+| run ID | `28598734547` |
+| 状态 | **completed / success** |
+| 总耗时 | 13m58s |
+| build job | 9m21s — assembleDebug + testDebugUnitTest (1055 tests) + lintDebug + detekt + Kover 全通过 |
+| release job | 4m32s — assembleRelease + APK 上传 |
+| artifacts | debug-apk, verification-reports, release-apk |
+| URL | https://github.com/yannicksong0106/tavern-android/actions/runs/28598734547 |
+
+### 历史失败记录
+
+| run ID | commit | 失败原因 | 耗时 |
+|--------|--------|---------|------|
+| 28597482276 | `6f8bc73` | gradle-wrapper.jar 缺失 | 10s |
+| 28597636990 | `9b5ec3f` | schema JSON 缺失，4 个 SQL 迁移测试失败 | 7m1s |
+
+**CI 验证状态**：done（首次 GitHub Actions CI run 全量通过）。
+
+---
+
 ## 2026-07-01 — 开发计划状态同步：P0 已闭合，剩余验收重新排序 ✅
 
 **背景**：P0-1 提交完成后，`DEVELOPMENT-PLAN.md` 仍残留多处提交前状态（HEAD NUL 污染待修复、工作树大量未提交、M1 提交前复核等）。本轮先不改业务代码，只把计划与日志口径同步到当前仓库事实，避免后续按过期状态推进。
