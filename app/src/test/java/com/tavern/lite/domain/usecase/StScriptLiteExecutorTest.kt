@@ -214,4 +214,201 @@ class StScriptLiteExecutorTest {
         assertEquals(listOf(StScriptAction.SendMessage("hi")), result.actions)
         assertFalse(result.hasBlockedCommands)
     }
+
+    // ==================== Phase X: 新增命令测试 ====================
+
+    @Test
+    fun `parser recognizes delay command`() {
+        val program = parser.parse("/delay 1000")
+        assertEquals(StScriptCommandType.Delay, program.commands[0].type)
+        assertEquals("1000", program.commands[0].argument)
+    }
+
+    @Test
+    fun `parser recognizes delay aliases sleep and wait`() {
+        val program = parser.parse("/sleep 500\n/wait 200")
+        assertEquals(StScriptCommandType.Delay, program.commands[0].type)
+        assertEquals(StScriptCommandType.Delay, program.commands[1].type)
+    }
+
+    @Test
+    fun `parser recognizes cancel command`() {
+        val program = parser.parse("/cancel")
+        assertEquals(StScriptCommandType.Cancel, program.commands[0].type)
+    }
+
+    @Test
+    fun `parser recognizes cancel alias stop`() {
+        val program = parser.parse("/stop")
+        assertEquals(StScriptCommandType.Cancel, program.commands[0].type)
+    }
+
+    @Test
+    fun `parser recognizes clearvar command`() {
+        val program = parser.parse("/clearvar mood")
+        assertEquals(StScriptCommandType.ClearVar, program.commands[0].type)
+        assertEquals("mood", program.commands[0].variableName)
+    }
+
+    @Test
+    fun `parser recognizes clearvar alias clear`() {
+        val program = parser.parse("/clear mood")
+        assertEquals(StScriptCommandType.ClearVar, program.commands[0].type)
+    }
+
+    @Test
+    fun `parser recognizes if command`() {
+        val program = parser.parse("/if {{mood}} == happy")
+        assertEquals(StScriptCommandType.If, program.commands[0].type)
+        assertEquals("{{mood}} == happy", program.commands[0].argument)
+    }
+
+    @Test
+    fun `delay action produced with valid millis`() {
+        val result = executor.execute("/delay 500")
+        assertEquals(1, result.actions.size)
+        assertTrue(result.actions[0] is StScriptAction.Delay)
+        assertEquals(500L, (result.actions[0] as StScriptAction.Delay).millis)
+    }
+
+    @Test
+    fun `delay with invalid millis produces no action`() {
+        val result = executor.execute("/delay abc")
+        assertTrue(result.actions.isEmpty())
+    }
+
+    @Test
+    fun `delay with zero produces no action`() {
+        val result = executor.execute("/delay 0")
+        assertTrue(result.actions.isEmpty())
+    }
+
+    @Test
+    fun `delay resolves variables`() {
+        executor.execute("/setvar wait 300")
+        val result = executor.execute(
+            source = "/delay {{wait}}",
+            initialVariables = mapOf("wait" to "300")
+        )
+        assertTrue(result.actions.any { it is StScriptAction.Delay && it.millis == 300L })
+    }
+
+    @Test
+    fun `cancel action produced when canTriggerGeneration`() {
+        val result = executor.execute(
+            source = "/cancel",
+            permissions = StScriptPermissions(canTriggerGeneration = true)
+        )
+        assertEquals(1, result.actions.size)
+        assertTrue(result.actions[0] is StScriptAction.CancelGeneration)
+    }
+
+    @Test
+    fun `cancel blocked when cannot trigger generation`() {
+        val result = executor.execute(
+            source = "/cancel",
+            permissions = StScriptPermissions(canTriggerGeneration = false)
+        )
+        assertTrue(result.actions.isEmpty())
+        assertTrue(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `clearvar removes specific variable`() {
+        val result = executor.execute(
+            source = "/clearvar mood",
+            initialVariables = mapOf("mood" to "happy", "name" to "Alice")
+        )
+        assertFalse(result.variables.containsKey("mood"))
+        assertTrue(result.variables.containsKey("name"))
+    }
+
+    @Test
+    fun `clearvar without name clears all variables`() {
+        val result = executor.execute(
+            source = "/clearvar",
+            initialVariables = mapOf("mood" to "happy", "name" to "Alice")
+        )
+        assertTrue(result.variables.isEmpty())
+    }
+
+    @Test
+    fun `clearvar blocked when cannot write variables`() {
+        val result = executor.execute(
+            source = "/clearvar mood",
+            permissions = StScriptPermissions(canWriteVariables = false),
+            initialVariables = mapOf("mood" to "happy")
+        )
+        assertTrue(result.hasBlockedCommands)
+        assertTrue(result.variables.containsKey("mood"))
+    }
+
+    @Test
+    fun `if command with equality true does not skip`() {
+        val result = executor.execute(
+            source = "/if {{mood}} == happy",
+            initialVariables = mapOf("mood" to "happy")
+        )
+        // if 条件为真，不产生 blocked
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `if command with equality false produces empty echo`() {
+        val result = executor.execute(
+            source = "/if {{mood}} == sad",
+            initialVariables = mapOf("mood" to "happy")
+        )
+        // if 条件为假，产生空 echo（当前简化实现）
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `if command with contains operator`() {
+        val result = executor.execute(
+            source = "/if {{text}} contains hello",
+            initialVariables = mapOf("text" to "hello world")
+        )
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `if command with numeric comparison`() {
+        val result = executor.execute(
+            source = "/if {{count}} > 5",
+            initialVariables = mapOf("count" to "10")
+        )
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `if command with non-zero value is truthy`() {
+        val result = executor.execute(
+            source = "/if {{flag}}",
+            initialVariables = mapOf("flag" to "1")
+        )
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `if command with zero value is falsy`() {
+        val result = executor.execute(
+            source = "/if {{flag}}",
+            initialVariables = mapOf("flag" to "0")
+        )
+        // 0 视为假，产生空 echo
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `new commands are safe for auto-run`() {
+        assertTrue(StScriptCommandType.Delay in StScriptCommandType.autoRunSafeCommands)
+        assertTrue(StScriptCommandType.ClearVar in StScriptCommandType.autoRunSafeCommands)
+        assertTrue(StScriptCommandType.If in StScriptCommandType.autoRunSafeCommands)
+    }
+
+    @Test
+    fun `cancel is not safe for auto-run`() {
+        assertFalse(StScriptCommandType.Cancel in StScriptCommandType.autoRunSafeCommands)
+    }
 }

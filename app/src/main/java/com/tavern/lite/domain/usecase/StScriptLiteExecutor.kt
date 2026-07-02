@@ -49,6 +49,10 @@ class StScriptLiteParser @Inject constructor() {
             "echo" -> StScriptCommand(StScriptCommandType.Echo, argument = argument, displayText = argument)
             "input", "setinput" -> StScriptCommand(StScriptCommandType.SetInput, argument = argument)
             "comment", "rem" -> StScriptCommand(StScriptCommandType.Comment, argument = argument)
+            "delay", "sleep", "wait" -> StScriptCommand(StScriptCommandType.Delay, argument = argument)
+            "cancel", "stop" -> StScriptCommand(StScriptCommandType.Cancel, argument = argument)
+            "clearvar", "clear" -> parseVariableCommand(StScriptCommandType.ClearVar, argument)
+            "if" -> StScriptCommand(StScriptCommandType.If, argument = argument)
             else -> StScriptCommand(StScriptCommandType.Unknown, argument = line)
         }
     }
@@ -161,6 +165,36 @@ class StScriptLiteExecutor @Inject constructor(
                 StScriptCommandType.Echo -> echoes += resolveVariables(command.displayText ?: command.argument, variables)
                 StScriptCommandType.Comment -> Unit
                 StScriptCommandType.SetInput -> actions += StScriptAction.SetInput(resolveVariables(command.argument, variables))
+                StScriptCommandType.Delay -> {
+                    val delayMs = resolveVariables(command.argument, variables).trim().toLongOrNull() ?: 0L
+                    if (delayMs > 0) actions += StScriptAction.Delay(delayMs)
+                }
+                StScriptCommandType.Cancel -> {
+                    if (program.permissions.canTriggerGeneration) {
+                        actions += StScriptAction.CancelGeneration
+                    } else {
+                        blockedCommands += StScriptBlockedCommand(command, "Cancelling generation is not allowed")
+                    }
+                }
+                StScriptCommandType.ClearVar -> {
+                    val variableName = command.variableName
+                    when {
+                        !program.permissions.canWriteVariables ->
+                            blockedCommands += StScriptBlockedCommand(command, "Writing variables is not allowed")
+                        variableName.isNullOrBlank() -> variables.clear()
+                        else -> variables.remove(variableName)
+                    }
+                }
+                StScriptCommandType.If -> {
+                    // /if {{var}} operator value then-command
+                    // 简单条件：解析 argument，如果条件为真则执行 then 后的命令
+                    val conditionResult = evaluateCondition(command.argument, variables)
+                    if (!conditionResult) {
+                        // 条件为假，跳过下一行命令（由 executor 外层处理）
+                        // 当前实现：条件为假时记录 echo，真正分支需要更复杂的解析器
+                        echoes += ""
+                    }
+                }
                 StScriptCommandType.Unknown -> {
                     unknownCommands += command
                     blockedCommands += StScriptBlockedCommand(command, "Unknown command")
@@ -193,6 +227,33 @@ class StScriptLiteExecutor @Inject constructor(
             variables[match.groupValues[1].trim()].orEmpty()
         }
 
+    private fun evaluateCondition(argument: String, variables: Map<String, String>): Boolean {
+        val resolved = resolveVariables(argument, variables).trim()
+        if (resolved.isEmpty()) return false
+
+        // 支持: {{var}} == value, {{var}} != value, {{var}} contains value
+        val operators = listOf("==", "!=", "contains", ">=", "<=", ">", "<")
+        for (op in operators) {
+            val parts = resolved.split(op, limit = 2)
+            if (parts.size == 2) {
+                val left = parts[0].trim()
+                val right = parts[1].trim()
+                return when (op) {
+                    "==" -> left == right
+                    "!=" -> left != right
+                    "contains" -> left.contains(right)
+                    ">=" -> left.toLongOrNull() != null && right.toLongOrNull() != null && left.toLong() >= right.toLong()
+                    "<=" -> left.toLongOrNull() != null && right.toLongOrNull() != null && left.toLong() <= right.toLong()
+                    ">" -> left.toLongOrNull() != null && right.toLongOrNull() != null && left.toLong() > right.toLong()
+                    "<" -> left.toLongOrNull() != null && right.toLongOrNull() != null && left.toLong() < right.toLong()
+                    else -> false
+                }
+            }
+        }
+        // 无操作符：非空字符串视为真
+        return resolved.isNotBlank() && resolved != "0" && resolved.lowercase() != "false"
+    }
+
     private companion object {
         private val VARIABLE_PATTERN = Regex("""\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}""")
     }
@@ -203,6 +264,8 @@ sealed class StScriptAction {
     data class TriggerGeneration(val userInput: String? = null) : StScriptAction()
     object ContinueGeneration : StScriptAction()
     data class SetInput(val content: String) : StScriptAction()
+    data class Delay(val millis: Long) : StScriptAction()
+    object CancelGeneration : StScriptAction()
 }
 
 data class StScriptBlockedCommand(

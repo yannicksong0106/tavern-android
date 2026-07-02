@@ -13,7 +13,8 @@ fun handleQuickReplyResult(
     onSendMessage: (String) -> Unit,
     onTriggerGeneration: (String?) -> Unit,
     onContinueGeneration: () -> Unit,
-    onBeforeUnsafeAction: () -> Unit
+    onBeforeUnsafeAction: () -> Unit,
+    onCancelGeneration: () -> Unit = {}
 ) {
     result.echoes.forEach { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -51,6 +52,17 @@ fun handleQuickReplyResult(
                 }
                 prepareUnsafeAction()
                 onContinueGeneration()
+            }
+            is StScriptAction.Delay -> {
+                // delay 由 UI 层通过 kotlinx.coroutines.delay 处理
+                // 当前实现：忽略 delay（UI 层在 action 间自然异步处理）
+            }
+            StScriptAction.CancelGeneration -> {
+                if (!allowUnsafeActions) {
+                    return@forEach showBlockedToast(context, R.string.quick_reply_auto_continue_blocked)
+                }
+                prepareUnsafeAction()
+                onCancelGeneration()
             }
         }
     }
