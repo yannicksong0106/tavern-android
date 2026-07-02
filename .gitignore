@@ -47,8 +47,8 @@ tmp/
 
 # Screenshots (keep for README)
 
-# Room schema export
-schemas/
+# Room schema export (tracked in app/schemas/ for migration tests)
+/schemas/
 
 # Emulator scripts
 start-emulator.bat
