@@ -1,6 +1,5 @@
 package com.tavern.lite.util
 
-import android.content.Context
 import com.tavern.lite.data.repository.ChatRepository
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -26,7 +25,6 @@ import java.io.File
 class ChatImporterTest {
 
     @MockK private lateinit var chatRepository: ChatRepository
-    @MockK private lateinit var context: Context
 
     private val json = Json { ignoreUnknownKeys = true }
     private lateinit var importer: ChatImporter
@@ -37,7 +35,7 @@ class ChatImporterTest {
     fun setup() {
         MockKAnnotations.init(this, relaxed = true)
         Dispatchers.setMain(testDispatcher)
-        importer = ChatImporter(context, chatRepository, json)
+        importer = ChatImporter(chatRepository, json)
         tempDir = createTempDir("chat_importer_test")
     }
 
@@ -83,6 +81,35 @@ class ChatImporterTest {
         coVerify { chatRepository.createChat(1L, "My Chat") }
         coVerify { chatRepository.sendMessage(10L, "Hello", "user") }
         coVerify { chatRepository.sendMessage(10L, "Hi there", "assistant") }
+    }
+
+    @Test
+    fun `importChat imports pretty printed tavern JSON object format`() = runTest {
+        coEvery { chatRepository.createChat(1L, "My Chat") } returns 11L
+        coEvery { chatRepository.sendMessage(11L, any(), any()) } returns 1L
+
+        val jsonStr = """
+            {
+              "chatName": "My Chat",
+              "messages": [
+                { "role": "user", "content": "Hello" },
+                { "role": "assistant", "content": "Hi there" }
+              ]
+            }
+        """.trimIndent()
+        val file = writeFile("tavern_pretty.json", jsonStr)
+
+        val result = importer.importChat(1L, file)
+        advanceUntilIdle()
+
+        assertTrue(result.isSuccess)
+        val report = result.getOrNull()!!
+        assertEquals(11L, report.chatId)
+        assertEquals(2, report.importedMessages)
+        assertEquals("Tavern JSON", report.format)
+        coVerify { chatRepository.createChat(1L, "My Chat") }
+        coVerify { chatRepository.sendMessage(11L, "Hello", "user") }
+        coVerify { chatRepository.sendMessage(11L, "Hi there", "assistant") }
     }
 
     @Test
@@ -238,5 +265,59 @@ not valid json
         val file = writeFile("bad.json", """{"messages": [""")
         val result = importer.importChat(1L, file)
         assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `importChat fails on truncated JSON object without creating orphan chat`() = runTest {
+        // 截断的 Tavern JSON — `{` 起始但解析失败，不应 fall through 到 JSONL 建空 chat
+        val jsonStr = "{\n  \"chatName\": \"vacation\",\n  \"messages\": [\n"
+        val file = writeFile("truncated.json", jsonStr)
+
+        val result = importer.importChat(1L, file)
+        advanceUntilIdle()
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { chatRepository.createChat(any(), any()) }
+        coVerify(exactly = 0) { chatRepository.sendMessage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `importChat treats JsonNull chatName and message fields as missing`() = runTest {
+        coEvery { chatRepository.createChat(1L, null) } returns 40L
+        coEvery { chatRepository.sendMessage(40L, any(), any()) } returns 1L
+
+        // chatName=null → chat 名应为 null 而非字面 "null"
+        // role=null 或 content=null 的消息应被跳过（continue），不写入字面 "null"
+        val jsonStr = """{
+          "chatName": null,
+          "messages": [
+            {"role": null, "content": "orphan"},
+            {"role": "user", "content": null},
+            {"role": "user", "content": "real"}
+          ]
+        }""".trimIndent()
+        val file = writeFile("null_fields.json", jsonStr)
+
+        val result = importer.importChat(1L, file)
+        advanceUntilIdle()
+
+        assertTrue(result.isSuccess)
+        coVerify { chatRepository.createChat(1L, null) }
+        coVerify(exactly = 1) { chatRepository.sendMessage(40L, "real", "user") }
+        coVerify(exactly = 0) { chatRepository.sendMessage(any(), "null", any()) }
+        coVerify(exactly = 0) { chatRepository.sendMessage(any(), any(), "null") }
+    }
+
+    @Test
+    fun `importChat rejects oversized files before reading`() = runTest {
+        val file = File(tempDir, "huge.json")
+        java.io.RandomAccessFile(file, "rw").use { it.setLength(10L * 1024L * 1024L + 1L) }
+
+        val result = importer.importChat(1L, file)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("too large"))
+        coVerify(exactly = 0) { chatRepository.createChat(any(), any()) }
+        coVerify(exactly = 0) { chatRepository.sendMessage(any(), any(), any()) }
     }
 }

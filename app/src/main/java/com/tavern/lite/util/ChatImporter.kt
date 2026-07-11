@@ -1,63 +1,60 @@
 package com.tavern.lite.util
 
-import android.content.Context
 import android.util.Log
 import com.tavern.lite.data.repository.ChatRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.io.BufferedReader
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val MAX_IMPORT_BYTES = 10L * 1024L * 1024L
+
 @Singleton
 class ChatImporter @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val chatRepository: ChatRepository,
     private val json: Json
 ) {
-    /**
-     * 从 JSON 备份文件导入对话，返回详细报告
-     */
-    suspend fun importChat(characterId: Long, file: File): Result<ImportReport> = try {
-        val content = file.readText(Charsets.UTF_8).trim()
-        val skippedFields = mutableSetOf<String>()
-        val warnings = mutableListOf<String>()
-
-        val (chatId, imported, skipped, format) = if (content.startsWith("[")) {
-            // SillyTavern jsonl-as-array 或酒馆 AI 格式
-            importFromJsonArray(characterId, content, skippedFields, warnings)
-        } else if (content.lines().firstOrNull()?.trimStart()?.startsWith("{") == true) {
-            val lines = content.lines().filter { it.isNotBlank() }
-            if (lines.size > 1) {
-                // SillyTavern jsonl 格式（每行一个 JSON）
-                importFromJsonLines(characterId, lines, skippedFields, warnings)
-            } else {
-                // 单个 JSON 对象（酒馆 AI 导出格式）
-                importFromJsonObject(characterId, content, skippedFields, warnings)
+    suspend fun importChat(characterId: Long, file: File): Result<ImportReport> {
+        return try {
+            if (file.length() > MAX_IMPORT_BYTES) {
+                return Result.failure(IllegalArgumentException("Import file is too large (max 10MB)"))
             }
-        } else {
-            return Result.failure(Exception("无法识别的文件格式"))
-        }
 
-        Result.success(
-            ImportReport(
-                chatId = chatId,
-                importedMessages = imported,
-                skippedMessages = skipped,
-                format = format,
-                skippedFields = skippedFields.toList(),
-                warnings = warnings
+            val content = file.readText(Charsets.UTF_8).trim()
+            val skippedFields = mutableSetOf<String>()
+            val warnings = mutableListOf<String>()
+
+            val result = when {
+                content.startsWith("[") -> importFromJsonArray(characterId, content, skippedFields)
+                content.startsWith("{") -> importFromJsonObjectOrLines(
+                    characterId = characterId,
+                    content = content,
+                    skippedFields = skippedFields,
+                    warnings = warnings
+                ) ?: return Result.failure(IllegalArgumentException("无法解析 JSON 文件"))
+                else -> return Result.failure(Exception("无法识别的文件格式"))
+            }
+
+            Result.success(
+                ImportReport(
+                    chatId = result.chatId,
+                    importedMessages = result.imported,
+                    skippedMessages = result.skipped,
+                    format = result.format,
+                    skippedFields = skippedFields.toList(),
+                    warnings = warnings
+                )
             )
-        )
-    } catch (e: Exception) {
-        if (e is kotlinx.coroutines.CancellationException) throw e
-        Result.failure(e)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Result.failure(e)
+        }
     }
 
     private data class ImportResult(
@@ -67,17 +64,39 @@ class ChatImporter @Inject constructor(
         val format: String
     )
 
-    /**
-     * 从酒馆 AI 导出的 JSON 对象导入
-     */
-    private suspend fun importFromJsonObject(
+    private suspend fun importFromJsonObjectOrLines(
         characterId: Long,
         content: String,
         skippedFields: MutableSet<String>,
         warnings: MutableList<String>
+    ): ImportResult? {
+        val parsedObject = parseJsonObjectOrNull(content)
+        if (parsedObject != null) {
+            return importFromJsonObject(characterId, parsedObject, skippedFields)
+        }
+
+        // 单个 `{` 起始且解析失败通常是截断/损坏的 JSON；此时按 JSONL 兜底会先建 chat 再全部解析失败，产生孤儿空 chat。
+        // 仅在明确的多行 JSONL（每一行都能独立解析为 JSON 对象）时才走 line 路径。
+        val lines = content.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
+
+        if (lines.size <= 1) return null
+
+        // 至少有一行能独立解析为 JSON 对象，才当作 JSONL。全都失败通常是截断/损坏的单个 JSON。
+        val hasAnyValidJsonLine = lines.any { parseJsonObjectOrNull(it) != null }
+        if (!hasAnyValidJsonLine) return null
+
+        return importFromJsonLines(characterId, lines, skippedFields, warnings)
+    }
+
+    private suspend fun importFromJsonObject(
+        characterId: Long,
+        obj: JsonObject,
+        skippedFields: MutableSet<String>
     ): ImportResult {
-        val obj = json.parseToJsonElement(content).jsonObject
-        val chatName = obj["chatName"]?.jsonPrimitive?.content
+        val chatName = obj.stringField("chatName")
         val messages = obj["messages"]?.jsonArray ?: return ImportResult(0, 0, 0, "Tavern JSON")
 
         val chatId = chatRepository.createChat(characterId, chatName)
@@ -86,8 +105,8 @@ class ChatImporter @Inject constructor(
 
         for (msgEl in messages) {
             val msg = msgEl.jsonObject
-            val role = msg["role"]?.jsonPrimitive?.content ?: continue
-            val text = msg["content"]?.jsonPrimitive?.content ?: continue
+            val role = msg.stringField("role") ?: continue
+            val text = msg.stringField("content") ?: continue
             if (text.isBlank()) {
                 skipped++
                 continue
@@ -97,17 +116,14 @@ class ChatImporter @Inject constructor(
             imported++
         }
 
+        checkSkippedFields(messages.firstOrNull()?.jsonObject, skippedFields)
         return ImportResult(chatId, imported, skipped, "Tavern JSON")
     }
 
-    /**
-     * 从 JSON 数组导入（可能是 SillyTavern 格式）
-     */
     private suspend fun importFromJsonArray(
         characterId: Long,
         content: String,
-        skippedFields: MutableSet<String>,
-        warnings: MutableList<String>
+        skippedFields: MutableSet<String>
     ): ImportResult {
         val arr = json.parseToJsonElement(content).jsonArray
 
@@ -117,8 +133,7 @@ class ChatImporter @Inject constructor(
 
         for (msgEl in arr) {
             val msg = msgEl.jsonObject
-            val result = importSillyTavernMessage(chatId, msg, skippedFields)
-            when (result) {
+            when (importSillyTavernMessage(chatId, msg)) {
                 ImportMessageResult.IMPORTED -> imported++
                 ImportMessageResult.SKIPPED -> skipped++
                 ImportMessageResult.FAILED -> {}
@@ -129,9 +144,6 @@ class ChatImporter @Inject constructor(
         return ImportResult(chatId, imported, skipped, "SillyTavern JSON Array")
     }
 
-    /**
-     * 从 SillyTavern jsonl 格式导入（每行一个 JSON 对象）
-     */
     private suspend fun importFromJsonLines(
         characterId: Long,
         lines: List<String>,
@@ -145,9 +157,8 @@ class ChatImporter @Inject constructor(
 
         for (line in lines) {
             try {
-                val msg = json.parseToJsonElement(line.trim()).jsonObject
-                val result = importSillyTavernMessage(chatId, msg, skippedFields)
-                when (result) {
+                val msg = json.parseToJsonElement(line).jsonObject
+                when (importSillyTavernMessage(chatId, msg)) {
                     ImportMessageResult.IMPORTED -> imported++
                     ImportMessageResult.SKIPPED -> skipped++
                     ImportMessageResult.FAILED -> parseErrors++
@@ -162,30 +173,40 @@ class ChatImporter @Inject constructor(
         if (parseErrors > 0) {
             warnings.add("$parseErrors 条消息解析失败")
         }
-        
-        val firstMsg = lines.firstOrNull()?.let { 
-            try { json.parseToJsonElement(it.trim()).jsonObject } catch (_: Exception) { null }
-        }
+
+        val firstMsg = lines.firstOrNull()?.let { parseJsonObjectOrNull(it) }
         checkSkippedFields(firstMsg, skippedFields)
-        
+
         return ImportResult(chatId, imported, skipped, "SillyTavern JSONL")
+    }
+
+    private fun parseJsonObjectOrNull(content: String): JsonObject? {
+        return try {
+            json.parseToJsonElement(content).jsonObject
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            null
+        }
+    }
+
+    /** JsonNull.content 是字符串 "null"；导入时必须视为缺失字段而非字面值。 */
+    private fun JsonObject.stringField(key: String): String? {
+        val element = this[key] ?: return null
+        if (element is JsonNull) return null
+        val primitive = element as? JsonPrimitive ?: return null
+        return primitive.content
     }
 
     private enum class ImportMessageResult {
         IMPORTED, SKIPPED, FAILED
     }
 
-    /**
-     * 解析 SillyTavern 格式的消息对象
-     */
     private suspend fun importSillyTavernMessage(
         chatId: Long,
-        obj: JsonObject,
-        skippedFields: MutableSet<String>
+        obj: JsonObject
     ): ImportMessageResult {
-        // 先尝试标准格式
-        val role = obj["role"]?.jsonPrimitive?.content
-        val content = obj["content"]?.jsonPrimitive?.content
+        val role = obj.stringField("role")
+        val content = obj.stringField("content")
 
         if (role != null && content != null) {
             if (content.isBlank()) return ImportMessageResult.SKIPPED
@@ -193,11 +214,10 @@ class ChatImporter @Inject constructor(
             return ImportMessageResult.IMPORTED
         }
 
-        // SillyTavern 格式
-        val mes = obj["mes"]?.jsonPrimitive?.content
+        val mes = obj.stringField("mes")
         if (mes != null) {
             if (mes.isBlank()) return ImportMessageResult.SKIPPED
-            val isUser = obj["is_user"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: false
+            val isUser = obj.stringField("is_user")?.toBooleanStrictOrNull() ?: false
             val roleStr = if (isUser) "user" else "assistant"
             chatRepository.sendMessage(chatId, mes, roleStr)
             return ImportMessageResult.IMPORTED
@@ -206,14 +226,10 @@ class ChatImporter @Inject constructor(
         return ImportMessageResult.FAILED
     }
 
-    /**
-     * 检测 ST 消息中存在但本应用未处理的字段
-     */
     private fun checkSkippedFields(firstMessage: JsonObject?, skippedFields: MutableSet<String>) {
         firstMessage ?: return
-        val knownFields = setOf("role", "content", "mes", "is_user", "name", "send_date")
         val stOnlyFields = listOf("swipes", "swipe_id", "attachments", "extra")
-        
+
         for (field in stOnlyFields) {
             if (firstMessage.containsKey(field)) {
                 skippedFields.add(field)

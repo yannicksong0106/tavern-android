@@ -3,6 +3,7 @@ package com.tavern.lite.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -69,6 +70,29 @@ class PngMetadataTest {
         }
     }
 
+    @Test
+    fun `writeTextChunk rejects oversized png before reading bytes`() {
+        val file = temp.newFile("huge.png")
+        java.io.RandomAccessFile(file, "rw").use { it.setLength(20L * 1024L * 1024L + 1L) }
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            PngMetadata.writeTextChunk(file, "name", "Alice")
+        }
+
+        assertTrue(error.message!!.contains("too large"))
+    }
+
+    @Test
+    fun `readTextChunks rejects invalid chunk length`() {
+        val file = temp.newFile("bad-length.png").also {
+            it.writeBytes(PNG_SIGNATURE + chunkLength(Int.MAX_VALUE) + "tEXt".toByteArray(Charsets.US_ASCII))
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            PngMetadata.readTextChunks(file)
+        }
+    }
+
     private fun minimalPng(): ByteArray = PNG_SIGNATURE + chunk("IEND", ByteArray(0))
 
     private fun chunk(type: String, data: ByteArray): ByteArray {
@@ -81,6 +105,10 @@ class PngMetadataTest {
             typeBytes +
             data +
             ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(crc.value.toInt()).array()
+    }
+
+    private fun chunkLength(length: Int): ByteArray {
+        return ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(length).array()
     }
 
     private companion object {
