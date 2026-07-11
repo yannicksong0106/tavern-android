@@ -49,13 +49,17 @@ import com.tavern.lite.ui.screens.chat.components.ChatTopBar
 import com.tavern.lite.ui.screens.chat.components.DeleteConfirmDialog
 import com.tavern.lite.ui.screens.chat.components.EditMessageDialog
 import com.tavern.lite.ui.screens.chat.components.InputBar
+import com.tavern.lite.ui.screens.chat.components.constrainChatInputText
 import com.tavern.lite.ui.screens.chat.components.MessageBubble
 import com.tavern.lite.ui.screens.chat.components.PromptInspectorDialog
 import com.tavern.lite.ui.screens.chat.components.QuickReplyPanel
 import com.tavern.lite.ui.screens.chat.components.ScrollToBottomButton
 import com.tavern.lite.ui.screens.chat.components.TypingIndicator
+import com.tavern.lite.util.ImageUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val PROACTIVE_TRIGGER_DELAY_MS = 500L
@@ -172,29 +176,59 @@ fun ChatScreen(
     ) { granted ->
         if (granted) {
             viewModel.speechManager.startVoiceInput { result ->
-                inputText = if (inputText.isBlank()) result else "$inputText $result"
+                inputText = constrainChatInputText(if (inputText.isBlank()) result else "$inputText $result")
             }
         } else {
             Toast.makeText(context, context.getString(R.string.voice_permission_denied), Toast.LENGTH_SHORT).show()
         }
     }
     var selectedImagePaths by remember { mutableStateOf(listOf<String>()) }
+    val imageCopyScope = rememberCoroutineScope()
     val photoPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(4)
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            val imageDir = java.io.File(context.filesDir, "chat_images")
-            imageDir.mkdirs()
-            val newPaths = uris.mapNotNull { uri ->
-                try {
-                    val file = java.io.File(imageDir, "img_${System.currentTimeMillis()}_${uris.indexOf(uri)}.jpg")
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        file.outputStream().use { output -> input.copyTo(output) }
+            imageCopyScope.launch {
+                val newPaths = withContext(Dispatchers.IO) {
+                    val imageDir = java.io.File(context.filesDir, "chat_images")
+                    imageDir.mkdirs()
+                    uris.mapIndexedNotNull { idx, uri ->
+                        try {
+                            // 云端 provider (Google Photos 流式) 返回 UNKNOWN_LENGTH (-1)。先 copy 再按实际字节数校验。
+                            val declaredSize = context.contentResolver
+                                .openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+                            if (declaredSize > ImageUtils.MAX_DATA_URI_IMAGE_BYTES) return@mapIndexedNotNull null
+
+                            val file = java.io.File(
+                                imageDir,
+                                "img_${System.currentTimeMillis()}_$idx.jpg"
+                            )
+                            val copiedBytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                                file.outputStream().use { output -> input.copyTo(output) }
+                            } ?: 0L
+
+                            if (copiedBytes in 1..ImageUtils.MAX_DATA_URI_IMAGE_BYTES) {
+                                file.absolutePath
+                            } else {
+                                file.delete()
+                                null
+                            }
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            android.util.Log.w("ChatScreen", "Failed to copy chat image: $uri", e)
+                            null
+                        }
                     }
-                    file.absolutePath
-                } catch (_: Exception) { null }
+                }
+                if (newPaths.size < uris.size) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.image_too_large_or_failed, uris.size - newPaths.size),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                selectedImagePaths = selectedImagePaths + newPaths
             }
-            selectedImagePaths = selectedImagePaths + newPaths
         }
     }
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
@@ -234,12 +268,15 @@ fun ChatScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val estimatedInputTokens = remember(inputText) {
+        if (inputText.isNotBlank()) viewModel.estimateInputTokens(inputText) else 0
+    }
     val applyQuickReplyResult: (QuickReplyUiResult, Boolean) -> Unit = { result, allowUnsafeActions ->
         handleQuickReplyResult(
             context = context,
             result = result,
             allowUnsafeActions = allowUnsafeActions,
-            onSetInput = { inputText = it },
+            onSetInput = { inputText = constrainChatInputText(it) },
             onSendMessage = { viewModel.streamingManager.sendMessage(it) },
             onTriggerGeneration = { viewModel.streamingManager.triggerGeneration(it) },
             onContinueGeneration = { viewModel.streamingManager.continueGeneration() },
@@ -565,6 +602,7 @@ fun ChatScreen(
 
                 InputBar(
                     value = inputText,
+                    // InputBar 内部已对 onValueChange 参数应用 constrainChatInputText，此处直接接收即可。
                     onValueChange = { inputText = it },
                     onSend = {
                         if (inputText.isNotBlank() || selectedImagePaths.isNotEmpty()) {
@@ -590,7 +628,7 @@ fun ChatScreen(
                     isGroupChat = isGroupChat,
                     groupCharacters = groupCharacters,
                     contextTokens = estimatedContextTokens,
-                    inputTokens = if (inputText.isNotBlank()) viewModel.estimateInputTokens(inputText) else 0,
+                    inputTokens = estimatedInputTokens,
                     isListening = isListening,
                     onVoiceInput = {
                         if (isListening) {
