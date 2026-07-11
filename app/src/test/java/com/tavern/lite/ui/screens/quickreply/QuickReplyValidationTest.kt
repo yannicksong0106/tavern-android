@@ -60,6 +60,52 @@ class QuickReplyValidationTest {
     }
 
     @Test
+    fun `automation reply warns when single line macro contains unsafe command`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = """
+                /macro unsafe /send hello
+                /call unsafe
+            """.trimIndent(),
+            automationId = "assistant_reply",
+            requiresConfirmation = false,
+            allowAutoRun = true
+        )
+
+        assertEquals(listOf(QuickReplyItemWarning.AutomationBlocksUnsafeCommands), warnings)
+    }
+
+    @Test
+    fun `automation reply warns when nested single line macro contains unsafe command`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = """
+                /macro outer /macro inner /trigger next
+                /call outer
+                /call inner
+            """.trimIndent(),
+            automationId = "assistant_reply",
+            requiresConfirmation = false,
+            allowAutoRun = true
+        )
+
+        assertEquals(listOf(QuickReplyItemWarning.AutomationBlocksUnsafeCommands), warnings)
+    }
+
+    @Test
+    fun `automation reply does not warn when single line macro is safe`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = """
+                /macro safe /echo hello
+                /call safe
+            """.trimIndent(),
+            automationId = "assistant_reply",
+            requiresConfirmation = false,
+            allowAutoRun = true
+        )
+
+        assertTrue(warnings.isEmpty())
+    }
+
+    @Test
     fun `automation reply does not warn for comments and safe parser commands`() {
         val warnings = buildQuickReplyItemWarnings(
             script = """
@@ -76,6 +122,28 @@ class QuickReplyValidationTest {
         )
 
         assertTrue(warnings.isEmpty())
+    }
+
+    @Test
+    fun `automation reply warns when macro nesting exceeds analysis depth`() {
+        // Regression: 达到 MAX_MACRO_WARNING_DEPTH 时必须视作"可能不安全"(fail-closed)。
+        // 之前 `return false` 让 17 层嵌套单行宏 body 里的 /send 绕过 validation。
+        val depth = 20
+        val script = buildString {
+            repeat(depth) { append("/macro m$it ") }
+            append("/send hi")
+            append('\n')
+            append("/call m0")
+        }
+
+        val warnings = buildQuickReplyItemWarnings(
+            script = script,
+            automationId = "assistant_reply",
+            requiresConfirmation = false,
+            allowAutoRun = true
+        )
+
+        assertEquals(listOf(QuickReplyItemWarning.AutomationBlocksUnsafeCommands), warnings)
     }
 
     @Test
