@@ -734,4 +734,56 @@ class StScriptLiteExecutorTest {
         )
         assertTrue(result.echoes.contains("big"))
     }
+
+    @Test
+    fun `mutual macro recursion is bounded by depth limit`() {
+        // 回归保护：a -> b -> a -> b ... 应被 macroDepth 上限 16 拦下，不能爆栈。
+        val result = executor.execute(
+            source = """
+                /macro a /call b
+                /macro b /call a
+                /call a
+            """.trimIndent()
+        )
+        assertTrue(
+            "expected macro depth error, got ${result.blockedCommands}",
+            result.blockedCommands.any { it.reason.contains("Macro expansion limit exceeded") }
+        )
+    }
+
+    @Test
+    fun `def alias defines macro identically to macro keyword`() {
+        val result = executor.execute(
+            source = """
+                /def greet /echo hello
+                /call greet
+            """.trimIndent()
+        )
+        assertTrue(result.echoes.contains("hello"))
+    }
+
+    @Test
+    fun `invoke alias calls macro identically to call keyword`() {
+        val result = executor.execute(
+            source = """
+                /macro greet /echo hi
+                /invoke greet
+            """.trimIndent()
+        )
+        assertTrue(result.echoes.contains("hi"))
+    }
+
+    @Test
+    fun `enddef alias closes block macro identically to endmacro`() {
+        val result = executor.execute(
+            source = """
+                /macro greet
+                /echo hi
+                /echo there
+                /enddef
+                /call greet
+            """.trimIndent()
+        )
+        assertTrue(result.echoes.containsAll(listOf("hi", "there")))
+    }
 }
