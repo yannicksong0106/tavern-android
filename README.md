@@ -1,6 +1,6 @@
 # Tavern Lite (酒馆 Lite)
 
-> **v1.3.1** — SillyTavern 安卓原生客户端，持续迭代中。
+> **v1.4.0** — SillyTavern 安卓原生客户端，持续迭代中。
 >
 > Contact: yannicksong0106@163.com
 
