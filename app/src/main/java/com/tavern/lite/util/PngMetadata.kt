@@ -13,6 +13,8 @@ import java.util.zip.CRC32
  */
 object PngMetadata {
 
+    private const val MAX_EDITABLE_PNG_BYTES = 20L * 1024L * 1024L
+
     private val PNG_SIGNATURE = byteArrayOf(
         0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
     )
@@ -32,6 +34,10 @@ object PngMetadata {
                 val type = ByteArray(4)
                 raf.readFully(type)
                 val typeName = String(type, Charsets.US_ASCII)
+
+                if (length < 0 || length.toLong() > raf.length() - raf.filePointer - 4) {
+                    throw IllegalArgumentException("Invalid PNG chunk length")
+                }
 
                 val data = ByteArray(length)
                 raf.readFully(data)
@@ -80,6 +86,13 @@ object PngMetadata {
     }
 
     fun writeTextChunk(file: File, key: String, value: String) {
+        if (!file.exists() || !file.isFile) {
+            throw IllegalArgumentException("PNG file does not exist")
+        }
+        if (file.length() !in 1..MAX_EDITABLE_PNG_BYTES) {
+            throw IllegalArgumentException("PNG file is too large")
+        }
+
         val keyBytes = key.toByteArray(Charsets.ISO_8859_1)
         val valueBytes = value.toByteArray(Charsets.ISO_8859_1)
         val data = ByteArray(keyBytes.size + 1 + valueBytes.size)
