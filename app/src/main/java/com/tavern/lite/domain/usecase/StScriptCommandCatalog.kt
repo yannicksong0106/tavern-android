@@ -12,7 +12,21 @@ data class StScriptCommandInfo(
     val insertTemplate: String,
     val usage: String,
     val summary: String,
-    val safeForAutoRun: Boolean
+    val safeForAutoRun: Boolean,
+    /**
+     * 参数级补全提示：点击命令 chip 后可继续点选的参数片段（操作符、单位占位等）。
+     * 每一项点击后追加到脚本光标处（[StScriptParamHint.insert]）。空列表表示该命令无参数提示。
+     */
+    val paramHints: List<StScriptParamHint> = emptyList()
+)
+
+/**
+ * 单个参数提示片段。[label] 是 chip 显示文本，[insert] 是点击后插入脚本的文本
+ * （通常尾随空格便于继续输入；纯占位数值则不带空格）。
+ */
+data class StScriptParamHint(
+    val label: String,
+    val insert: String
 )
 
 /**
@@ -62,7 +76,16 @@ object StScriptCommandCatalog {
             insertTemplate = "/if ",
             usage = "/if {{变量}} == 值",
             summary = "条件为假时跳过下一行命令。",
-            safeForAutoRun = true
+            safeForAutoRun = true,
+            paramHints = listOf(
+                StScriptParamHint(label = "==", insert = "== "),
+                StScriptParamHint(label = "!=", insert = "!= "),
+                StScriptParamHint(label = ">", insert = "> "),
+                StScriptParamHint(label = "<", insert = "< "),
+                StScriptParamHint(label = ">=", insert = ">= "),
+                StScriptParamHint(label = "<=", insert = "<= "),
+                StScriptParamHint(label = "contains", insert = "contains ")
+            )
         ),
         StScriptCommandInfo(
             name = "delay",
@@ -70,7 +93,13 @@ object StScriptCommandCatalog {
             insertTemplate = "/delay ",
             usage = "/delay 毫秒",
             summary = "等待指定毫秒后继续。",
-            safeForAutoRun = true
+            safeForAutoRun = true,
+            paramHints = listOf(
+                StScriptParamHint(label = "500ms", insert = "500"),
+                StScriptParamHint(label = "1s", insert = "1000"),
+                StScriptParamHint(label = "2s", insert = "2000"),
+                StScriptParamHint(label = "5s", insert = "5000")
+            )
         ),
         StScriptCommandInfo(
             name = "input",

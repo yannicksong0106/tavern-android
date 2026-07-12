@@ -87,6 +87,7 @@
     <string name="quick_reply_command_reference_title">STscript command reference</string>
     <string name="quick_reply_command_aliases">Aliases: %1$s</string>
     <string name="quick_reply_variable_palette_hint">Tap a variable to insert {{name}}</string>
+    <string name="quick_reply_param_palette_hint">Tap to add an argument for %1$s</string>
     <string name="quick_reply_automation_id">Automation ID</string>
     <string name="quick_reply_display_order">Order</string>
     <string name="quick_reply_character_id">Character ID</string>

@@ -37,3 +37,26 @@ fun insertStScriptCommand(
     val cursor = before.length + insert.length
     return StScriptInsertion(text = newText, selection = cursor)
 }
+
+/**
+ * 在光标区间 [[selectionStart], [selectionEnd]] 处直接插入参数片段 [fragment]，
+ * 不补前导换行（参数应接在当前命令同一行）。选区非空时替换选区，光标落在插入文本末尾。
+ *
+ * 供命令面板的参数级补全（`/if` 操作符、`/delay` 单位占位）使用；纯逻辑，供测试覆盖。
+ */
+fun appendStScriptParam(
+    current: String,
+    selectionStart: Int,
+    selectionEnd: Int,
+    fragment: String
+): StScriptInsertion {
+    val start = selectionStart.coerceIn(0, current.length)
+    val end = selectionEnd.coerceIn(start, current.length)
+
+    val before = current.substring(0, start)
+    val after = current.substring(end)
+
+    val newText = before + fragment + after
+    val cursor = before.length + fragment.length
+    return StScriptInsertion(text = newText, selection = cursor)
+}

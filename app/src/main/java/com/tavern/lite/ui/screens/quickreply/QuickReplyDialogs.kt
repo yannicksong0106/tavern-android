@@ -45,6 +45,7 @@ import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.QuickReplyEntity
 import com.tavern.lite.data.db.entity.QuickReplySetEntity
 import com.tavern.lite.domain.usecase.StScriptCommandCatalog
+import com.tavern.lite.domain.usecase.StScriptCommandInfo
 import com.tavern.lite.domain.usecase.StScriptLiteParser
 
 private val QUICK_REPLY_SCOPES = listOf("global", "character", "chat")
@@ -280,7 +281,22 @@ fun QuickReplyItemDialog(
                             selection = TextRange(result.selection)
                         )
                     }
-                    StScriptCommandPalette(onInsert = insertIntoScript)
+                    val appendParamToScript: (String) -> Unit = { fragment ->
+                        val result = appendStScriptParam(
+                            current = scriptField.text,
+                            selectionStart = scriptField.selection.start,
+                            selectionEnd = scriptField.selection.end,
+                            fragment = fragment
+                        )
+                        scriptField = TextFieldValue(
+                            text = result.text,
+                            selection = TextRange(result.selection)
+                        )
+                    }
+                    StScriptCommandPalette(
+                        onInsert = insertIntoScript,
+                        onInsertParam = appendParamToScript
+                    )
                     val scriptVariables = collectStScriptVariableNames(script)
                     if (scriptVariables.isNotEmpty()) {
                         StScriptVariablePalette(
@@ -404,9 +420,12 @@ private fun QuickReplyItemWarningText(warning: QuickReplyItemWarning) {
  */
 @Composable
 private fun StScriptCommandPalette(
-    onInsert: (String) -> Unit
+    onInsert: (String) -> Unit,
+    onInsertParam: (String) -> Unit
 ) {
     var showReference by remember { mutableStateOf(false) }
+    // 记住最后点击的、带参数提示的命令；用于展示二级参数 chip 行。
+    var selectedCommand by remember { mutableStateOf<StScriptCommandInfo?>(null) }
 
     Spacer(modifier = Modifier.height(4.dp))
     Row(
@@ -433,9 +452,35 @@ private fun StScriptCommandPalette(
     ) {
         items(StScriptCommandCatalog.commands, key = { it.name }) { info ->
             AssistChip(
-                onClick = { onInsert(info.insertTemplate) },
+                onClick = {
+                    onInsert(info.insertTemplate)
+                    // 点击后若该命令有参数提示，展开二级 chip；否则收起。
+                    selectedCommand = info.takeIf { it.paramHints.isNotEmpty() }
+                },
                 label = { Text("/${info.name}") }
             )
+        }
+    }
+
+    val paramCommand = selectedCommand
+    if (paramCommand != null && paramCommand.paramHints.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.quick_reply_param_palette_hint, "/${paramCommand.name}"),
+            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(top = 4.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(paramCommand.paramHints, key = { it.label }) { hint ->
+                AssistChip(
+                    onClick = { onInsertParam(hint.insert) },
+                    label = { Text(hint.label) }
+                )
+            }
         }
     }
 

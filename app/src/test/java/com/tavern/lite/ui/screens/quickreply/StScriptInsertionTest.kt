@@ -58,4 +58,43 @@ class StScriptInsertionTest {
         assertEquals("hi\n/echo ", result.text)
         assertEquals("hi\n/echo ".length, result.selection)
     }
+
+    @Test
+    fun `appendParam inserts fragment at cursor without newline`() {
+        // /if 命令后点操作符 chip：应接在同一行，不补换行。
+        val current = "/if {{mood}} "
+        val result = appendStScriptParam(current, current.length, current.length, "== ")
+
+        assertEquals("/if {{mood}} == ", result.text)
+        assertEquals("/if {{mood}} == ".length, result.selection)
+    }
+
+    @Test
+    fun `appendParam replaces active selection`() {
+        val current = "/delay 999"
+        // 选中 "999"
+        val result = appendStScriptParam(current, 7, current.length, "1000")
+
+        assertEquals("/delay 1000", result.text)
+        assertEquals("/delay 1000".length, result.selection)
+    }
+
+    @Test
+    fun `appendParam mid line does not prepend newline`() {
+        // 与 insertStScriptCommand 的区别：参数片段永远接在光标处，不独占行。
+        val current = "/if x > "
+        val result = appendStScriptParam(current, current.length, current.length, "5")
+
+        assertEquals("/if x > 5", result.text)
+        assertEquals("/if x > 5".length, result.selection)
+    }
+
+    @Test
+    fun `appendParam clamps out of range selection`() {
+        val current = "/delay "
+        val result = appendStScriptParam(current, 99, 99, "1000")
+
+        assertEquals("/delay 1000", result.text)
+        assertEquals("/delay 1000".length, result.selection)
+    }
 }
