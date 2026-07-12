@@ -79,6 +79,7 @@
     <string name="quick_reply_label">ボタンラベル</string>
     <string name="quick_reply_icon">アイコン文字</string>
     <string name="quick_reply_script">スクリプト</string>
+    <string name="quick_reply_command_palette_hint">コマンドをタップしてスクリプトに挿入</string>
     <string name="quick_reply_automation_id">Automation ID</string>
     <string name="quick_reply_display_order">並び順</string>
     <string name="quick_reply_character_id">キャラクター ID</string>

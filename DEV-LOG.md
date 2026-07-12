@@ -1,5 +1,43 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — Phase X4 STscript 命令面板 + v1.4.0 收口 ✅
+
+**背景**: Phase X3 宏系统已 ship，版本升 v1.4.0（versionCode 24）。Phase X4 起步：给 Quick Reply 脚本编辑器加命令面板，点击 chip 把命令模板插入到光标处，降低手写 STscript 门槛。
+
+### 改动范围
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 命令目录 | `StScriptCommandCatalog.kt` | 15 条命令参考（name/aliases/insertTemplate/usage/summary/safeForAutoRun），顺序即面板展示顺序，安全命令靠前 |
+| 目录一致性 | `StScriptCommandCatalogTest.kt` | 校验目录不遗漏 parser 已识别命令名、别名不冲突、safeForAutoRun 标记与 `autoRunSafeCommands` 一致 |
+| 插入逻辑 | `StScriptInsertion.kt` | 纯函数 `insertStScriptCommand`：光标区间插入、非行首自动补换行让命令独占一行、替换选区、越界 clamp |
+| 插入测试 | `StScriptInsertionTest.kt` | 覆盖空脚本、行首、行中、选区替换、中间切分、越界 |
+| 编辑 UI | `QuickReplyDialogs.kt` | script 字段 `String` → `TextFieldValue`（追踪光标）；新增 `StScriptCommandPalette` 横向 chip 面板 |
+| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint` |
+| 版本号 | `build.gradle.kts` | versionCode 24, versionName 1.4.0 |
+
+### 设计取舍
+
+- 插入逻辑抽成纯函数（不依赖 Compose），可完整单测，UI 层只把结果写回 `TextFieldValue`。
+- 命令目录与 parser 分支靠一致性测试锁定，新增命令时两处漂移会被测试抓住。
+- 面板只做「插入模板」最小可用；语法高亮、参数补全留给 X4 后续。
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL |
+| `lintDebug` | BUILD SUCCESSFUL |
+| `detekt` | BUILD SUCCESSFUL — 213 Kotlin files, 0 code smells |
+
+### 未验证 / 后续
+
+- 设备 smoke 未跑；改动集中在纯逻辑 + Compose 面板，已用单测覆盖插入与目录一致性。
+- Phase X4 后续：语法高亮、参数级补全、错误行内标注。
+
+---
+
 ## 2026-07-12 — 深度审计 3 个 bug 修复 ✅
 
 **背景**: 用工作流做深度审计（33 subagent、8 并行 hunter、逐条 adversarial verify）覆盖 Phase X3 未提交面 + 邻近改动。survived 4 finding：1 High 极性、1 Medium 孤儿 chat、2 Low（JsonNull、云图 -1、InputBar 双截断）。全部逐条修复 + 补测试。

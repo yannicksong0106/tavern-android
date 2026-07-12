@@ -27,12 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.ChatEntity
 import com.tavern.lite.data.db.entity.QuickReplyEntity
 import com.tavern.lite.data.db.entity.QuickReplySetEntity
+import com.tavern.lite.domain.usecase.StScriptCommandCatalog
 import com.tavern.lite.domain.usecase.StScriptLiteParser
 
 private val QUICK_REPLY_SCOPES = listOf("global", "character", "chat")
@@ -185,7 +188,11 @@ fun QuickReplyItemDialog(
     onDismiss: () -> Unit
 ) {
     var label by remember { mutableStateOf(reply?.label.orEmpty()) }
-    var script by remember { mutableStateOf(reply?.script.orEmpty()) }
+    var scriptField by remember {
+        val initial = reply?.script.orEmpty()
+        mutableStateOf(TextFieldValue(text = initial, selection = TextRange(initial.length)))
+    }
+    val script = scriptField.text
     var icon by remember { mutableStateOf(reply?.icon.orEmpty()) }
     var automationId by remember { mutableStateOf(reply?.automationId.orEmpty()) }
     var enabled by remember { mutableStateOf(reply?.enabled ?: true) }
@@ -226,11 +233,25 @@ fun QuickReplyItemDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = script,
-                        onValueChange = { script = it },
+                        value = scriptField,
+                        onValueChange = { scriptField = it },
                         label = { Text(stringResource(R.string.quick_reply_script)) },
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth()
+                    )
+                    StScriptCommandPalette(
+                        onInsert = { template ->
+                            val result = insertStScriptCommand(
+                                current = scriptField.text,
+                                selectionStart = scriptField.selection.start,
+                                selectionEnd = scriptField.selection.end,
+                                template = template
+                            )
+                            scriptField = TextFieldValue(
+                                text = result.text,
+                                selection = TextRange(result.selection)
+                            )
+                        }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -326,4 +347,31 @@ private fun QuickReplyItemWarningText(warning: QuickReplyItemWarning) {
         color = androidx.compose.material3.MaterialTheme.colorScheme.error,
         modifier = Modifier.padding(top = 4.dp)
     )
+}
+
+/**
+ * STscript 命令面板：横向 chip 列表，点击将命令模板插入脚本光标处。
+ */
+@Composable
+private fun StScriptCommandPalette(
+    onInsert: (String) -> Unit
+) {
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = stringResource(R.string.quick_reply_command_palette_hint),
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(top = 4.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(StScriptCommandCatalog.commands, key = { it.name }) { info ->
+            AssistChip(
+                onClick = { onInsert(info.insertTemplate) },
+                label = { Text("/${info.name}") }
+            )
+        }
+    }
 }
