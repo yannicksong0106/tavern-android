@@ -65,6 +65,7 @@
     <string name="voice_permission_denied">需要麦克风权限才能使用语音输入</string>
     <string name="add_image">添加图片</string>
     <string name="remove_image">移除图片</string>
+    <string name="image_too_large_or_failed">%d 张图片过大或复制失败</string>
     <string name="quick_reply_confirm_title">运行快捷回复</string>
     <string name="quick_reply_confirm_text">这个快捷回复需要确认后才会执行。</string>
     <string name="quick_reply_run">运行</string>

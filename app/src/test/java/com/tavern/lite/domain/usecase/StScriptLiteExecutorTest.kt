@@ -435,14 +435,303 @@ class StScriptLiteExecutorTest {
     }
 
     @Test
+    fun `parser recognizes macro definition and call`() {
+        val program = parser.parse("/macro greet /echo hello\n/call greet\n/endmacro")
+
+        assertEquals(StScriptCommandType.MacroDef, program.commands[0].type)
+        assertEquals("greet", program.commands[0].variableName)
+        assertEquals("/echo hello", program.commands[0].argument)
+        assertEquals(StScriptCommandType.MacroCall, program.commands[1].type)
+        assertEquals("greet", program.commands[1].variableName)
+        assertEquals(StScriptCommandType.MacroEnd, program.commands[2].type)
+    }
+
+    @Test
+    fun `macro call expands defined echo command`() {
+        val result = executor.execute(
+            source = """
+                /macro greet /echo hello
+                /call greet
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("hello"), result.echoes)
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `macro body resolves variables at call time`() {
+        val result = executor.execute(
+            source = """
+                /macro greet /echo hello {{name}}
+                /setvar name Alice
+                /call greet
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("hello Alice"), result.echoes)
+    }
+
+    @Test
+    fun `macro call can expand send action when permission allows`() {
+        val result = executor.execute(
+            source = """
+                /macro sendHello /send hello
+                /call sendHello
+            """.trimIndent(),
+            permissions = StScriptPermissions(canSendMessages = true)
+        )
+
+        assertEquals(listOf(StScriptAction.SendMessage("hello")), result.actions)
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `macro expanded send keeps permission checks`() {
+        val result = executor.execute(
+            source = """
+                /macro sendHello /send hello
+                /call sendHello
+            """.trimIndent()
+        )
+
+        assertTrue(result.actions.isEmpty())
+        assertEquals("Sending messages is not allowed", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `auto run blocks unsafe commands expanded by macro`() {
+        val result = executor.execute(
+            source = """
+                /macro sendHello /send hello
+                /call sendHello
+            """.trimIndent(),
+            permissions = StScriptPermissions(
+                allowAutoRun = true,
+                canSendMessages = true
+            ),
+            autoRun = true
+        )
+
+        assertTrue(result.actions.isEmpty())
+        assertEquals(StScriptCommandType.Send, result.blockedCommands.single().command.type)
+        assertEquals("Command is not safe for auto-run", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `undefined macro call is blocked`() {
+        val result = executor.execute("/call missing")
+
+        assertTrue(result.actions.isEmpty())
+        assertEquals("Macro is not defined", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `recursive macro call is blocked at expansion limit`() {
+        val result = executor.execute(
+            source = """
+                /macro loop /call loop
+                /call loop
+            """.trimIndent()
+        )
+
+        assertEquals("Macro expansion limit exceeded", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `macro definition requires name and body`() {
+        val missingName = executor.execute("/macro")
+        val missingBody = executor.execute("/macro empty\n/endmacro")
+
+        assertEquals("Macro name is empty", missingName.blockedCommands.single().reason)
+        assertEquals("Macro body is empty", missingBody.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `block macro does not execute body until call`() {
+        val result = executor.execute(
+            source = """
+                /macro greet
+                /echo hello {{name}}
+                /setvar mood calm
+                /endmacro
+                /echo before
+                /call greet
+            """.trimIndent(),
+            initialVariables = mapOf("name" to "Alice")
+        )
+
+        assertEquals(listOf("before", "hello Alice"), result.echoes)
+        assertEquals("calm", result.variables["mood"])
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
+    fun `uncalled block macro body is skipped at top level`() {
+        val result = executor.execute(
+            source = """
+                /macro hidden
+                /echo hidden
+                /setvar mood changed
+                /endmacro
+                /echo visible
+            """.trimIndent(),
+            initialVariables = mapOf("mood" to "original")
+        )
+
+        assertEquals(listOf("visible"), result.echoes)
+        assertEquals("original", result.variables["mood"])
+    }
+
+    @Test
+    fun `block macro can expand multiple actions`() {
+        val result = executor.execute(
+            source = """
+                /macro act
+                /send hello
+                /trigger next
+                /endmacro
+                /call act
+            """.trimIndent(),
+            permissions = StScriptPermissions(
+                canSendMessages = true,
+                canTriggerGeneration = true
+            )
+        )
+
+        assertEquals(
+            listOf(
+                StScriptAction.SendMessage("hello"),
+                StScriptAction.TriggerGeneration("next")
+            ),
+            result.actions
+        )
+    }
+
+    @Test
+    fun `missing block macro end blocks and skips dangling body`() {
+        val result = executor.execute(
+            source = """
+                /macro broken
+                /echo hidden
+            """.trimIndent()
+        )
+
+        assertTrue(result.echoes.isEmpty())
+        assertEquals("Macro block is missing /endmacro", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `unmatched macro end is blocked`() {
+        val result = executor.execute("/endmacro")
+
+        assertEquals("Macro end without matching definition", result.blockedCommands.single().reason)
+    }
+
+    @Test
+    fun `if false skips whole block macro definition`() {
+        val result = executor.execute(
+            source = """
+                /if {{flag}}
+                /macro hidden
+                /echo hidden
+                /endmacro
+                /echo visible
+            """.trimIndent(),
+            initialVariables = mapOf("flag" to "0")
+        )
+
+        assertEquals(listOf("visible"), result.echoes)
+        assertFalse(result.hasBlockedCommands)
+    }
+
+    @Test
     fun `new commands are safe for auto-run`() {
         assertTrue(StScriptCommandType.Delay in StScriptCommandType.autoRunSafeCommands)
         assertTrue(StScriptCommandType.ClearVar in StScriptCommandType.autoRunSafeCommands)
         assertTrue(StScriptCommandType.If in StScriptCommandType.autoRunSafeCommands)
+        assertTrue(StScriptCommandType.MacroDef in StScriptCommandType.autoRunSafeCommands)
+        assertTrue(StScriptCommandType.MacroCall in StScriptCommandType.autoRunSafeCommands)
+        assertTrue(StScriptCommandType.MacroEnd in StScriptCommandType.autoRunSafeCommands)
     }
 
     @Test
     fun `cancel is not safe for auto-run`() {
         assertFalse(StScriptCommandType.Cancel in StScriptCommandType.autoRunSafeCommands)
+    }
+
+    // ==================== Phase X3 修复回归测试 ====================
+
+    @Test
+    fun `nameless block macro definition does not leak body to top level`() {
+        // 修复前：`/macro` 无名 → defineMacro 直接返回 nextIndex，body 作为顶层命令执行泄漏。
+        val result = executor.execute(
+            source = """
+                /macro
+                /send secret
+                /endmacro
+                /echo after
+            """.trimIndent(),
+            permissions = StScriptPermissions(canSendMessages = true)
+        )
+
+        assertEquals(listOf("after"), result.echoes)
+        // 未定义宏名产生 blocked，但 /send secret 必须被跳过（未产生 action）
+        assertTrue(result.actions.isEmpty())
+        assertTrue(result.blockedCommands.any { it.reason == "Macro name is empty" })
+    }
+
+    @Test
+    fun `if false followed by dangling macro reports missing endmacro`() {
+        // 修复前：skipMacroBlock 找不到 /endmacro 时静默吞掉剩余命令。
+        val result = executor.execute(
+            source = """
+                /if {{flag}}
+                /macro dangling
+                /echo lost
+            """.trimIndent(),
+            initialVariables = mapOf("flag" to "0")
+        )
+
+        assertTrue(result.echoes.isEmpty())
+        assertTrue(result.blockedCommands.any { it.reason == "Macro block is missing /endmacro" })
+    }
+
+    @Test
+    fun `if condition ignores operator characters inside variable values`() {
+        // 修复前：resolved="a==b >= 5" 会先被 `==` 劫持返回 false。
+        val result = executor.execute(
+            source = "/if {{code}} >= 5\n/echo pass",
+            initialVariables = mapOf("code" to "a==b")
+        )
+        // code 非数字，>= 应返回 false（compareNumeric 拿不到 double）
+        assertFalse(result.echoes.contains("pass"))
+
+        // 反例：数值比较不再被变量值中的 `==` 干扰
+        val numeric = executor.execute(
+            source = "/if {{n}} >= 5\n/echo pass",
+            initialVariables = mapOf("n" to "10")
+        )
+        assertTrue(numeric.echoes.contains("pass"))
+    }
+
+    @Test
+    fun `truthy check on string containing word contains returns true`() {
+        // 修复前：`contains` 会被识别为操作符，split 后取 left.contains(right)=false。
+        val result = executor.execute(
+            source = "/if {{desc}}\n/echo truthy",
+            initialVariables = mapOf("desc" to "file contains data")
+        )
+        assertTrue(result.echoes.contains("truthy"))
+    }
+
+    @Test
+    fun `numeric comparison supports decimal values`() {
+        // 修复前：toLongOrNull("7.5") 为 null，7.5 > 5 静默返回 false。
+        val result = executor.execute(
+            source = "/if {{score}} > 5\n/echo big",
+            initialVariables = mapOf("score" to "7.5")
+        )
+        assertTrue(result.echoes.contains("big"))
     }
 }

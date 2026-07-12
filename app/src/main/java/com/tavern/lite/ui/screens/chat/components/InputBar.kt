@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -56,6 +57,12 @@ import com.tavern.lite.R
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.util.TokenEstimator
 import java.io.File
+
+internal const val MAX_CHAT_INPUT_CHARS = 12_000
+
+internal fun constrainChatInputText(text: String): String {
+    return if (text.length <= MAX_CHAT_INPUT_CHARS) text else text.take(MAX_CHAT_INPUT_CHARS)
+}
 
 @Composable
 fun InputBar(
@@ -154,7 +161,7 @@ fun InputBar(
         ) {
             TextField(
                 value = value,
-                onValueChange = onValueChange,
+                onValueChange = { onValueChange(constrainChatInputText(it)) },
                 placeholder = { Text(stringResource(R.string.input_hint)) },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -165,8 +172,11 @@ fun InputBar(
                 shape = RoundedCornerShape(24.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
+                minLines = 2,
                 maxLines = 5,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 72.dp, max = 168.dp)
             )
 
             if (isGenerating) {

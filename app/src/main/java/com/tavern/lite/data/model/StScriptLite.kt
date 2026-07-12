@@ -37,10 +37,25 @@ enum class StScriptCommandType {
     Cancel,
     ClearVar,
     If,
+    MacroDef,
+    MacroCall,
+    MacroEnd,
     Unknown;
 
     companion object {
-        val autoRunSafeCommands = setOf(Comment, SetVar, GetVar, Echo, SetInput, Delay, ClearVar, If)
+        val autoRunSafeCommands = setOf(
+            Comment,
+            SetVar,
+            GetVar,
+            Echo,
+            SetInput,
+            Delay,
+            ClearVar,
+            If,
+            MacroDef,
+            MacroCall,
+            MacroEnd
+        )
     }
 }
 

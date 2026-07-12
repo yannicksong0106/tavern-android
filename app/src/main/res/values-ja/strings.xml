@@ -65,6 +65,7 @@
     <string name="voice_permission_denied">音声入力にはマイクの許可が必要です</string>
     <string name="add_image">画像を追加</string>
     <string name="remove_image">画像を削除</string>
+    <string name="image_too_large_or_failed">%d枚の画像が大きすぎるかコピーに失敗しました</string>
     <string name="quick_reply_confirm_title">クイック返信を実行</string>
     <string name="quick_reply_confirm_text">このクイック返信は実行前に確認が必要です。</string>
     <string name="quick_reply_run">実行</string>

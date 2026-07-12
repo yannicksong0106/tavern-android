@@ -69,6 +69,7 @@
     <string name="voice_permission_denied">Microphone permission is required for voice input</string>
     <string name="add_image">Add Image</string>
     <string name="remove_image">Remove Image</string>
+    <string name="image_too_large_or_failed">%d image(s) were too large or failed to copy</string>
     <string name="quick_reply_confirm_title">Run Quick Reply</string>
     <string name="quick_reply_confirm_text">This quick reply requires confirmation before it runs.</string>
     <string name="quick_reply_run">Run</string>

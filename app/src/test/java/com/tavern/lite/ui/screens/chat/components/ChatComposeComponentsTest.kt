@@ -30,6 +30,16 @@ class ChatComposeComponentsTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
+    fun constrainChatInputText_capsOverlongText() {
+        val overlongText = "x".repeat(MAX_CHAT_INPUT_CHARS + 50)
+
+        val constrained = constrainChatInputText(overlongText)
+
+        assertEquals(MAX_CHAT_INPUT_CHARS, constrained.length)
+        assertEquals("x".repeat(MAX_CHAT_INPUT_CHARS), constrained)
+    }
+
+    @Test
     fun quickReplyBar_rendersRepliesAndInvokesClick() {
         val firstReply = quickReply(id = 1, label = "Say hello")
         val secondReply = quickReply(id = 2, label = "Check memory")

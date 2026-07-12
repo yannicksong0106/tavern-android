@@ -65,6 +65,7 @@
     <string name="voice_permission_denied">음성 입력에는 마이크 권한이 필요합니다</string>
     <string name="add_image">이미지 추가</string>
     <string name="remove_image">이미지 제거</string>
+    <string name="image_too_large_or_failed">이미지 %d장이 너무 크거나 복사에 실패했습니다</string>
     <string name="quick_reply_confirm_title">빠른 답장 실행</string>
     <string name="quick_reply_confirm_text">이 빠른 답장은 실행 전에 확인이 필요합니다.</string>
     <string name="quick_reply_run">실행</string>
