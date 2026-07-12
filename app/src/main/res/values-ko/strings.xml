@@ -99,6 +99,7 @@
     <string name="quick_reply_warning_confirmation_skips_auto">확인이 필요한 답장은 자동 트리거에서 건너뜁니다.</string>
     <string name="quick_reply_warning_unsafe_auto_commands">자동 실행은 안전한 명령만 실행하며 보내기, 생성, 계속 생성 명령은 차단됩니다.</string>
     <string name="quick_reply_warning_unknown_command">스크립트에 인식할 수 없는 명령이 있어 실행 시 무시됩니다. 명령 이름 철자를 확인하세요.</string>
+    <string name="quick_reply_unknown_command_line">%1$d번째 줄: 인식할 수 없는 명령 /%2$s</string>
     <string name="quick_reply_auto_send_blocked">자동 실행의 메시지 보내기 동작이 차단되었습니다</string>
     <string name="quick_reply_auto_generation_blocked">자동 실행의 생성 트리거 동작이 차단되었습니다</string>
     <string name="quick_reply_auto_continue_blocked">자동 실행의 계속 생성 동작이 차단되었습니다</string>

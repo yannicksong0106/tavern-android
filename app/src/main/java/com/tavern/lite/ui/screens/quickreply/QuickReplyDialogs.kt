@@ -218,6 +218,7 @@ fun QuickReplyItemDialog(
         allowAutoRun = allowAutoRun,
         parser = stScriptParser
     )
+    val unknownCommandLines = findUnknownCommandLines(script)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -327,6 +328,18 @@ fun QuickReplyItemDialog(
                     )
                     warnings.forEach { warning ->
                         QuickReplyItemWarningText(warning = warning)
+                    }
+                    unknownCommandLines.forEach { diagnostic ->
+                        Text(
+                            text = stringResource(
+                                R.string.quick_reply_unknown_command_line,
+                                diagnostic.line,
+                                diagnostic.commandName
+                            ),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }

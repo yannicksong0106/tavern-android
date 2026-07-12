@@ -16,7 +16,8 @@
 | 命令参考弹窗 | `QuickReplyDialogs.kt` | 面板右侧 Info 按钮打开 `StScriptCommandReferenceDialog`，逐条列出每个命令的 usage、别名、说明 |
 | 未知命令预警 | `QuickReplyValidation.kt` / `QuickReplyValidationTest.kt` | 新增 `ContainsUnknownCommand` warning，parser 识别到 `Unknown` 命令即提示；与 automation 无关（手动回复手写错命令名也提示），补测试 |
 | 语法高亮 | `StScriptHighlighter.kt` / `StScriptHighlighterTest.kt` | 纯函数 `highlightStScript` 逐行标色：已知命令 / 未知命令 / 注释 / `{{变量}}`；用 `OffsetMapping.Identity` 接 `VisualTransformation`（不改字符数）；script 字段 `visualTransformation` 实时高亮 |
-| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases`、`quick_reply_warning_unknown_command` |
+| 行号诊断 | `StScriptLineDiagnostics.kt` / `StScriptLineDiagnosticsTest.kt` | 纯函数 `findUnknownCommandLines` 独立扫描（保留空行与原始行号，不复用会丢空行的 parser），编辑器精确提示「第 N 行：未识别命令 /foo」 |
+| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases`、`quick_reply_warning_unknown_command`、`quick_reply_unknown_command_line` |
 | 版本号 | `build.gradle.kts` | versionCode 24, versionName 1.4.0 |
 
 ### 设计取舍
@@ -38,9 +39,10 @@
 ### 未验证 / 后续
 
 - 设备 smoke 未跑；改动集中在纯逻辑 + Compose 面板，已用单测覆盖插入与目录一致性。
-- 命令参考弹窗本轮已补（chip 面板 Info 按钮）；未知命令预警本轮已补（编辑期整体提示，暂无精确行号）。
+- 命令参考弹窗本轮已补（chip 面板 Info 按钮）；未知命令预警本轮已补。
 - 语法高亮本轮已补（命令/注释/`{{变量}}` 分色，未知命令红色）。
-- 参数级补全、精确到行号的错误标注留给 X4 后续。
+- 精确到行号的错误标注本轮已补（`findUnknownCommandLines` 保留空行行号，编辑器逐行提示「第 N 行：未识别命令 /foo」）。
+- 参数级补全（命令参数占位/枚举提示）留给 X4 后续。
 
 ---
 

@@ -103,6 +103,7 @@
     <string name="quick_reply_warning_confirmation_skips_auto">Replies that require confirmation are skipped by automatic triggers.</string>
     <string name="quick_reply_warning_unsafe_auto_commands">Auto-run only executes safe commands; send, generation, and continue commands are blocked.</string>
     <string name="quick_reply_warning_unknown_command">The script contains an unrecognized command that will be ignored at run time. Check the command name spelling.</string>
+    <string name="quick_reply_unknown_command_line">Line %1$d: unrecognized command /%2$s</string>
     <string name="quick_reply_auto_send_blocked">Auto-run send action is blocked</string>
     <string name="quick_reply_auto_generation_blocked">Auto-run generation action is blocked</string>
     <string name="quick_reply_auto_continue_blocked">Auto-run continue action is blocked</string>
