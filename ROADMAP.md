@@ -1,6 +1,6 @@
 # 酒馆 AI (TavernAndroid) 路线图
 
-> 更新于 2026-06-10，反映实际代码状态
+> 更新于 2026-07-12，反映实际代码状态（v1.4.0，versionCode 24）
 > **核心原则：优化优先于扩展，确保现有功能稳定可用、体验更好**
 
 ---
@@ -130,8 +130,12 @@
 ### Phase W：图像生成增强
 - W1 SD WebUI API | W2 ComfyUI API | W3 设置 | W4 /draw 命令 | W5 画廊
 
-### Phase X：STscript 命令引擎
-- X1 解析器 | X2 内置命令 | X3 宏系统 | X4 编辑 UI | X5 脚本市场
+### Phase X：STscript 命令引擎 — X1-X4 完成，X5 未启动
+- [x] X1 解析器 | [x] X2 内置命令（`/delay` `/cancel` `/clearvar` `/if`）
+- [x] X3 宏系统（`/macro` `/call` 单行+多行 block，深度上限 16，权限边界）
+- [x] X4 编辑 UI（命令面板 chip 插入、命令参考弹窗、语法高亮、行号诊断、变量引用辅助、未知命令预警）
+- [ ] X4 后续：参数级补全（`/if` 操作符、`/delay` 单位占位）
+- [ ] X5 脚本市场（未启动）
 
 ### Phase Y：扩展框架
 - Y1 ExtensionApi | Y2 Hook 系统 | Y3 内置扩展重构 | Y4-Y6 存储/UI/manifest
@@ -148,7 +152,8 @@
 | v1.2.9 | Phase 1 + 2（稳定性 + 架构优化） | ✅ |
 | v1.3.0 | Phase 3 + 4（VN 补全 + UX 润色） | ✅ |
 | v1.3.1 | Phase 5 + 6 + Quick Replies + M1-M5 收口加固 | ✅ |
-| v1.4.0+ | Phase W/X/Y/Z（新功能） | 进行中 |
+| v1.4.0 | Phase X1-X4（STscript 命令引擎 + 宏系统 + 编辑 UI），tag v1.4.0 @ `62a4caf` | ✅ |
+| v1.4.0+ | Phase W/X5/Y/Z（图像增强 / 脚本市场 / 扩展框架 / 发布） | 进行中 |
 
 ---
 

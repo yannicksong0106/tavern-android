@@ -1,7 +1,7 @@
 # 酒馆 AI (TavernAndroid) 开发计划
 
-> 更新于 2026-07-01 | 基于 DEV-LOG 深度复盘 + 仓库健康扫描（322 文件 NUL 审计）+ P2-3 UI network 依赖收敛现状 + A8 本地门禁复跑 + M1 提交闭合复核 + README/CI 开发门禁固化 + M3 旧库迁移与核心可见流式对话 smoke 验证
-> 当前状态：A0–A7 架构整改已完成；P2-2/P2-3 已扫到 domain/UI 主代码 0 个 `network` 直接 import，UI 主代码 0 个 DAO 直接 import；P0-1/P0-2/P0-3 已随 `d24700c` 提交闭合，HEAD 中 6 个历史 NUL 污染 `.kt` 文件已复扫为 0，`.gitattributes` 已落入 HEAD；A8 本地 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已刷新；README 与现有 `.github/workflows/ci.yml` 已固化本地/CI 门禁；设备 smoke 已完成旧库覆盖安装启动、Room 32→33 迁移、首页渲染与核心流式对话可见验收，停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览与 push/PR 后真实 CI run 仍待验收；当前未提交改动仅为 `DEV-LOG.md` / `DEVELOPMENT-PLAN.md` 文档状态同步。
+> 更新于 2026-07-12 | 基于 DEV-LOG 深度复盘 + Phase X1-X4 STscript 命令引擎全量落地 + v1.4.0 打 tag（tag 已随 X4 完整体移到 HEAD `62a4caf`）+ 审计工作流 bug 修复三连 + 冷启动 ANR 修复 + 设备 smoke 复验
+> 当前状态：v1.3.1 收口加固全量完成并打 tag；v1.4.0 已发布，versionCode 24，`v1.4.0` tag 指向 HEAD `62a4caf`（含 X4 完整体 + 审计修复）；Phase X STscript 命令引擎 X1-X4 已完成（X1 解析器 / X2 内置命令 / X3 宏系统 / X4 编辑 UI），仅 X4 参数级补全与 X5 脚本市场未启动；本轮 `assembleDebug` / `testDebugUnitTest`（~1113 tests）/ `lintDebug` / `detekt`（213 文件 0 code smells）全绿；设备 smoke 已复验 APK 安装启动无 crash、冷启动 +4s / 热启动 +2.4s 无 ANR（验证 `841af3f` 冷启动 runBlocking 修复生效）、首页渲染正常；A0–A7 架构整改与端口-适配器迁移保持已完成；工作树干净，全部已 push 到 origin/main。
 > **核心原则：扩展功能永远往后推，重点永远是优化目前版本，确保目前的功能能够使用，并且尽量使这些功能获得更好的体验。**
 > **验收原则：没有证据只能写"未验收"，文档勾选不算结果；"通过"只能来自实际命令、测试报告、设备手测或代码证据。**
 
@@ -26,6 +26,12 @@
 - A6 automation id ✅（DB v31→v32）
 - A7 配置档案建模 ✅（ApiConfigProfile + 迁移 + SettingsVM 接入）
 
+### 已完成（Phase X STscript 命令引擎 X1-X4，v1.4.0）
+- X1 解析器 ✅ | X2 内置命令 ✅（`/delay` `/cancel` `/clearvar` `/if`）
+- X3 宏系统 ✅（`/macro` `/call` 单行+多行 block，变量调用时解析，深度上限 16，`/send` 等不安全命令仍走权限/auto-run 检查）
+- X4 编辑 UI ✅（命令面板 chip 插入、命令参考弹窗、语法高亮命令/注释/`{{变量}}`/未知分色、行号诊断 `findUnknownCommandLines`、变量引用辅助 `collectStScriptVariableNames`、未知命令预警 `ContainsUnknownCommand`）
+- 2026-07-12 审计工作流 bug 修复：QuickReplyValidation 深度上限极性反向（安全门禁误判）、ChatImporter 截断 JSON 孤儿 chat + JsonNull 转字符串、云图片 -1 length 误 drop + InputBar 双重截断、冷启动 runBlocking DataStore ANR、SearchManager 缓存并发安全、图片边界加固；X4 审计 6 finding 全修（三路径未知命令对齐 + 变量扫描加固 + memoize）
+
 ### 进行中
 - **端口-适配器架构迁移收尾**：domain/usecase 与 UI 主代码均已改为经 domain port 访问 network 实现，并已随 `d24700c` 提交；后续只保留边界回归扫描与必要测试复跑。
 - **A8 质量门禁复核**：本轮 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已生成；README 已新增本地开发门禁清单，现有 GitHub Actions CI 已同步覆盖本地 4 条门禁与 Kover；旧库覆盖安装启动、Room 迁移、首页渲染与核心流式对话 smoke 已通过，剩余主交互 smoke 与 push/PR 后真实 CI run 仍待验收。
@@ -39,7 +45,8 @@
 - branch 覆盖率、BgmPlayer 覆盖、UI Compose 测试破零均已补强；README 与现有 CI workflow 已补门禁清单，后续重点回到停止/继续/重生等剩余主交互 smoke、真实 CI run 验证与提交前边界整理。
 
 ### 待完成（远期，v1.4.0+）
-- W 图像生成增强 | X STscript | Y 扩展框架 | Z 发布准备
+- X4 后续：参数级补全（`/if` 操作符、`/delay` 单位占位）| X5 脚本市场（未启动）
+- W 图像生成增强 | Y 扩展框架 | Z 发布准备
 
 ---
 
