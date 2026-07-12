@@ -1,5 +1,45 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — Phase X4 参数级补全 + Phase X5 脚本包分享起步 ✅
+
+**背景**: X4 编辑器已有命令面板/语法高亮/诊断/变量辅助；本轮补齐参数级补全（点命令 chip 后二级参数 chip），并起步 X5 脚本市场——项目无后端，"市场"以本地脚本包分享格式落地。
+
+### X4 参数级补全
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 参数提示模型 | `StScriptCommandCatalog.kt` | `StScriptCommandInfo` 新增 `paramHints: List<StScriptParamHint>`；`/if` 填 7 个操作符（`==` `!=` `>` `<` `>=` `<=` `contains`），`/delay` 填 4 个单位占位（500ms/1s/2s/5s） |
+| 光标处直插 | `StScriptInsertion.kt` | 新增纯函数 `appendStScriptParam`——参数接在当前命令同一行，不补前导换行（区别于 `insertStScriptCommand`） |
+| 二级 chip UI | `QuickReplyDialogs.kt` | palette 记住最后点击的带 hint 命令，展开参数二级 chip 行；点选 append 到光标 |
+| i18n | 4× `strings.xml` | `quick_reply_param_palette_hint`（带命令名占位） |
+| 测试 | `StScriptCommandCatalogTest.kt` / `StScriptInsertionTest.kt` | `/if` 操作符与执行器 `evaluateCondition` 一致性 + 端到端分支跳转、`/delay` 占位正整数、`appendStScriptParam` 直插/替换选区 |
+
+### X5 脚本包分享起步
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 分享格式 | `QuickReplyShareCodec.kt` | `QuickReplySharePackage`（format 头 + version + name + replies）；`export`/`parse`/`toEntities` 纯逻辑 codec |
+| 安全边界 | `QuickReplyShareCodec.kt` | 导出**不含**权限标志与上下文绑定；导入时 `allowAutoRun`/`canSendMessages`/`canTriggerGeneration`/`requiresConfirmation` 强制关闭，防止恶意包绕过授权 |
+| 落库接线 | `QuickReplyRepository.kt` | `exportSetToShareJson(setId)` / `importSetFromShareJson(content)`（事务插入新全局集合，codec 内部实例化避免 Hilt 注入） |
+| 测试 | `QuickReplyShareCodecTest.kt` | 往返、权限重置、格式头/版本/空包/坏 JSON 校验、未知键前向兼容、displayOrder 兜底 — 10 例 |
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL — 1183 tests 全绿（`--rerun-tasks` 强制 KSP 重生成后）|
+| `lintDebug` / `detekt` | 后台门禁 |
+
+**踩坑记录**: `testDebugUnitTest` 曾因 OOM（exit 137）打断 KSP 生成，留下脏产物导致 134 个 Robolectric 测试报 `NoClassDefFoundError: TavernApp_GeneratedInjector`；`clean` + config cache 复用无效，须 `--rerun-tasks` 强制重生成 Hilt 类。非代码 bug。
+
+### 未验证 / 后续
+
+- X5 UI（导出按钮/导入弹窗/分享 Intent）留给后续；本轮只落纯逻辑 codec + repository 接线，已单测覆盖。
+- X4 编辑器命令面板真机手测仍未做（逻辑已单测锁）。
+
+---
+
 ## 2026-07-12 — Phase X4 深度审计修复（三路径一致性）✅
 
 **背景**: X4 编辑器辅助 ship 后跑 workflow 深度审计（逐文件 hunter + adversarial verify）。6 finding 全确认、0 误报、无 Critical/High：1 Medium + 5 Low。根因集中在 parser / `findUnknownCommandLines` / `highlightStScript` 三路径对「空 token、前导内部空白、花括号、注释行」处理不一致。
