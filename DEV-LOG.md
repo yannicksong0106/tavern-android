@@ -14,7 +14,8 @@
 | 插入测试 | `StScriptInsertionTest.kt` | 覆盖空脚本、行首、行中、选区替换、中间切分、越界 |
 | 编辑 UI | `QuickReplyDialogs.kt` | script 字段 `String` → `TextFieldValue`（追踪光标）；新增 `StScriptCommandPalette` 横向 chip 面板 |
 | 命令参考弹窗 | `QuickReplyDialogs.kt` | 面板右侧 Info 按钮打开 `StScriptCommandReferenceDialog`，逐条列出每个命令的 usage、别名、说明 |
-| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases` |
+| 未知命令预警 | `QuickReplyValidation.kt` / `QuickReplyValidationTest.kt` | 新增 `ContainsUnknownCommand` warning，parser 识别到 `Unknown` 命令即提示；与 automation 无关（手动回复手写错命令名也提示），补测试 |
+| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases`、`quick_reply_warning_unknown_command` |
 | 版本号 | `build.gradle.kts` | versionCode 24, versionName 1.4.0 |
 
 ### 设计取舍
@@ -35,7 +36,8 @@
 ### 未验证 / 后续
 
 - 设备 smoke 未跑；改动集中在纯逻辑 + Compose 面板，已用单测覆盖插入与目录一致性。
-- 命令参考弹窗本轮已补（chip 面板 Info 按钮）；语法高亮、参数级补全、错误行内标注留给 X4 后续。
+- 命令参考弹窗本轮已补（chip 面板 Info 按钮）；未知命令预警本轮已补（编辑期整体提示，暂无精确行号）。
+- 语法高亮、参数级补全、精确到行号的错误标注留给 X4 后续。
 
 ---
 

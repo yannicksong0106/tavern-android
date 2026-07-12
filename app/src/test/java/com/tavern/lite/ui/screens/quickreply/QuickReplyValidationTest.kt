@@ -157,4 +157,46 @@ class QuickReplyValidationTest {
 
         assertTrue(warnings.isEmpty())
     }
+
+    @Test
+    fun `unknown command warns even for manual reply`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = "/notacommand foo",
+            automationId = "",
+            requiresConfirmation = false,
+            allowAutoRun = false
+        )
+
+        assertEquals(listOf(QuickReplyItemWarning.ContainsUnknownCommand), warnings)
+    }
+
+    @Test
+    fun `unknown command warning coexists with automation warnings`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = "/typo bar\n/send hi",
+            automationId = "assistant_reply",
+            requiresConfirmation = false,
+            allowAutoRun = true
+        )
+
+        assertEquals(
+            listOf(
+                QuickReplyItemWarning.ContainsUnknownCommand,
+                QuickReplyItemWarning.AutomationBlocksUnsafeCommands
+            ),
+            warnings
+        )
+    }
+
+    @Test
+    fun `known commands and aliases produce no unknown warning`() {
+        val warnings = buildQuickReplyItemWarnings(
+            script = "/set mood calm\n/gen\n/echo done",
+            automationId = "",
+            requiresConfirmation = false,
+            allowAutoRun = false
+        )
+
+        assertTrue(warnings.isEmpty())
+    }
 }

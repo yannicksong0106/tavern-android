@@ -98,6 +98,7 @@
     <string name="quick_reply_warning_auto_run_required">この Automation ID は「自動実行を許可」を有効にしない限り自動実行されません。</string>
     <string name="quick_reply_warning_confirmation_skips_auto">確認が必要な返信は自動トリガーではスキップされます。</string>
     <string name="quick_reply_warning_unsafe_auto_commands">自動実行では安全なコマンドのみ実行され、送信・生成・続き生成はブロックされます。</string>
+    <string name="quick_reply_warning_unknown_command">スクリプトに認識できないコマンドが含まれており、実行時に無視されます。コマンド名のつづりを確認してください。</string>
     <string name="quick_reply_auto_send_blocked">自動実行でのメッセージ送信をブロックしました</string>
     <string name="quick_reply_auto_generation_blocked">自動実行での生成トリガーをブロックしました</string>
     <string name="quick_reply_auto_continue_blocked">自動実行での続き生成をブロックしました</string>

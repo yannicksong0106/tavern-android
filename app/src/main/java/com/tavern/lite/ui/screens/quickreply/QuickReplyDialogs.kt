@@ -346,6 +346,8 @@ private fun QuickReplyItemWarningText(warning: QuickReplyItemWarning) {
             stringResource(R.string.quick_reply_warning_confirmation_skips_auto)
         QuickReplyItemWarning.AutomationBlocksUnsafeCommands ->
             stringResource(R.string.quick_reply_warning_unsafe_auto_commands)
+        QuickReplyItemWarning.ContainsUnknownCommand ->
+            stringResource(R.string.quick_reply_warning_unknown_command)
     }
     Text(
         text = text,

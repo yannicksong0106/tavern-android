@@ -7,7 +7,8 @@ import com.tavern.lite.domain.usecase.StScriptLiteParser
 enum class QuickReplyItemWarning {
     AutomationRequiresAutoRun,
     AutomationSkipsConfirmation,
-    AutomationBlocksUnsafeCommands
+    AutomationBlocksUnsafeCommands,
+    ContainsUnknownCommand
 }
 
 fun buildQuickReplyItemWarnings(
@@ -17,9 +18,14 @@ fun buildQuickReplyItemWarnings(
     allowAutoRun: Boolean,
     parser: StScriptLiteParser = StScriptLiteParser()
 ): List<QuickReplyItemWarning> {
-    if (automationId.isBlank()) return emptyList()
-
     return buildList {
+        // 未知命令警告与 automation 无关：手动回复也该提示手写错命令名。
+        if (containsUnknownCommand(script, parser)) {
+            add(QuickReplyItemWarning.ContainsUnknownCommand)
+        }
+
+        if (automationId.isBlank()) return@buildList
+
         if (requiresConfirmation) add(QuickReplyItemWarning.AutomationSkipsConfirmation)
         if (!allowAutoRun) {
             add(QuickReplyItemWarning.AutomationRequiresAutoRun)
@@ -28,6 +34,12 @@ fun buildQuickReplyItemWarnings(
         }
     }
 }
+
+private fun containsUnknownCommand(
+    script: String,
+    parser: StScriptLiteParser
+): Boolean =
+    parser.parse(script).commands.any { it.type == StScriptCommandType.Unknown }
 
 private fun containsUnsafeAutoRunCommand(
     script: String,

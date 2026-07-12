@@ -98,6 +98,7 @@
     <string name="quick_reply_warning_auto_run_required">这个 Automation ID 不会自动运行，除非开启“允许自动执行”。</string>
     <string name="quick_reply_warning_confirmation_skips_auto">需要确认的回复会在自动触发时跳过。</string>
     <string name="quick_reply_warning_unsafe_auto_commands">自动执行只会运行安全命令；发送、生成和继续生成会被拦截。</string>
+    <string name="quick_reply_warning_unknown_command">脚本含无法识别的命令，执行时会被忽略。请检查命令名拼写。</string>
     <string name="quick_reply_auto_send_blocked">自动执行已拦截发送消息动作</string>
     <string name="quick_reply_auto_generation_blocked">自动执行已拦截触发生成动作</string>
     <string name="quick_reply_auto_continue_blocked">自动执行已拦截继续生成动作</string>
