@@ -5,6 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 class SearchManager(
     private val scope: CoroutineScope
@@ -18,13 +20,15 @@ class SearchManager(
     private val _currentSearchIndex = MutableStateFlow(-1)
     val currentSearchIndex: StateFlow<Int> = _currentSearchIndex.asStateFlow()
 
-    private var searchCacheVersion = 0
-    private val _searchCache = mutableMapOf<Pair<String, Int>, List<Int>>()
+    // 使用线程安全容器：incrementCacheVersion 可能由 messages Flow 在后台线程触发，
+    // 而 searchMessages 由 UI 输入触发，两者会并发访问缓存。
+    private val searchCacheVersion = AtomicInteger(0)
+    private val _searchCache = ConcurrentHashMap<Pair<String, Int>, List<Int>>()
 
     lateinit var messagesProvider: () -> List<MessageEntity>
 
     fun incrementCacheVersion() {
-        searchCacheVersion++
+        searchCacheVersion.incrementAndGet()
         _searchCache.clear()
     }
 
@@ -36,7 +40,7 @@ class SearchManager(
             return
         }
         val lowerQuery = query.lowercase()
-        val cacheKey = lowerQuery to searchCacheVersion
+        val cacheKey = lowerQuery to searchCacheVersion.get()
         val results = _searchCache.getOrPut(cacheKey) {
             messagesProvider().mapIndexedNotNull { index, msg ->
                 if (msg.content.lowercase().contains(lowerQuery)) index else null
