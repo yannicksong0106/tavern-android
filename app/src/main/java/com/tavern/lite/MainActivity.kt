@@ -1,5 +1,6 @@
 package com.tavern.lite
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -9,13 +10,14 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.getValue
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.tavern.lite.data.model.BubbleStyleConfig
 import com.tavern.lite.data.store.SettingsStore
 import com.tavern.lite.ui.navigation.TavernNavGraph
 import com.tavern.lite.ui.theme.TavernTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -52,16 +54,23 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
 
-        // Apply language synchronously BEFORE setContent to avoid race condition
-        val lang = runBlocking { settingsStore.languageFlow.first() }
-        val localeList = when (lang) {
-            "zh" -> LocaleListCompat.forLanguageTags("zh")
-            "en" -> LocaleListCompat.forLanguageTags("en")
-            "ja" -> LocaleListCompat.forLanguageTags("ja")
-            "ko" -> LocaleListCompat.forLanguageTags("ko")
-            else -> LocaleListCompat.getEmptyLocaleList()
-        }
-        AppCompatDelegate.setApplicationLocales(localeList)
+        // 从 SharedPreferences 同步读取缓存的语言（微秒级），避免 runBlocking DataStore 导致冷启动 ANR。
+        // SettingsStore 每次写入语言时会同步更新此缓存（见 SettingsStore.saveLanguage）。
+        val prefs = getSharedPreferences(LANGUAGE_CACHE_PREFS, Context.MODE_PRIVATE)
+        val lang = prefs.getString(LANGUAGE_CACHE_KEY, "system") ?: "system"
+        AppCompatDelegate.setApplicationLocales(langToLocaleList(lang))
+
+        // 后台观察 DataStore：迁移场景或首次未同步时刷新缓存与 locale
+        settingsStore.languageFlow
+            .onEach { latest ->
+                if (latest != lang) {
+                    prefs.edit().putString(LANGUAGE_CACHE_KEY, latest).apply()
+                    AppCompatDelegate.setApplicationLocales(langToLocaleList(latest))
+                } else if (!prefs.contains(LANGUAGE_CACHE_KEY)) {
+                    prefs.edit().putString(LANGUAGE_CACHE_KEY, latest).apply()
+                }
+            }
+            .launchIn(lifecycleScope)
 
         setContent {
             val bubbleStyle by settingsStore.bubbleStyleFlow
@@ -71,5 +80,18 @@ class MainActivity : AppCompatActivity() {
                 TavernNavGraph()
             }
         }
+    }
+
+    private fun langToLocaleList(lang: String): LocaleListCompat = when (lang) {
+        "zh" -> LocaleListCompat.forLanguageTags("zh")
+        "en" -> LocaleListCompat.forLanguageTags("en")
+        "ja" -> LocaleListCompat.forLanguageTags("ja")
+        "ko" -> LocaleListCompat.forLanguageTags("ko")
+        else -> LocaleListCompat.getEmptyLocaleList()
+    }
+
+    companion object {
+        internal const val LANGUAGE_CACHE_PREFS = "tavern_startup_cache"
+        internal const val LANGUAGE_CACHE_KEY = "language"
     }
 }

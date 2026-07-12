@@ -24,6 +24,9 @@ import javax.inject.Singleton
 
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "visual_settings")
 
+private const val LANGUAGE_CACHE_PREFS = "tavern_startup_cache"
+private const val LANGUAGE_CACHE_KEY = "language"
+
 @Serializable
 data class TtsSettings(
     val enabled: Boolean = true,
@@ -60,6 +63,10 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { prefs ->
             prefs[LANGUAGE_KEY] = language
         }
+        context.getSharedPreferences(LANGUAGE_CACHE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(LANGUAGE_CACHE_KEY, language)
+            .apply()
     }
 
     val backgroundProactiveFlow: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
