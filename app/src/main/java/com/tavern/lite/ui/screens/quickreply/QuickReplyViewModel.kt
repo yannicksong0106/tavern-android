@@ -200,6 +200,44 @@ class QuickReplyViewModel @Inject constructor(
         }
     }
 
+    private val _shareResult = MutableStateFlow<QuickReplyShareResult?>(null)
+    val shareResult: StateFlow<QuickReplyShareResult?> = _shareResult.asStateFlow()
+
+    fun exportSet(set: QuickReplySetEntity) {
+        viewModelScope.launch {
+            val json = repository.exportSetToShareJson(set.id)
+            _shareResult.value = if (json == null) {
+                QuickReplyShareResult.ExportFailed
+            } else {
+                QuickReplyShareResult.Exported(set.name, json)
+            }
+        }
+    }
+
+    fun importFromJson(content: String) {
+        val normalized = content.trim()
+        if (normalized.isBlank()) {
+            _shareResult.value = QuickReplyShareResult.ImportFailed("脚本包内容为空")
+            return
+        }
+        viewModelScope.launch {
+            repository.importSetFromShareJson(normalized)
+                .onSuccess { setId ->
+                    _selectedSetId.value = setId
+                    _shareResult.value = QuickReplyShareResult.Imported
+                }
+                .onFailure { error ->
+                    _shareResult.value = QuickReplyShareResult.ImportFailed(
+                        error.message ?: "导入失败"
+                    )
+                }
+        }
+    }
+
+    fun clearShareResult() {
+        _shareResult.value = null
+    }
+
     private fun isValidSetScopeTarget(scope: String, characterId: Long?, chatId: Long?): Boolean = when (scope) {
         "character" -> characterId.isValidTargetId()
         "chat" -> chatId.isValidTargetId()
@@ -213,4 +251,11 @@ class QuickReplyViewModel @Inject constructor(
     private companion object {
         val VALID_SCOPES = setOf("global", "character", "chat")
     }
+}
+
+sealed interface QuickReplyShareResult {
+    data class Exported(val setName: String, val json: String) : QuickReplyShareResult
+    data object ExportFailed : QuickReplyShareResult
+    data object Imported : QuickReplyShareResult
+    data class ImportFailed(val message: String) : QuickReplyShareResult
 }

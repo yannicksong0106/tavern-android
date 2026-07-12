@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -18,10 +20,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +52,7 @@ fun QuickReplyScreen(
     val replies by viewModel.replies.collectAsStateWithLifecycle()
     val characters by viewModel.characters.collectAsStateWithLifecycle()
     val chats by viewModel.chats.collectAsStateWithLifecycle()
+    val shareResult by viewModel.shareResult.collectAsStateWithLifecycle()
     val selectedSet = sets.find { it.id == selectedSetId }
 
     var showSetDialog by remember { mutableStateOf(false) }
@@ -55,6 +61,50 @@ fun QuickReplyScreen(
     var showReplyDialog by remember { mutableStateOf(false) }
     var editingReply by remember { mutableStateOf<QuickReplyEntity?>(null) }
     var deletingReply by remember { mutableStateOf<QuickReplyEntity?>(null) }
+    var showImportDialog by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val importSuccessText = stringResource(R.string.quick_reply_import_success)
+    val exportFailedText = stringResource(R.string.quick_reply_export_failed)
+    var exportPayload by remember { mutableStateOf<QuickReplyShareResult.Exported?>(null) }
+
+    LaunchedEffect(shareResult) {
+        when (val result = shareResult) {
+            is QuickReplyShareResult.Exported -> {
+                exportPayload = result
+                viewModel.clearShareResult()
+            }
+            QuickReplyShareResult.ExportFailed -> {
+                snackbarHostState.showSnackbar(exportFailedText)
+                viewModel.clearShareResult()
+            }
+            QuickReplyShareResult.Imported -> {
+                showImportDialog = false
+                snackbarHostState.showSnackbar(importSuccessText)
+                viewModel.clearShareResult()
+            }
+            is QuickReplyShareResult.ImportFailed -> {
+                snackbarHostState.showSnackbar(result.message)
+                viewModel.clearShareResult()
+            }
+            null -> Unit
+        }
+    }
+
+    exportPayload?.let { payload ->
+        QuickReplyExportDialog(
+            setName = payload.setName,
+            json = payload.json,
+            onDismiss = { exportPayload = null }
+        )
+    }
+
+    if (showImportDialog) {
+        QuickReplyImportDialog(
+            onConfirm = { viewModel.importFromJson(it) },
+            onDismiss = { showImportDialog = false }
+        )
+    }
 
     if (showSetDialog) {
         QuickReplySetDialog(
@@ -148,12 +198,21 @@ fun QuickReplyScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showImportDialog = true }) {
+                        Icon(Icons.Default.FileUpload, contentDescription = stringResource(R.string.quick_reply_import_set))
+                    }
+                    if (selectedSet != null) {
+                        IconButton(onClick = { viewModel.exportSet(selectedSet) }) {
+                            Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.quick_reply_export_set))
+                        }
+                    }
                     IconButton(onClick = { showSetDialog = true }) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.quick_reply_add_set))
                     }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (selectedSet != null) {
                 FloatingActionButton(onClick = { showReplyDialog = true }) {

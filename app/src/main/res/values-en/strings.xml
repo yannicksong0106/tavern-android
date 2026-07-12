@@ -113,6 +113,19 @@
     <string name="quick_reply_delete_set_text">Delete 「%s」? Replies in this set will also be deleted.</string>
     <string name="quick_reply_delete_reply_title">Delete Quick Reply</string>
     <string name="quick_reply_delete_reply_text">Delete 「%s」?</string>
+    <string name="quick_reply_import_set">Import script pack</string>
+    <string name="quick_reply_export_set">Export script pack</string>
+    <string name="quick_reply_export_title">Export 「%1$s」</string>
+    <string name="quick_reply_export_hint">Copy the pack below and share it through any channel. The importer must re-grant send and auto-run permissions themselves.</string>
+    <string name="quick_reply_export_copy">Copy</string>
+    <string name="quick_reply_export_failed">Export failed: reply set not found</string>
+    <string name="quick_reply_import_title">Import script pack</string>
+    <string name="quick_reply_import_hint">Paste the pack JSON. Imported replies have send and auto-run disabled by default; re-grant each one.</string>
+    <string name="quick_reply_import_field">Pack JSON</string>
+    <string name="quick_reply_import_paste">Paste from clipboard</string>
+    <string name="quick_reply_import_confirm">Import</string>
+    <string name="quick_reply_import_success">Import succeeded</string>
+    <string name="quick_reply_import_failed">Import failed: %1$s</string>
 
     <!-- Chat List -->
     <string name="chat_list">Chat List</string>
