@@ -15,6 +15,7 @@
 | 编辑 UI | `QuickReplyDialogs.kt` | script 字段 `String` → `TextFieldValue`（追踪光标）；新增 `StScriptCommandPalette` 横向 chip 面板 |
 | 命令参考弹窗 | `QuickReplyDialogs.kt` | 面板右侧 Info 按钮打开 `StScriptCommandReferenceDialog`，逐条列出每个命令的 usage、别名、说明 |
 | 未知命令预警 | `QuickReplyValidation.kt` / `QuickReplyValidationTest.kt` | 新增 `ContainsUnknownCommand` warning，parser 识别到 `Unknown` 命令即提示；与 automation 无关（手动回复手写错命令名也提示），补测试 |
+| 语法高亮 | `StScriptHighlighter.kt` / `StScriptHighlighterTest.kt` | 纯函数 `highlightStScript` 逐行标色：已知命令 / 未知命令 / 注释 / `{{变量}}`；用 `OffsetMapping.Identity` 接 `VisualTransformation`（不改字符数）；script 字段 `visualTransformation` 实时高亮 |
 | i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases`、`quick_reply_warning_unknown_command` |
 | 版本号 | `build.gradle.kts` | versionCode 24, versionName 1.4.0 |
 
@@ -22,7 +23,8 @@
 
 - 插入逻辑抽成纯函数（不依赖 Compose），可完整单测，UI 层只把结果写回 `TextFieldValue`。
 - 命令目录与 parser 分支靠一致性测试锁定，新增命令时两处漂移会被测试抓住。
-- 面板只做「插入模板」最小可用；语法高亮、参数补全留给 X4 后续。
+- 面板只做「插入模板」最小可用；参数补全留给 X4 后续。
+- 语法高亮抽成纯函数 `highlightStScript`（不依赖 Compose runtime），span 边界与已知/未知判定可单测；UI 层只把结果包进 `VisualTransformation` + `OffsetMapping.Identity`，保证高亮不改字符数、光标不错位。
 
 ### 验证结果
 
@@ -37,7 +39,8 @@
 
 - 设备 smoke 未跑；改动集中在纯逻辑 + Compose 面板，已用单测覆盖插入与目录一致性。
 - 命令参考弹窗本轮已补（chip 面板 Info 按钮）；未知命令预警本轮已补（编辑期整体提示，暂无精确行号）。
-- 语法高亮、参数级补全、精确到行号的错误标注留给 X4 后续。
+- 语法高亮本轮已补（命令/注释/`{{变量}}` 分色，未知命令红色）。
+- 参数级补全、精确到行号的错误标注留给 X4 后续。
 
 ---
 

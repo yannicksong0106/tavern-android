@@ -33,7 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import com.tavern.lite.R
@@ -238,10 +241,26 @@ fun QuickReplyItemDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val highlightColors = StScriptHighlightColors(
+                        command = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        knownAlias = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        comment = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        variable = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                        unknown = androidx.compose.material3.MaterialTheme.colorScheme.error
+                    )
+                    val scriptTransformation = remember(highlightColors) {
+                        VisualTransformation { text ->
+                            TransformedText(
+                                highlightStScript(text.text, highlightColors),
+                                OffsetMapping.Identity
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = scriptField,
                         onValueChange = { scriptField = it },
                         label = { Text(stringResource(R.string.quick_reply_script)) },
+                        visualTransformation = scriptTransformation,
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth()
                     )
