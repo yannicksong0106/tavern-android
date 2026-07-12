@@ -13,7 +13,8 @@
 | 插入逻辑 | `StScriptInsertion.kt` | 纯函数 `insertStScriptCommand`：光标区间插入、非行首自动补换行让命令独占一行、替换选区、越界 clamp |
 | 插入测试 | `StScriptInsertionTest.kt` | 覆盖空脚本、行首、行中、选区替换、中间切分、越界 |
 | 编辑 UI | `QuickReplyDialogs.kt` | script 字段 `String` → `TextFieldValue`（追踪光标）；新增 `StScriptCommandPalette` 横向 chip 面板 |
-| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint` |
+| 命令参考弹窗 | `QuickReplyDialogs.kt` | 面板右侧 Info 按钮打开 `StScriptCommandReferenceDialog`，逐条列出每个命令的 usage、别名、说明 |
+| i18n | 4× `strings.xml` | 新增 `quick_reply_command_palette_hint`、`quick_reply_command_reference_title`、`quick_reply_command_aliases` |
 | 版本号 | `build.gradle.kts` | versionCode 24, versionName 1.4.0 |
 
 ### 设计取舍
@@ -34,7 +35,7 @@
 ### 未验证 / 后续
 
 - 设备 smoke 未跑；改动集中在纯逻辑 + Compose 面板，已用单测覆盖插入与目录一致性。
-- Phase X4 后续：语法高亮、参数级补全、错误行内标注。
+- 命令参考弹窗本轮已补（chip 面板 Info 按钮）；语法高亮、参数级补全、错误行内标注留给 X4 后续。
 
 ---
 

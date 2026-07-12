@@ -84,6 +84,8 @@
     <string name="quick_reply_icon">Icon text</string>
     <string name="quick_reply_script">Script</string>
     <string name="quick_reply_command_palette_hint">Tap a command to insert into the script</string>
+    <string name="quick_reply_command_reference_title">STscript command reference</string>
+    <string name="quick_reply_command_aliases">Aliases: %1$s</string>
     <string name="quick_reply_automation_id">Automation ID</string>
     <string name="quick_reply_display_order">Order</string>
     <string name="quick_reply_character_id">Character ID</string>
