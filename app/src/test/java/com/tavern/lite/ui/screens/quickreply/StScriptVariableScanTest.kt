@@ -58,4 +58,19 @@ class StScriptVariableScanTest {
     fun `setvar without name collects nothing`() {
         assertTrue(collectStScriptVariableNames("/setvar").isEmpty())
     }
+
+    @Test
+    fun `brace-wrapped defining arg is not captured as bogus name`() {
+        // X4 审计 Low：`/setvar {{x}} val` 的定义名不该是 `{{x}}`；
+        // 同行的 {{x}} 引用仍按引用收集，结果只含真实名字 x。
+        assertEquals(listOf("x"), collectStScriptVariableNames("/setvar {{x}} val"))
+    }
+
+    @Test
+    fun `comment line references produce no phantom names`() {
+        // X4 审计 Low：注释行的 {{ghost}} 不是真实引用，不该产生幻影 chip。
+        assertTrue(collectStScriptVariableNames("/comment {{ghost}}").isEmpty())
+        assertTrue(collectStScriptVariableNames("# {{ghost}}").isEmpty())
+        assertTrue(collectStScriptVariableNames("// {{ghost}}").isEmpty())
+    }
 }

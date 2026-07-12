@@ -36,7 +36,7 @@ fun findUnknownCommandLines(source: String): List<StScriptLineDiagnostic> {
         if (line.startsWith("#") || line.startsWith("//")) return@forEachIndexed
         if (!line.startsWith("/")) return@forEachIndexed
 
-        val token = line.drop(1).takeWhile { !it.isWhitespace() }
+        val token = line.drop(1).trimStart().takeWhile { !it.isWhitespace() }
         if (token.isEmpty()) return@forEachIndexed
         if (token.lowercase() !in KNOWN_COMMAND_TOKENS) {
             diagnostics += StScriptLineDiagnostic(line = index + 1, commandName = token)

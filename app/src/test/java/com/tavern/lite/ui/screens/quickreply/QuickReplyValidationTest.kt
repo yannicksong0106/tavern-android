@@ -199,4 +199,33 @@ class QuickReplyValidationTest {
 
         assertTrue(warnings.isEmpty())
     }
+
+    @Test
+    fun `bare slash does not warn (validation aligns with line diagnostics)`() {
+        // 打字瞬态：单独一个 `/` 空 token。validation 复用 findUnknownCommandLines，
+        // 二者一致 bail，不再出现「警告说有未知命令但行诊断定位不到」的三路径分歧（X4 审计 Medium）。
+        val warnings = buildQuickReplyItemWarnings(
+            script = "/",
+            automationId = "",
+            requiresConfirmation = false,
+            allowAutoRun = false
+        )
+
+        assertTrue(warnings.isEmpty())
+        assertTrue(findUnknownCommandLines("/").isEmpty())
+    }
+
+    @Test
+    fun `leading whitespace typo warns (validation aligns with line diagnostics)`() {
+        // `/   typo` 前导内部空格：validation 与 findUnknownCommandLines 都应识别为未知命令。
+        val warnings = buildQuickReplyItemWarnings(
+            script = "/   typo",
+            automationId = "",
+            requiresConfirmation = false,
+            allowAutoRun = false
+        )
+
+        assertEquals(listOf(QuickReplyItemWarning.ContainsUnknownCommand), warnings)
+        assertEquals(1, findUnknownCommandLines("/   typo").size)
+    }
 }

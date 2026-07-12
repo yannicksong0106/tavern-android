@@ -68,4 +68,15 @@ class StScriptLineDiagnosticsTest {
         val source = "/ "
         assertTrue(findUnknownCommandLines(source).isEmpty())
     }
+
+    @Test
+    fun `internal whitespace after slash still resolves unknown command`() {
+        // 修复前：`line.drop(1).takeWhile` 未 trimStart，`/   typo` 得空 token 被跳过，
+        // 与 parser（drop(1).trim()）判定不一致（X4 审计 Low）。
+        val source = "/   typo arg"
+        val diagnostics = findUnknownCommandLines(source)
+
+        assertEquals(1, diagnostics.size)
+        assertEquals("typo", diagnostics[0].commandName)
+    }
 }

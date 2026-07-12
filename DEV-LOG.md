@@ -1,5 +1,37 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — Phase X4 深度审计修复（三路径一致性）✅
+
+**背景**: X4 编辑器辅助 ship 后跑 workflow 深度审计（逐文件 hunter + adversarial verify）。6 finding 全确认、0 误报、无 Critical/High：1 Medium + 5 Low。根因集中在 parser / `findUnknownCommandLines` / `highlightStScript` 三路径对「空 token、前导内部空白、花括号、注释行」处理不一致。
+
+### 改动范围
+
+| 严重度 | 位置 | 问题 | 修复 |
+|--------|------|------|------|
+| 🟡 Medium | `QuickReplyValidation.kt` | 裸 `/`（打字瞬态）被 parser 判 `Unknown` 触发未知命令警告，但行诊断与高亮都定位不到 → 三路径分歧 | `containsUnknownCommand` 改复用 `findUnknownCommandLines`（空 token 会 bail），validation 与诊断单一来源，裸 `/` 不再误报 |
+| 🟢 Low | `StScriptLineDiagnostics.kt:39` | `/   typo`（命令前多空格）token 取空被跳过，漏诊断；文档注释宣称对齐 parser 却没做 | `line.drop(1).trimStart().takeWhile{...}`，裸 `/ ` 仍正确取空 |
+| 🟢 Low | `StScriptHighlighter.kt` | 同 `/   typo` 问题：token 未 trimStart，空 token 跳过 + 位置算错 | trimStart 对齐，高亮偏移按实际命令位置计算 |
+| 🟢 Low | `StScriptVariableScan.kt` | `/setvar {{x}} val` 把 `{{x}}` 当定义名 → chip 插成 `{{ {{x}} }}` | 拒绝 `{{` 开头的伪名字 |
+| 🟢 Low | `StScriptVariableScan.kt` | 注释行（`#` `//` `/comment` `/rem`）里的 `{{name}}` 生成幻影 chip | 注释行 `return@forEach`，跳过引用扫描 |
+| 🟢 Low (perf) | `QuickReplyDialogs.kt` | `warnings` / `unknownCommandLines` / `scriptVariables` 在 composable body 内直接调用，每次按键重组全脚本重扫 3+ 遍 | 三处派生值 `remember(依赖)` memoize |
+
+### 测试补充
+
+- `StScriptLineDiagnosticsTest`：`/   typo` 前导内部空白回归。
+- `StScriptVariableScanTest`：花括号定义名 `/setvar {{x}} val` + 注释行 `{{ghost}}` 幻影。
+- `QuickReplyValidationTest`：裸 `/` 三路径一致性（validation 不报 + 诊断为空）。
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL |
+| `lintDebug` | BUILD SUCCESSFUL |
+| `detekt` | BUILD SUCCESSFUL — 0 code smells |
+
+---
+
 ## 2026-07-12 — Phase X4 STscript 命令面板 + v1.4.0 收口 ✅
 
 **背景**: Phase X3 宏系统已 ship，版本升 v1.4.0（versionCode 24）。Phase X4 起步：给 Quick Reply 脚本编辑器加命令面板，点击 chip 把命令模板插入到光标处，降低手写 STscript 门槛。

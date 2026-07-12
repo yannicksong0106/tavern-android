@@ -20,7 +20,7 @@ fun buildQuickReplyItemWarnings(
 ): List<QuickReplyItemWarning> {
     return buildList {
         // 未知命令警告与 automation 无关：手动回复也该提示手写错命令名。
-        if (containsUnknownCommand(script, parser)) {
+        if (containsUnknownCommand(script)) {
             add(QuickReplyItemWarning.ContainsUnknownCommand)
         }
 
@@ -35,11 +35,11 @@ fun buildQuickReplyItemWarnings(
     }
 }
 
-private fun containsUnknownCommand(
-    script: String,
-    parser: StScriptLiteParser
-): Boolean =
-    parser.parse(script).commands.any { it.type == StScriptCommandType.Unknown }
+// 复用 findUnknownCommandLines 而非 parser 的 Unknown 判定：
+// 二者对空 token（裸 `/`）、前导空白（`/   typo`）的处理需保持一致，
+// 否则会出现「警告说有未知命令，但行诊断/高亮都定位不到」的三路径分歧（X4 审计 Medium）。
+private fun containsUnknownCommand(script: String): Boolean =
+    findUnknownCommandLines(script).isNotEmpty()
 
 private fun containsUnsafeAutoRunCommand(
     script: String,

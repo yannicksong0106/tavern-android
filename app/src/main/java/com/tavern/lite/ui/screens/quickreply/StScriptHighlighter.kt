@@ -78,13 +78,15 @@ private fun AnnotatedString.Builder.highlightLine(
 
     if (!content.startsWith("/")) return
 
-    // 取 `/` 之后到首个空白前的 token 作为命令名
+    // 取 `/` 之后到首个空白前的 token 作为命令名。先跳过 `/` 与命令名之间的空白，
+    // 与 parser 的 `drop(1).trim()` 对齐（否则 `/   typo` 会被算成空 token 而漏高亮）。
     val afterSlash = content.drop(1)
-    val token = afterSlash.takeWhile { !it.isWhitespace() }
+    val leadingSpaces = afterSlash.length - afterSlash.trimStart().length
+    val token = afterSlash.trimStart().takeWhile { !it.isWhitespace() }
     if (token.isEmpty()) return
 
-    val tokenStart = contentStart
-    val tokenEnd = contentStart + 1 + token.length
+    val tokenStart = contentStart + 1 + leadingSpaces
+    val tokenEnd = tokenStart + token.length
     val color = if (token.lowercase() in KNOWN_COMMAND_TOKENS) colors.command else colors.unknown
     addStyle(SpanStyle(color = color), tokenStart, tokenEnd)
 }

@@ -211,14 +211,17 @@ fun QuickReplyItemDialog(
     var canTriggerGeneration by remember { mutableStateOf(reply?.canTriggerGeneration ?: false) }
     var displayOrder by remember { mutableStateOf((reply?.displayOrder ?: 0).toString()) }
     val stScriptParser = remember { StScriptLiteParser() }
-    val warnings = buildQuickReplyItemWarnings(
-        script = script,
-        automationId = automationId,
-        requiresConfirmation = requiresConfirmation,
-        allowAutoRun = allowAutoRun,
-        parser = stScriptParser
-    )
-    val unknownCommandLines = findUnknownCommandLines(script)
+    // 派生值按依赖 memoize：script 字段每次按键都会重组，未 memoize 会每帧全脚本重扫 3+ 遍（X4 审计 Low）。
+    val warnings = remember(script, automationId, requiresConfirmation, allowAutoRun) {
+        buildQuickReplyItemWarnings(
+            script = script,
+            automationId = automationId,
+            requiresConfirmation = requiresConfirmation,
+            allowAutoRun = allowAutoRun,
+            parser = stScriptParser
+        )
+    }
+    val unknownCommandLines = remember(script) { findUnknownCommandLines(script) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
