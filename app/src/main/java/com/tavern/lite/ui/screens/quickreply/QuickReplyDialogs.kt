@@ -265,20 +265,26 @@ fun QuickReplyItemDialog(
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    StScriptCommandPalette(
-                        onInsert = { template ->
-                            val result = insertStScriptCommand(
-                                current = scriptField.text,
-                                selectionStart = scriptField.selection.start,
-                                selectionEnd = scriptField.selection.end,
-                                template = template
-                            )
-                            scriptField = TextFieldValue(
-                                text = result.text,
-                                selection = TextRange(result.selection)
-                            )
-                        }
-                    )
+                    val insertIntoScript: (String) -> Unit = { template ->
+                        val result = insertStScriptCommand(
+                            current = scriptField.text,
+                            selectionStart = scriptField.selection.start,
+                            selectionEnd = scriptField.selection.end,
+                            template = template
+                        )
+                        scriptField = TextFieldValue(
+                            text = result.text,
+                            selection = TextRange(result.selection)
+                        )
+                    }
+                    StScriptCommandPalette(onInsert = insertIntoScript)
+                    val scriptVariables = collectStScriptVariableNames(script)
+                    if (scriptVariables.isNotEmpty()) {
+                        StScriptVariablePalette(
+                            names = scriptVariables,
+                            onInsert = { name -> insertIntoScript("{{$name}}") }
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = automationId,
@@ -432,6 +438,35 @@ private fun StScriptCommandPalette(
 
     if (showReference) {
         StScriptCommandReferenceDialog(onDismiss = { showReference = false })
+    }
+}
+
+/**
+ * STscript 变量面板：列出脚本里已定义/已引用的变量名，点击 chip 插入 `{{name}}` 到光标处。
+ * 仅在脚本中出现过至少一个变量名时展示。
+ */
+@Composable
+private fun StScriptVariablePalette(
+    names: List<String>,
+    onInsert: (String) -> Unit
+) {
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = stringResource(R.string.quick_reply_variable_palette_hint),
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(top = 4.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(names, key = { it }) { name ->
+            AssistChip(
+                onClick = { onInsert(name) },
+                label = { Text("{{$name}}") }
+            )
+        }
     }
 }
 
