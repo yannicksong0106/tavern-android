@@ -1,5 +1,93 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — 深度审计 3 个 bug 修复 ✅
+
+**背景**: 用工作流做深度审计（33 subagent、8 并行 hunter、逐条 adversarial verify）覆盖 Phase X3 未提交面 + 邻近改动。survived 4 finding：1 High 极性、1 Medium 孤儿 chat、2 Low（JsonNull、云图 -1、InputBar 双截断）。全部逐条修复 + 补测试。
+
+### 改动范围
+
+| 严重度 | 位置 | 问题 | 修复 |
+|--------|------|------|------|
+| 🟡 High | `QuickReplyValidation.kt:37` | 到达 `MAX_MACRO_WARNING_DEPTH=16` 时 `return false`（说"安全"），但 executor 的 `MAX_MACRO_EXPANSION_DEPTH=16` 数的是 call 嵌套，不是定义嵌套 — 17+ 层定义嵌套的 `/send` 静默通过校验 | 分析耗尽时 `return true`（视为不安全）；补 2 个测试覆盖单行宏 + 嵌套单行宏 |
+| 🟡 Medium | `ChatImporter.kt:63-84` | 截断/损坏 Tavern JSON 会 fall through 到 `importFromJsonLines`，先建 chat 再全部解析失败 → 孤儿空 chat + 错误 "导入成功" 对话框 | `importFromJsonObjectOrLines` 改返回可空；调用点用 Elvis 转 `Result.failure`；仅当 lines 全部可独立解析为 JSON 对象时才走 JSONL 路径 |
+| 🟢 Low | `ChatImporter.kt:91-104,192-204` | `JsonNull` 被 `jsonPrimitive?.content` 静默转字符串 `"null"` — chat 名字 / role / content / mes 会字面变成 "null" | 新增 `stringField()` 扩展函数，`takeIf { it !is JsonNull }` 拦截 JsonNull |
+| 🟢 Low | `ChatScreen.kt:197` | `openAssetFileDescriptor.length` 对云 provider（Google Photos 流式）返 `UNKNOWN_LENGTH` (-1)，`-1L in 1..MAX` 失败，合法图片被静默 drop 无 toast | 先 copy 到临时文件，用文件真实 `length()` 判断；超限则删除 |
+| 🟢 Low | `ChatScreen.kt:605` | `InputBar` 内部 `onValueChange` 已跑 `constrainChatInputText`，调用点又跑一次 — 幂等但每按键多做一次 | 去掉调用点冗余，保留组件内自封闭；voice/setinput 旁路赋值路径保留 |
+
+### 测试补充
+
+| 位置 | 覆盖 |
+|------|------|
+| `QuickReplyValidationTest.kt` | 单行宏含 unsafe + 嵌套单行宏含 unsafe（回归极性 bug） |
+| `ChatImporterTest.kt` | 截断 JSON 不建 chat（`isFailure`）；`chatName` `role` `content` `mes` 为 JsonNull 时被跳过 |
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL — 1113 tests, 0 failures |
+| `lintDebug` | BUILD SUCCESSFUL — 0 errors |
+| `detekt` | BUILD SUCCESSFUL — 211 files, 0 code smells |
+
+### 提交
+
+| commit | 说明 |
+|--------|------|
+| `89c41b1` | fix(quickreply): 修复深度上限时校验极性反向 + 补测试 |
+| `7cba119` | fix(import): 截断 JSON 不建孤儿 chat + JsonNull 不再转字符串 |
+| `7a306e6` | fix(chat): 云图片 -1 length 支持 + 去除 InputBar 调用点双重截断 |
+
+### 审计工作流沉淀
+
+- **3 阶段 pipeline**: map diff（8 并行）→ hunt bug（9 并行 hunter，focus 分区）→ adversarial verify（每 finding 1 怀疑派 reviewer）→ synthesize
+- 33 subagent、1.09M token、52 分钟；16 raw finding 淘汰 7 false positive、5 test-gap，剩 4 真实 bug
+- 意外副作用: 修复过程中发现 `File.setLength` 拼写错误（应为 `RandomAccessFile.setLength`），修复 2 个测试文件
+
+### 未验证 / 后续
+
+- Phase X3 主体（`StScriptLiteExecutor.kt` 宏系统 + 多行 block）仍是未提交状态；本轮只提交 3 个独立 bug fix
+- 设备 smoke 未跑；改动全部在纯逻辑层与 UI value 层，单元测试 + lint + detekt 覆盖
+- Task audit 里 2 个 test-gap（互斥宏递归、`/def` `/invoke` `/enddef` 别名）留待后续加
+
+---
+
+## 2026-07-03 — Phase X3 STscript 宏系统起步 + 多行 block ✅
+
+**背景**: v1.4.0 Phase X3 已有未提交起步改动：`StScriptCommandType` 与 parser 增加了 `MacroDef` / `MacroCall`，但执行器尚未展开宏，宏命令会被静默忽略。本轮补齐最小可用宏语义并加安全边界测试。
+
+### 改动范围
+
+| 任务 | 文件 | 说明 |
+|------|------|------|
+| 宏定义 | `StScriptLiteExecutor.kt` | `/macro name command` / `/def name command` 定义单行宏；`/macro name ... /endmacro` 定义多行 block 宏，变量在调用时解析 |
+| 宏调用 | `StScriptLiteExecutor.kt` | `/call name` / `/invoke name` 展开执行已定义宏，复用现有 action、变量、权限、blocked/unknown 收集逻辑 |
+| block 边界 | `StScriptLiteExecutor.kt` | 顶层跳过宏 body，仅在调用时执行；缺失 `/endmacro`、孤立 `/endmacro`、`/if` 跳过 block 均有明确处理 |
+| 安全边界 | `StScriptLiteExecutor.kt` | 宏体中的 `/send` 等不安全命令继续走原权限与 auto-run 检查，防止通过 `/call` 绕过安全规则 |
+| 编辑期预警 | `QuickReplyValidation.kt` / `QuickReplyValidationTest.kt` | Quick Reply 自动触发校验会递归检查单行宏 body，提前提示 `/macro send /send hi` 与嵌套单行宏里的不安全命令 |
+| 递归保护 | `StScriptLiteExecutor.kt` | 宏展开深度上限 16，递归宏返回 `Macro expansion limit exceeded` |
+| 测试 | `StScriptLiteExecutorTest.kt` | 覆盖 parser、echo 展开、调用时变量解析、send 权限、auto-run 安全、未定义宏、递归上限、空名称/空 body、多行 block |
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` | BUILD SUCCESSFUL |
+| `testDebugUnitTest` | BUILD SUCCESSFUL — 101 suites, 1097 tests, 0 failures, 0 errors, 0 skipped |
+| `testDebugUnitTest --tests com.tavern.lite.domain.usecase.StScriptLiteExecutorTest` | 52 tests, 0 failures, 0 errors, 0 skipped |
+| `testDebugUnitTest --tests ApiConfigTest/QuickReplyModelTest/QuickReplyValidationTest` | BUILD SUCCESSFUL |
+| `testDebugUnitTest --tests QuickReplyValidationTest --tests StScriptLiteExecutorTest --rerun-tasks` | BUILD SUCCESSFUL |
+| `lintDebug` | BUILD SUCCESSFUL — 0 errors, 14 warnings |
+| `detekt` | BUILD SUCCESSFUL — 211 Kotlin files, 0 code smells |
+| `git diff --check` | 通过，无空白问题 |
+
+### 未验证 / 后续
+
+- 设备 smoke 本轮未跑；当前改动集中在纯 STscript 执行器，已用单元测试和本地门禁覆盖。
+- 参数命名、编辑器语法辅助留给 X3 后续或 X4 UI。
+
+---
+
 ## 2026-07-02 — v1.3.1 打 tag + Phase X1/X2 STscript 命令引擎扩展 ✅
 
 **背景**: v1.3.1 收口加固全量完成，CI 首次通过后打 tag 正式收口，开始 v1.4.0 新功能开发。Phase X（STscript 命令引擎）是 STscript Lite 的自然扩展，在现有 /send /trigger /continue /setvar /getvar /echo /input 基础上新增 4 个高频命令。
@@ -3436,3 +3524,45 @@ L2 PromptBuilder 注入 — character_consistency 类型始终优先（人设红
 
 - [ ] 本地 PowerShell 运行四条 Gradle 命令并记录结果
 - [ ] 设备 smoke test（手动验证流式对话、停止生成、继续生成、swipe 切换）
+
+---
+
+## 2026-07-05 — Phase X4 稳定性与输入体验修复
+
+**Context**：用户反馈"某些手机会闪退"、"输入让人很不舒服"。启动高优代码审核（15 项发现），实施 P0（崩溃/ANR 止血）+ P1（输入体验）两批修复。
+
+### 发现清单（按严重度）
+
+**Critical（崩溃/ANR）**
+1. `ImageUtils.kt:11-23` 图片附件 20MB 上限过高，`readBytes` + base64 全内存持有 → 低端机 OOM
+2. `ChatScreen.kt:186-199` 图片选择回调在主线程执行 `input.copyTo(output)` → ANR
+3. `MainActivity.kt:56` `runBlocking` 主线程读取 DataStore → 冷启动 ANR
+4. `BackupManager.kt:367` / `ChatImporter.kt:28` / `PngMetadata.kt:100` 全文件 `readText/readBytes` 到内存 → 大文件导入 OOM
+5. `MessageBubble.kt:381-386` Markwon 每次流式追加都全量重解析 markdown → 长回复雪崩（暂缓，当前收完再落库不触发）
+
+**High（性能/输入卡顿）**
+6. `ChatViewModel.kt:270-303` messages.collect 在 Main 上全量重算 token/构建 Map
+7. `ChatScreen.kt:207-230` 多个 derivedStateOf 主线程建 HashMap
+8. `ChatScreen.kt:593` estimateInputTokens 每键全字符扫描
+9. `InputBar.kt:155-170` TextField 无 maxLength，粘贴大文本卡顿
+10. `ChatScreen.kt:169,181` 输入框和已选图片未用 rememberSaveable → 横竖屏丢失
+11. `SearchManager.kt:31-46` `_searchCache` 是普通 MutableMap，非线程安全 → 并发崩溃
+
+**Medium（UX/IME）**
+12. `InputBar.kt:159-164` TextField 未显式设置光标/占位符颜色 → 深色模式对比度不足
+13. `ChatScreen.kt:420` `imePadding()` 覆盖不全，SnackbarHost/搜索栏可能被键盘遮挡
+14. `InputBar.kt:83-100` `LaunchedEffect(value)` 对中文 IME composition 不友好
+
+### 本次实施范围
+
+- **P0 全部**（Critical #1-#4，共 4 项止血修复）
+- **P1 全部**（High #6-#11，共 6 项输入/性能修复）
+- **P2 暂缓**（Medium 三项列入 backlog）
+
+### 待办
+
+- [ ] P0 修复实施
+- [ ] P1 修复实施
+- [ ] `testDebugUnitTest` 全量通过
+- [ ] `detekt` 0 code smells
+- [ ] 本地 `assembleDebug` 通过
