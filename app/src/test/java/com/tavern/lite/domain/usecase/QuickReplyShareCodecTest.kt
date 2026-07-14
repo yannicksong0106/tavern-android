@@ -154,4 +154,84 @@ class QuickReplyShareCodecTest {
         assertEquals(0, entities[0].displayOrder)
         assertEquals(1, entities[1].displayOrder)
     }
+
+    @Test
+    fun `parse rejects blank name`() {
+        val blank = """{"format":"tavern-quick-reply-pack","version":1,"name":"   ","replies":[{"label":"a","script":"/echo a"}]}"""
+        val result = codec.parse(blank)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("名称"))
+    }
+
+    @Test
+    fun `parse trims name`() {
+        val padded = """{"format":"tavern-quick-reply-pack","version":1,"name":"  My Pack  ","replies":[{"label":"a","script":"/echo a"}]}"""
+        val result = codec.parse(padded)
+
+        assertTrue(result.isSuccess)
+        assertEquals("My Pack", result.getOrThrow().name)
+    }
+
+    @Test
+    fun `parse drops replies with blank label or script`() {
+        val mixed = """{"format":"tavern-quick-reply-pack","version":1,"name":"x","replies":[
+            {"label":"good","script":"/echo ok"},
+            {"label":"   ","script":"/echo blanklabel"},
+            {"label":"blankscript","script":"   "}
+        ]}"""
+        val result = codec.parse(mixed)
+
+        assertTrue(result.isSuccess)
+        val replies = result.getOrThrow().replies
+        assertEquals(1, replies.size)
+        assertEquals("good", replies[0].label)
+    }
+
+    @Test
+    fun `parse fails when all replies are blank`() {
+        val allBlank = """{"format":"tavern-quick-reply-pack","version":1,"name":"x","replies":[
+            {"label":"  ","script":"/echo a"},
+            {"label":"b","script":"  "}
+        ]}"""
+        val result = codec.parse(allBlank)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("有效"))
+    }
+
+    @Test
+    fun `parse caps reply count`() {
+        val over = QuickReplySharePackage.MAX_REPLIES + 50
+        val replies = (1..over).joinToString(",") { """{"label":"r$it","script":"/echo $it"}""" }
+        val huge = """{"format":"tavern-quick-reply-pack","version":1,"name":"x","replies":[$replies]}"""
+        val result = codec.parse(huge)
+
+        assertTrue(result.isSuccess)
+        assertEquals(QuickReplySharePackage.MAX_REPLIES, result.getOrThrow().replies.size)
+    }
+
+    @Test
+    fun `parse truncates oversized label and script`() {
+        val longLabel = "a".repeat(QuickReplySharePackage.MAX_LABEL_LENGTH + 100)
+        val longScript = "/echo " + "b".repeat(QuickReplySharePackage.MAX_SCRIPT_LENGTH + 100)
+        val big = """{"format":"tavern-quick-reply-pack","version":1,"name":"x","replies":[{"label":"$longLabel","script":"$longScript"}]}"""
+        val result = codec.parse(big)
+
+        assertTrue(result.isSuccess)
+        val reply = result.getOrThrow().replies[0]
+        assertEquals(QuickReplySharePackage.MAX_LABEL_LENGTH, reply.label.length)
+        assertEquals(QuickReplySharePackage.MAX_SCRIPT_LENGTH, reply.script.length)
+    }
+
+    @Test
+    fun `parse blanks out empty icon and automation id`() {
+        val withBlanks = """{"format":"tavern-quick-reply-pack","version":1,"name":"x","replies":[{"label":"a","script":"/echo a","icon":"  ","automationId":"  "}]}"""
+        val result = codec.parse(withBlanks)
+
+        assertTrue(result.isSuccess)
+        val reply = result.getOrThrow().replies[0]
+        assertEquals(null, reply.icon)
+        assertEquals(null, reply.automationId)
+    }
 }

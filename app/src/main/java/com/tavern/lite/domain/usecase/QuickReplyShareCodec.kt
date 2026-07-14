@@ -35,6 +35,14 @@ data class QuickReplySharePackage(
     companion object {
         const val SHARE_FORMAT = "tavern-quick-reply-pack"
         const val SHARE_VERSION = 1
+
+        /** 单个脚本包最多导入的回复数，挡住恶意/损坏包灌库。 */
+        const val MAX_REPLIES = 200
+
+        /** 单条 label / script 长度上限，挡住超长字段撑爆 UI 与 DB。 */
+        const val MAX_LABEL_LENGTH = 200
+        const val MAX_SCRIPT_LENGTH = 20_000
+        const val MAX_NAME_LENGTH = 200
     }
 }
 
@@ -91,10 +99,41 @@ class QuickReplyShareCodec(
                 IllegalArgumentException("脚本包版本 ${pack.version} 高于当前支持的 ${QuickReplySharePackage.SHARE_VERSION}，请升级应用")
             )
         }
-        if (pack.replies.isEmpty()) {
-            return Result.failure(IllegalArgumentException("脚本包不含任何快捷回复"))
+
+        val name = pack.name.trim()
+        if (name.isEmpty()) {
+            return Result.failure(IllegalArgumentException("脚本包名称为空"))
         }
-        return Result.success(pack)
+
+        // 逐条清洗：丢弃 label/script 为空的坏条目，单条坏不毁整包；
+        // 超长字段截断而非拒绝，防御恶意包撑爆 UI/DB。
+        val sanitized = pack.replies.mapNotNull { it.sanitizedOrNull() }
+        if (sanitized.isEmpty()) {
+            return Result.failure(IllegalArgumentException("脚本包不含任何有效的快捷回复"))
+        }
+
+        return Result.success(
+            pack.copy(
+                name = name.take(QuickReplySharePackage.MAX_NAME_LENGTH),
+                replies = sanitized.take(QuickReplySharePackage.MAX_REPLIES)
+            )
+        )
+    }
+
+    /**
+     * 清洗单条分享回复：label 与 script 去空白后必须非空，否则丢弃（返回 null）。
+     * 超长字段截断到上限。
+     */
+    private fun QuickReplySharePackage.SharedReply.sanitizedOrNull(): QuickReplySharePackage.SharedReply? {
+        val cleanLabel = label.trim()
+        val cleanScript = script.trim()
+        if (cleanLabel.isEmpty() || cleanScript.isEmpty()) return null
+        return copy(
+            label = cleanLabel.take(QuickReplySharePackage.MAX_LABEL_LENGTH),
+            script = cleanScript.take(QuickReplySharePackage.MAX_SCRIPT_LENGTH),
+            icon = icon?.trim()?.takeIf { it.isNotEmpty() },
+            automationId = automationId?.trim()?.takeIf { it.isNotEmpty() }
+        )
     }
 
     /**
