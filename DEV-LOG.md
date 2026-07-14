@@ -1,5 +1,37 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — X5 脚本包导入输入加固 + 引擎审计 ✅
+
+**背景**: X5 codec/UI ship 后逐文件审计（codec / repository / ViewModel / 分享对话框 / 执行引擎）。UI 与安全边界干净——import 强制全权限 off，automationId 衝突无实害（不能自动运行）。唯一真实缺口在 `QuickReplyShareCodec.parse` 缺输入校验。
+
+### 改动范围
+
+| 严重度 | 位置 | 问题 | 修复 |
+|--------|------|------|------|
+| 🟡 数据质量 | `QuickReplyShareCodec.kt` | `parse` 不校验空 `name`/空 `label`/空 `script`，无件数与长度上限；恶意包可灌大量空回复污染库 | 空 name 拒绝；逐条清洗丢弃空 label/script（单条坏不毁整包）；`MAX_REPLIES=200`、name/label/script 长度上限截断；icon/automationId 去空白规范化 |
+
+### 引擎审计结论（无 bug）
+
+- `/if` 操作符扫描：两字符操作符先于单字符（`>=` 不被 `>` 抢），trailing 操作符被 `idx+len < length` 守卫挡掉
+- 宏递归 `MAX_MACRO_EXPANSION_DEPTH=16` 封顶自调用；`/if` 假 + 下一行块宏走 `skipMacroBlock` 消费整块不泄漏；空名 macro def 也消费到 `/endmacro`
+- 参数插入纯函数 `insertStScriptCommand`/`appendStScriptParam` 境界全 `coerceIn`（负值/超过/选区逆转）
+- 小文档不符（非 bug）：catalog 摘要 `/clearvar` 未提空名清全部变量（executor 行为合理，类 ST flushvar）
+
+### 验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `testDebugUnitTest` | BUILD SUCCESSFUL — codec 新分支测试全绿（空 name 拒绝、空字段过滤、件数上限、长度截断）|
+| `lintDebug` / `detekt` | BUILD SUCCESSFUL — 全绿 |
+
+commit `ffaf1fe` — 已 push origin/main。
+
+### 未验证 / 后续
+
+- X5 导出/导入 UI 真机手测仍未做（模拟器 smoke 已过：按钮在位、导入对话框带安全提示、取消可用）。
+
+---
+
 ## 2026-07-12 — Phase X4 参数级补全 + Phase X5 脚本包分享起步 ✅
 
 **背景**: X4 编辑器已有命令面板/语法高亮/诊断/变量辅助；本轮补齐参数级补全（点命令 chip 后二级参数 chip），并起步 X5 脚本市场——项目无后端，"市场"以本地脚本包分享格式落地。
