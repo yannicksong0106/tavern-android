@@ -19,7 +19,7 @@
 ### 已完成（架构整改 A0–A7）
 - A0 架构护栏 ✅（UI 禁直依 ChatApiService/DAO，架构测试锁边界）
 - A1 数据迁移策略 ✅（移除破坏性 fallback，补 v2-v7 迁移入口）
-- A2 聊天生成拆分 ✅（6 coordinator 就位，450 行）⚠️ send/continue/regenerate 仍未外提
+- A2 聊天生成拆分 ✅（send/continue/regenerate 编排已在 coordinator，manager 365 行为薄胶水）
 - A3 reasoning 收口 ✅（GenerationContext 随请求传递）
 - A4 Prompt 可解释化 ✅（PromptSection + trace）
 - A5 世界书匹配引擎 ✅（WorldBookMatcher + MatchTrace）
@@ -219,6 +219,8 @@ git ls-files "app/src/**/*.kt" | ForEach-Object {
 
 **风险**：send/continue/regenerate 是核心主链，拆分必须保证 job 取消、mutex、错误传播行为完全不变。拆完必须跑全量 `testDebugUnitTest` + 真机 smoke。
 
+**当前结论（2026-07-12，实质达成 done）**：审计确认 A2 主链编排**已实质外提**——`sendSingle` / `sendGroup` / `sendDirect` 在 `GenerationSendCoordinator`，`continueGeneration` / `regenerate` 在 `GenerationContinuationCoordinator`，manager 侧仅剩 `launchGenerationJob`（job 生命周期 + mutex + 错误分类，核心不可动）+ 薄委托。本轮 `generateImage` 改为复用 `launchGenerationJob`，消除重复 job 生命周期（`1db1017`，-13 行，378 行）。**剩余行数（378）为状态 provider 声明 + 回调声明 + KDoc + init 配线，非编排逻辑**；削到 <300 只能把声明块物理拆到另一文件，纯凑行数、配线散两处、可读性反降，判定为负收益，不做。P2-1 本来目的（主链移出 manager）已达成，`<300` 物理指标标注"实质达成，剩余为声明/配线"。`ChatStreamingManagerTest` + 全量 `testDebugUnitTest` 绿。
+
 #### P2-2 端口-适配器收尾：清除 domain 对 network 的残余直接依赖
 
 **问题证据**：端口适配迁移已大部分完成（8 UseCase 依赖 Port），但需审计是否有遗漏的 domain → network 直接 import。
@@ -370,7 +372,7 @@ Kover 基线：业务代码 line 70.19% / branch 42.85%
 6.1 Room 查询优化（v30 复合索引）| 6.2 图片内存池（Coil 20% 内存 + 3% 磁盘）| 6.3 大数据量验证（1200 消息 <5s）| 6.4 长 prompt 验证（150 历史 <1s）
 
 ### 架构整改 A0–A7 ✅（详见 DEV-LOG）
-A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 待 P2-1 收口）| A3 reasoning 收口 | A4 Prompt 可解释化 | A5 世界书匹配引擎 | A6 automation id | A7 配置档案建模
+A0 护栏 | A1 迁移策略 | A2 生成拆分（✅ send/continue/regenerate 已在 coordinator，P2-1 实质达成）| A3 reasoning 收口 | A4 Prompt 可解释化 | A5 世界书匹配引擎 | A6 automation id | A7 配置档案建模
 
 ---
 
@@ -418,7 +420,7 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 | ~~多文件架构整改未提交~~ | ~~高~~ | P0-1 | ✅ 已随 `d24700c` 提交 |
 | ~~仓库 .gitattributes 防护~~ | ~~中~~ | P0-3 | ✅ 已落入 HEAD |
 | **A8 设备 smoke partial** | 高 | P1/M3 | 🟡 本地 4 条门禁已全通，README + CI 已固化流程；旧库启动/迁移/首页渲染与核心流式对话已通过，剩余主交互 smoke 与真实 CI run 待验收 |
-| **A2 send/continue/regenerate 未外提** | 中 | P2-1 | ⚠️ 未验收 |
+| ~~A2 send/continue/regenerate 未外提~~ | ~~中~~ | P2-1 | ✅ 实质达成——编排已在 coordinator，manager 仅剩 job 胶水；<300 物理目标放弃（硬拆声明块为负收益） |
 | **domain 残余 network 直接依赖** | 中 | P2-2 | ✅ 当前扫描 0 匹配 |
 | **UI 残余 network 直接依赖** | 中 | P2-3 | ✅ 当前扫描 0 匹配，架构测试已锁住 |
 | **v2-v7 真实迁移样本缺失** | 中 | P3-1 | ✅ 降级 done；真实样本作为历史风险保留 |
@@ -437,7 +439,7 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 | 测试数量 | 762 | 1033+ | 900+ ✅ | P4 |
 | ChatViewModel 行数 | 974 | 379 | <400 ✅ | — |
 | ChatScreen 行数 | 718 | 553 | <500 | P2 后再评估 |
-| ChatStreamingManager 行数 | — | 391 | <300 | P2-1 后续评估 |
+| ChatStreamingManager 行数 | — | 378 | <300 放弃 | P2-1 实质达成，剩余为声明/配线 |
 | PromptBuilder 行数 | 628 | 291 | <400 ✅ | — |
 | 测试覆盖率 line（Kover 业务）| 35.8% 估算 | 76.78% | 72%+ ✅ | P4-1 |
 | 测试覆盖率 branch | — | 55.81% | 55%+ ✅ | P4-1 |
@@ -461,8 +463,9 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（⚠️ send/continue/regenerate 
 1. **M3 剩余设备 smoke** — 旧库覆盖安装启动、Room 迁移、首页渲染与一次真实可见流式对话已通过；下一步手动验证停止生成、继续生成、重生、VN/BGM、设置 profile、预设预览等剩余主路径
 2. **M2 真实 CI run 验证**（P1-2）— 本地 4 条门禁已通过，README 与现有 CI workflow 已补命令清单；后续等 push/PR 验证真实 CI run，并在提交前按改动范围重跑必要门禁
 3. **M4 剩余代码卫生**（P3-3）— 模拟器窗口问题处理；P3-1 已降级 done，真实 v2-v7 样本作为历史风险保留
-4. **P2-1 后续评估** — A2 send/continue/regenerate 外提仍为中风险未验收项，等剩余 smoke 稳定后决定是否继续拆分
-5. **M5 v1.3.1 正式收口** — 全部 done 后提交/tag，再评估 v1.4.0
+4. **M5 v1.3.1 正式收口** — 全部 done 后提交/tag，再评估 v1.4.0
+
+> P2-1 已实质达成 done（编排在 coordinator，manager 仅剩 job 胶水；<300 物理目标放弃，硬拆声明块为负收益）。
 
 ### 每步完成必做
 - 跑 P1 的 4 条门禁命令

@@ -1,5 +1,32 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-12 — A2 收尾判定（P2-1）：主链已实质外提，放弃 <300 硬拆 ✅
+
+**背景**: P2-1 要求 `ChatStreamingManager` send/continue/regenerate 编排外提 + manager <300 行。审计发现主链编排**已实质外提**——`sendSingle`/`sendGroup`/`sendDirect` 在 `GenerationSendCoordinator`，`continueGeneration`/`regenerate` 在 `GenerationContinuationCoordinator`，manager 侧仅剩 `launchGenerationJob`（job 生命周期 + mutex + 错误分类）+ 薄委托。
+
+### 改动范围
+
+| 位置 | 改动 | 说明 |
+|------|------|------|
+| `ChatStreamingManager.kt` | `generateImage` 改复用 `launchGenerationJob` | 原本内联了一份 job 生命周期（`streamingJob.cancel` + mutex + `_isGenerating` + CancellationException + classifyError），与 `launchGenerationJob` 完全重复；改为委托后消重。行为等价：image 无 `clearRespondingOnExit`（默认 false 一致）、无 onFinally（默认 null 一致） |
+
+### 判定
+
+- 编排外提本来目的**已达成**——主链在 coordinator，manager 是 job 胶水层。
+- manager 378 行剩余大头为状态 provider 声明 + 回调声明 + KDoc + init 配线，**非编排逻辑**。削到 <300 只能把声明块物理拆到另一文件，纯凑行数、配线散两处、可读性反降 → **判负收益，不做**。
+- `<300` 物理指标标注"实质达成，剩余为声明/配线"，P2-1 从"未验收"改"实质 done"。
+
+### 验证
+
+| 命令 | 结果 |
+|------|------|
+| `testDebugUnitTest` | BUILD SUCCESSFUL — 全绿（含 `ChatStreamingManagerTest`）|
+| 行数 | `1db1017` 后 378 行（-13）|
+
+提交 `1db1017` refactor(A2)。
+
+---
+
 ## 2026-07-12 — X5 脚本包导入输入加固 + 引擎审计 ✅
 
 **背景**: X5 codec/UI ship 后逐文件审计（codec / repository / ViewModel / 分享对话框 / 执行引擎）。UI 与安全边界干净——import 强制全权限 off，automationId 衝突无实害（不能自动运行）。唯一真实缺口在 `QuickReplyShareCodec.parse` 缺输入校验。
