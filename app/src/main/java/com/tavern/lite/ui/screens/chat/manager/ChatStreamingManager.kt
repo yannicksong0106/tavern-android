@@ -247,37 +247,24 @@ class ChatStreamingManager(
     fun generateImage(prompt: String) {
         if (prompt.isBlank() || _isGenerating.value) return
 
-        wasCancelled = false
-        streamingJob?.cancel()
-        streamingJob = scope.launch {
-            streamingMutex.withLock {
-                _isGenerating.value = true
-                try {
-                    val character = characterProvider() ?: return@withLock
-                    val config = configReader.readConfig()
+        launchGenerationJob {
+            val character = characterProvider() ?: return@launchGenerationJob
+            val config = configReader.readConfig()
 
-                    val generationResult = imageGenerationCoordinator.generateImageReply(
-                        prompt = prompt,
-                        character = character,
-                        config = config,
-                        isCancelled = { wasCancelled }
-                    )
-                    if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.Success) {
-                        val result = generationResult.executionResult
-                        generationReasoningContext.record(result)
-                        if (commitAssistantReply(result?.assistantMsgId)) {
-                            scheduleProactiveDialogue()
-                        }
-                    } else if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.ImageGenerationFailed) {
-                        onToast("图片生成失败，请检查 OpenAI API 配置")
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    onToast(classifyError(e))
-                } finally {
-                    _isGenerating.value = false
-                    streamingJob = null
+            val generationResult = imageGenerationCoordinator.generateImageReply(
+                prompt = prompt,
+                character = character,
+                config = config,
+                isCancelled = { wasCancelled }
+            )
+            if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.Success) {
+                val result = generationResult.executionResult
+                generationReasoningContext.record(result)
+                if (commitAssistantReply(result?.assistantMsgId)) {
+                    scheduleProactiveDialogue()
                 }
+            } else if (generationResult is ImageGenerationCoordinator.ImageGenerationResult.ImageGenerationFailed) {
+                onToast("图片生成失败，请检查 OpenAI API 配置")
             }
         }
     }
