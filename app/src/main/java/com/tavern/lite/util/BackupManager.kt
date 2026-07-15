@@ -47,7 +47,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.encodeToStream
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
@@ -88,6 +91,7 @@ class BackupManager @Inject constructor(
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     suspend fun backup(): Result<File> = withContext(Dispatchers.IO) {
         try {
             // Run all DB queries in parallel for faster backup
@@ -352,7 +356,10 @@ class BackupManager @Inject constructor(
 
             val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
             val file = File(backupDir, "tavern_backup_${System.currentTimeMillis()}.json")
-            file.writeText(json.encodeToString(BackupData.serializer(), backupData))
+            // 流式写：避免把整库序列化成一个大 String 再落盘（峰值内存翻倍，大历史易 OOM）（X 审计 Low）。
+            file.outputStream().buffered().use { out ->
+                json.encodeToStream(BackupData.serializer(), backupData, out)
+            }
 
             Result.success(file)
         } catch (e: Exception) {
@@ -362,10 +369,11 @@ class BackupManager @Inject constructor(
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     suspend fun restore(inputStream: InputStream): Result<RestoreResult> = withContext(Dispatchers.IO) {
         try {
-            val text = inputStream.bufferedReader().use { it.readText() }
-            val data = json.decodeFromString(BackupData.serializer(), text)
+            // 流式解码：避免先把整个备份读成一个大 String 再解析（大历史峰值内存翻倍/OOM）。
+            val data = inputStream.buffered().use { json.decodeFromStream(BackupData.serializer(), it) }
 
             // 版本兼容性检查：拒绝来自更高版本的备份
             val backupVersion = data.appVersion

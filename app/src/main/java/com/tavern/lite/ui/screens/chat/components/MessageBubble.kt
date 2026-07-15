@@ -579,6 +579,11 @@ private fun ActionBarDivider() {
     )
 }
 
+// SimpleDateFormat 非线程安全，用 ThreadLocal 缓存避免旧消息气泡每次重组重建 pattern（X 审计 Low）。
+private val TIMESTAMP_FORMAT = ThreadLocal.withInitial {
+    java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
+}
+
 private fun formatTimestamp(context: android.content.Context, timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
@@ -587,9 +592,6 @@ private fun formatTimestamp(context: android.content.Context, timestamp: Long): 
         diff < 3600_000 -> context.getString(R.string.time_minutes, (diff / 60_000).toInt())
         diff < 86400_000 -> context.getString(R.string.time_hours, (diff / 3600_000).toInt())
         diff < 604800_000 -> context.getString(R.string.time_days, (diff / 86400_000).toInt())
-        else -> {
-            val sdf = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
-            sdf.format(java.util.Date(timestamp))
-        }
+        else -> TIMESTAMP_FORMAT.get()!!.format(java.util.Date(timestamp))
     }
 }

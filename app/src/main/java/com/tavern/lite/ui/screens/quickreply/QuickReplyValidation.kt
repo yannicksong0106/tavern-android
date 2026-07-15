@@ -16,11 +16,14 @@ fun buildQuickReplyItemWarnings(
     automationId: String,
     requiresConfirmation: Boolean,
     allowAutoRun: Boolean,
-    parser: StScriptLiteParser = StScriptLiteParser()
+    parser: StScriptLiteParser = StScriptLiteParser(),
+    // 调用方若已算过 findUnknownCommandLines（UI 侧 remember(script)），传入复用避免重扫；
+    // 默认自算保持既有测试与独立调用零改动（X 审计 Low：同脚本原本扫两遍）。
+    hasUnknownCommand: Boolean = containsUnknownCommand(script)
 ): List<QuickReplyItemWarning> {
     return buildList {
         // 未知命令警告与 automation 无关：手动回复也该提示手写错命令名。
-        if (containsUnknownCommand(script)) {
+        if (hasUnknownCommand) {
             add(QuickReplyItemWarning.ContainsUnknownCommand)
         }
 
