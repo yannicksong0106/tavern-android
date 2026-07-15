@@ -297,7 +297,7 @@ fun QuickReplyItemDialog(
                         onInsert = insertIntoScript,
                         onInsertParam = appendParamToScript
                     )
-                    val scriptVariables = collectStScriptVariableNames(script)
+                    val scriptVariables = remember(script) { collectStScriptVariableNames(script) }
                     if (scriptVariables.isNotEmpty()) {
                         StScriptVariablePalette(
                             names = scriptVariables,

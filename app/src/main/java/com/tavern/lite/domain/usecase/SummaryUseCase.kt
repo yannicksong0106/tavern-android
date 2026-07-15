@@ -1,7 +1,6 @@
 package com.tavern.lite.domain.usecase
 
 import android.util.Log
-import com.tavern.lite.data.db.entity.MessageEntity
 import com.tavern.lite.data.model.ApiConfig
 import com.tavern.lite.data.repository.ChatRepository
 import com.tavern.lite.data.repository.SummaryRepository
@@ -31,14 +30,9 @@ class SummaryUseCase @Inject constructor(
         if (count < MIN_MESSAGES_TO_SUMMARIZE) return false
         val existing = summaryRepository.getLatestSummary(chatId)
         val lastSummaryEndId = existing?.messageRangeEnd ?: 0L
-        val messagesSince = chatRepository.getRecentMessages(chatId, 2)
-            .let { msgs ->
-                if (msgs.isEmpty()) return@let count
-                val newestId = msgs.first().id // reversed order: newest first
-                // Estimate messages since last summary
-                val allRecent = chatRepository.getAllMessagesForChat(chatId)
-                allRecent.count { it.id > lastSummaryEndId }
-            }
+        // 上次摘要后的新消息数：单条索引 COUNT，避免全表反序列化只为算个整数（每次发消息都跑）。
+        // id 自增，lastSummaryEndId==0 时 id>0 恒真，等价于总数。
+        val messagesSince = chatRepository.getMessageCountSince(chatId, lastSummaryEndId)
         return messagesSince >= messageThreshold
     }
 

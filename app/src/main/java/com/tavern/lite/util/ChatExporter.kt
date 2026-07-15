@@ -34,6 +34,11 @@ class ChatExporter @Inject constructor(
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
         .withZone(ZoneId.systemDefault())
 
+    private companion object {
+        // 文件名非法字符清理正则；提到常量避免每次导出/每 chat 循环内重编译（X 审计 Low）。
+        private val UNSAFE_FILENAME = Regex("[\\\\/:*?\"<>|]")
+    }
+
     /**
      * 导出单个对话
      */
@@ -57,7 +62,7 @@ class ChatExporter @Inject constructor(
             ExportFormat.PLAINTEXT -> "txt"
             ExportFormat.JSON -> "json"
         }
-        val safeName = chatName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val safeName = chatName.replace(UNSAFE_FILENAME, "_")
         val outputFile = File(exportDir, "${safeName}.$ext")
 
         val content = when (format) {
@@ -100,7 +105,7 @@ class ChatExporter @Inject constructor(
                     ExportFormat.PLAINTEXT -> "txt"
                     ExportFormat.JSON -> "json"
                 }
-                val chatName = (chat.name ?: "chat_${chat.id}").replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val chatName = (chat.name ?: "chat_${chat.id}").replace(UNSAFE_FILENAME, "_")
                 val entry = ZipEntry("$chatName.$ext")
 
                 val content = when (format) {

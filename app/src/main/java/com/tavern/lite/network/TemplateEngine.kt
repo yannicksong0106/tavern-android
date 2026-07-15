@@ -6,7 +6,7 @@ import com.github.jknack.handlebars.Handlebars
 import com.github.jknack.handlebars.Template
 import com.github.jknack.handlebars.context.MapValueResolver
 import com.github.jknack.handlebars.context.MethodValueResolver
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
 
 /**
  * Handlebars template engine for prompt construction.
@@ -17,9 +17,18 @@ object TemplateEngine {
 
     private const val TAG = "TemplateEngine"
 
+    private const val MAX_CACHE_ENTRIES = 32
+
     private val handlebars = Handlebars()
 
-    private val templateCache = ConcurrentHashMap<String, Template>()
+    // key 是整段模板文本（角色描述/系统提示，常几 KB），无界会随角色/编辑次数无限增长（X 审计）。
+    // 用 access-order LRU 限制到 MAX_CACHE_ENTRIES，包 synchronizedMap 保并发安全。
+    private val templateCache: MutableMap<String, Template> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Template>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, Template>): Boolean =
+                size > MAX_CACHE_ENTRIES
+        }
+    )
 
     /**
      * Render a Handlebars template with the given variables.

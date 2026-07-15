@@ -20,8 +20,10 @@ import com.tavern.lite.domain.port.PromptBuilderPort
 import com.tavern.lite.domain.port.WebSearchPort
 import com.tavern.lite.util.ImageUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -75,7 +77,10 @@ class SendMessageUseCase @Inject constructor(
         val summary = summaryUseCase.getLatestSummaryText(chatId)
         val searchResults = performSearchIfNeeded(processedContent)
 
-        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        // 图片读盘 + base64 编码放到 IO 线程，避免在 UI 线程阻塞（单图最大 8MB，多图串行）。
+        val imageUrls = withContext(Dispatchers.IO) {
+            imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        }
 
         val promptConfig = com.tavern.lite.domain.model.PromptConfig(
             character = character,
@@ -158,7 +163,10 @@ class SendMessageUseCase @Inject constructor(
             processed
         } else ""
 
-        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        // 图片读盘 + base64 编码放到 IO 线程，避免在 UI 线程阻塞（单图最大 8MB，多图串行）。
+        val imageUrls = withContext(Dispatchers.IO) {
+            imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        }
 
         val results = mutableListOf<Pair<Long, MessageExecutionHelper.ExecutionResult>>()
         val characterMap = characters.associateBy { it.id }
@@ -246,7 +254,10 @@ class SendMessageUseCase @Inject constructor(
             processed
         } else ""
 
-        val imageUrls = imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        // 图片读盘 + base64 编码放到 IO 线程，避免在 UI 线程阻塞（单图最大 8MB，多图串行）。
+        val imageUrls = withContext(Dispatchers.IO) {
+            imagePaths.mapNotNull { ImageUtils.fileToDataUri(File(it)) }
+        }
 
         val chatHistory = chatRepository.getRecentMessages(chatId, config.contextLength)
         val persona = helper.personasafe(targetCharacter.id)
