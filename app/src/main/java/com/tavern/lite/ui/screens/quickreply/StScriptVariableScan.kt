@@ -36,10 +36,12 @@ fun collectStScriptVariableNames(source: String): List<String> {
         if (line.startsWith("#") || line.startsWith("//")) return@forEach
 
         if (line.startsWith("/")) {
-            val cmd = line.drop(1).takeWhile { !it.isWhitespace() }.lowercase()
+            // 斜杠后允许空白（`/   setvar x 5`）——先 trim 再取命令 token，与 parser 对齐。
+            val afterSlash = line.drop(1).trim()
+            val cmd = afterSlash.takeWhile { !it.isWhitespace() }.lowercase()
             if (cmd in COMMENT_COMMANDS) return@forEach
             if (cmd in VARIABLE_DEFINING_COMMANDS) {
-                val rest = line.drop(1).drop(cmd.length).trim()
+                val rest = afterSlash.drop(cmd.length).trim()
                 val name = rest.takeWhile { !it.isWhitespace() }
                 // 拒绝 `{{...}}` 开头的伪名字：`/setvar {{x}} val` 的定义名不该是 `{{x}}`（X4 审计 Low）。
                 if (name.isNotEmpty() && !name.startsWith("{{")) ordered += name

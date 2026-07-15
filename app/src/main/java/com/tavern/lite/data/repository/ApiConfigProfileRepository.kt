@@ -119,8 +119,7 @@ class ApiConfigProfileRepository @Inject constructor(
      * 设置默认档案
      */
     suspend fun setDefaultProfile(id: Long) {
-        profileDao.clearDefaultProfile()
-        profileDao.setDefaultProfile(id)
+        profileDao.switchDefaultProfile(id)
     }
 
     /**

@@ -51,6 +51,10 @@ class ChatImporter @Inject constructor(
                     warnings = warnings
                 )
             )
+        } catch (e: StackOverflowError) {
+            // 深度嵌套的恶意/损坏 JSON 触发递归下降解析栈溢出（Error 非 Exception）；优雅失败而非崩溃。
+            Log.w("ChatImporter", "聊天导入失败：JSON 嵌套过深", e)
+            Result.failure(IllegalArgumentException("聊天数据格式无效（嵌套过深）"))
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)

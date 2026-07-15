@@ -95,6 +95,9 @@ class ChatRepository @Inject constructor(
 
     suspend fun getMessageCount(chatId: Long): Int = messageDao.getMessageCount(chatId)
 
+    suspend fun getMessageCountSince(chatId: Long, sinceId: Long): Int =
+        messageDao.getMessageCountSince(chatId, sinceId)
+
     // 分支操作
     suspend fun getBranchIds(chatId: Long): List<Long?> = messageDao.getBranchIds(chatId)
 
@@ -154,11 +157,11 @@ class ChatRepository @Inject constructor(
     /**
      * 从指定消息创建分支：复制该消息及其之前的所有活跃消息到新分支
      */
-    suspend fun createBranchFromMessage(chatId: Long, messageId: Long, branchName: String): Long {
+    suspend fun createBranchFromMessage(chatId: Long, messageId: Long, branchName: String): Long = tx.run {
         val branchId = createBranch(chatId, branchName)
         val messages = messageDao.getAllActiveMessagesForChat(chatId)
         val targetIndex = messages.indexOfFirst { it.id == messageId }
-        if (targetIndex < 0) return branchId
+        if (targetIndex < 0) return@run branchId
 
         val messagesToCopy = messages.take(targetIndex + 1).filter { it.isActive }
         for (msg in messagesToCopy) {
@@ -168,6 +171,6 @@ class ChatRepository @Inject constructor(
                 isActive = true
             ))
         }
-        return branchId
+        branchId
     }
 }

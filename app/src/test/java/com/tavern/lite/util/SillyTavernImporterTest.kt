@@ -83,6 +83,21 @@ class SillyTavernImporterTest {
     }
 
     @Test
+    fun `importFromJson fails gracefully on deeply nested json instead of crashing`() = runTest {
+        // X5 验证：深嵌套 JSON 触发递归下降解析栈溢出（StackOverflowError 是 Error 非 Exception）。
+        // 修复前只 catch Exception，Error 传播出去导致 App 崩溃；修复后应返回 failure。
+        val depth = 100_000
+        val payload = "{\"spec\":\"chara_card_v2\",\"data\":{\"name\":\"x\",\"extensions\":{\"e\":" +
+            "[".repeat(depth) + "]".repeat(depth) + "}}}"
+        val file = temp.newFile("deep.json").also { it.writeText(payload, Charsets.UTF_8) }
+
+        val result = importer.importFromJson(file)
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { characterRepository.createCharacter(any(), any()) }
+    }
+
+    @Test
     fun `importFromPng reads chara metadata and copies avatar`() = runTest {
         val dataSlot = slot<CharacterData>()
         val avatarSlot = slot<String>()

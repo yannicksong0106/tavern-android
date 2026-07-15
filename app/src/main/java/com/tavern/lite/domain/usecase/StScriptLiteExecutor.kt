@@ -423,6 +423,15 @@ class StScriptLiteExecutor @Inject constructor(
         val trimmed = argument.trim()
         if (trimmed.isEmpty()) return false
 
+        // `contains` 需两侧空白包围，优先于操作符扫描：否则 contains 操作数里的
+        // `<`/`>` 字面量（如 `contains <div>`）会劫持数值比较分支，令 compareNumeric
+        // 对非数值返回 false，错误跳过被守卫命令（X5 审计 Med）。
+        CONTAINS_PATTERN.matchEntire(trimmed)?.let { match ->
+            val left = resolveVariables(match.groupValues[1].trim(), variables)
+            val right = resolveVariables(match.groupValues[2].trim(), variables)
+            return left.contains(right)
+        }
+
         // 在源文本上定位操作符（先于变量解析），避免变量值中出现的操作符字面量污染匹配。
         // 长操作符优先扫描（`>=` 先于 `>`）。左右两侧分别 resolveVariables。
         for (op in COMPARISON_OPERATORS) {
@@ -445,13 +454,6 @@ class StScriptLiteExecutor @Inject constructor(
             }
         }
 
-        // `contains` 需两侧空白包围，避免匹配变量值或标识符中的 "contains" 子串
-        CONTAINS_PATTERN.matchEntire(trimmed)?.let { match ->
-            val left = resolveVariables(match.groupValues[1].trim(), variables)
-            val right = resolveVariables(match.groupValues[2].trim(), variables)
-            return left.contains(right)
-        }
-
         // 无操作符：解析变量后，非空/非 "0"/非 "false" 视为真
         val resolved = resolveVariables(trimmed, variables).trim()
         return resolved.isNotBlank() && resolved != "0" && resolved.lowercase() != "false"
@@ -466,7 +468,9 @@ class StScriptLiteExecutor @Inject constructor(
     private companion object {
         private const val MISSING_MACRO_END_INDEX = -1
         private const val MAX_MACRO_EXPANSION_DEPTH = 16
-        private val VARIABLE_PATTERN = Regex("""\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}""")
+        // 变量名类必须与 palette 扫描的 `[^}\s]+` 完全对齐，否则 CJK 等非 ASCII 名字
+        // 在编辑器里能生成 chip、parser 能定义，却在 resolveVariables 处漏解析（X5 审计 Med）。
+        private val VARIABLE_PATTERN = Regex("""\{\{\s*([^}\s]+)\s*\}\}""")
         // 顺序敏感：两字符操作符必须先于单字符匹配（`>=` 先于 `>`）。
         private val COMPARISON_OPERATORS = listOf("==", "!=", ">=", "<=", ">", "<")
         // `contains` 需两侧空白包围

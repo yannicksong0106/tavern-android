@@ -29,6 +29,9 @@ interface MessageDao {
     @Query("SELECT COUNT(*) FROM messages WHERE chat_id = :chatId AND is_active = 1")
     suspend fun getMessageCount(chatId: Long): Int
 
+    @Query("SELECT COUNT(*) FROM messages WHERE chat_id = :chatId AND is_active = 1 AND id > :sinceId")
+    suspend fun getMessageCountSince(chatId: Long, sinceId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity): Long
 

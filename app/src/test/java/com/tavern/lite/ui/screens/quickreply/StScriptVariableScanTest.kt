@@ -73,4 +73,11 @@ class StScriptVariableScanTest {
         assertTrue(collectStScriptVariableNames("# {{ghost}}").isEmpty())
         assertTrue(collectStScriptVariableNames("// {{ghost}}").isEmpty())
     }
+
+    @Test
+    fun `whitespace after slash still collects defining name`() {
+        // X4 审计 Low：`/   setvar counter 5` 斜杠后有空白，
+        // 应与 parser 对齐先 trim 再取命令 token，counter 仍进 chip。
+        assertEquals(listOf("counter"), collectStScriptVariableNames("/   setvar counter 5"))
+    }
 }

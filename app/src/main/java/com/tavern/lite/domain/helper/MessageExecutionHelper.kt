@@ -62,7 +62,11 @@ class MessageExecutionHelper @Inject constructor(
                 is java.io.IOException -> "[网络连接异常: ${e.message?.take(50) ?: "未知错误"}]"
                 else -> "[生成失败: ${e.message?.take(80) ?: "未知错误"}]"
             }
-            chatRepository.sendMessage(chatId, errorMsg, "assistant", characterId)
+            // 流中途断开时已累积的部分回复不该丢弃：保留部分文本并追加中断标记，
+            // 仅在没有任何内容时才只存错误标记。
+            val partial = responseBuffer.toString()
+            val savedContent = if (partial.isNotBlank()) "$partial\n\n$errorMsg" else errorMsg
+            chatRepository.sendMessage(chatId, savedContent, "assistant", characterId)
             return null
         }
         val reasoningContent = reasoningBuffer.takeIf { it.isNotEmpty() }?.toString()

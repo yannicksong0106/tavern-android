@@ -398,6 +398,26 @@ class StScriptLiteExecutorTest {
     }
 
     @Test
+    fun `contains operand with angle-bracket literal is not hijacked by numeric branch`() {
+        // X4 审计 Med：`contains` 需先于操作符扫描判定，否则操作数里的 `<`/`>`
+        // 字面量会劫持数值分支，compareNumeric 对非数值返回 false，误跳过守卫命令。
+        val result = executor.execute(
+            source = "/if {{msg}} contains <div>\n/echo matched",
+            initialVariables = mapOf("msg" to "<div>hello</div>")
+        )
+        assertTrue(result.echoes.contains("matched"))
+    }
+
+    @Test
+    fun `CJK variable name resolves in echo`() {
+        // X4 审计 Med：VARIABLE_PATTERN 需匹配非 ASCII 名字，否则 {{计数}} 留字面量。
+        val result = executor.execute(
+            source = "/setvar 计数 5\n/echo {{计数}}"
+        )
+        assertTrue(result.echoes.contains("5"))
+    }
+
+    @Test
     fun `if command with numeric comparison`() {
         val result = executor.execute(
             source = "/if {{count}} > 5\n/echo big",

@@ -37,6 +37,10 @@ class SillyTavernImporter @Inject constructor(
 
             val id = characterRepository.createCharacter(card.data, avatarPath = avatarFile.absolutePath)
             Result.success(id)
+        } catch (e: StackOverflowError) {
+            // 深度嵌套的恶意/损坏 JSON 触发递归下降解析栈溢出（Error 非 Exception）；优雅失败而非崩溃。
+            Log.w("SillyTavernImporter", "PNG 导入失败：JSON 嵌套过深", e)
+            Result.failure(IllegalArgumentException("角色卡数据格式无效（嵌套过深）"))
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "PNG 导入失败", e)
@@ -53,6 +57,10 @@ class SillyTavernImporter @Inject constructor(
             val card = json.decodeFromString<CharacterCard>(jsonStr)
             val id = characterRepository.createCharacter(card.data)
             Result.success(id)
+        } catch (e: StackOverflowError) {
+            // 深度嵌套的恶意/损坏 JSON 触发递归下降解析栈溢出（Error 非 Exception）；优雅失败而非崩溃。
+            Log.w("SillyTavernImporter", "JSON 导入失败：嵌套过深", e)
+            Result.failure(IllegalArgumentException("角色卡数据格式无效（嵌套过深）"))
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w("SillyTavernImporter", "JSON 导入失败", e)

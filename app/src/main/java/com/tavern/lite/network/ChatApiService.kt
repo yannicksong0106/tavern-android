@@ -264,7 +264,7 @@ class ChatApiService @Inject constructor(
             })
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:streamGenerateContent"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:streamGenerateContent?alt=sse"
         val request = Request.Builder()
             .url(url)
             .addHeader("Content-Type", "application/json")

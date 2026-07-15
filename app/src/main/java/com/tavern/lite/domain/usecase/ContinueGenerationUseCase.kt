@@ -184,13 +184,10 @@ class ContinueGenerationUseCase @Inject constructor(
         val newContent = responseBuffer.toString()
         if (newContent.isBlank()) return null
 
-        chatRepository.addSwipe(messageId, newContent)
-        chatRepository.updateMessageContent(messageId, newContent)
-
+        // 先跑脚本，swipe 数组与 content 存同一处理后文本，避免左右滑回退到未处理原文（X 审计 Low）。
         val processedReply = scriptRepository.applyScripts(characterId, newContent, 1)
-        if (processedReply != newContent) {
-            chatRepository.updateMessageContent(messageId, processedReply)
-        }
+        chatRepository.addSwipe(messageId, processedReply)
+        chatRepository.updateMessageContent(messageId, processedReply)
 
         return MessageExecutionHelper.ExecutionResult(
             assistantMsgId = messageId,

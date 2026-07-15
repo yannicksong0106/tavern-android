@@ -3,6 +3,7 @@ package com.tavern.lite.data.db.dao
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.tavern.lite.data.db.TavernDatabase
+import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
 import com.tavern.lite.data.db.entity.BranchEntity
 import com.tavern.lite.data.db.entity.CharacterEntity
 import com.tavern.lite.data.db.entity.ChatEntity
@@ -31,6 +32,7 @@ class DaoIntegrationTest {
     private lateinit var messageDao: MessageDao
     private lateinit var branchDao: BranchDao
     private lateinit var summaryDao: SummaryDao
+    private lateinit var profileDao: ApiConfigProfileDao
 
     @Before
     fun setup() {
@@ -43,6 +45,7 @@ class DaoIntegrationTest {
         messageDao = db.messageDao()
         branchDao = db.branchDao()
         summaryDao = db.summaryDao()
+        profileDao = db.apiConfigProfileDao()
     }
 
     @After
@@ -393,5 +396,26 @@ class DaoIntegrationTest {
 
         characterDao.deleteById(charId)
         assertEquals(0, chatDao.getAllChatsForCharacter(charId).size)
+    }
+
+    // ==================== ApiConfigProfileDao ====================
+
+    @Test
+    fun `switchDefaultProfile leaves exactly one default`() = runTest {
+        val a = profileDao.insertProfile(ApiConfigProfileEntity(name = "A", configJson = "{}"))
+        val b = profileDao.insertProfile(ApiConfigProfileEntity(name = "B", configJson = "{}"))
+        val c = profileDao.insertProfile(ApiConfigProfileEntity(name = "C", configJson = "{}"))
+
+        profileDao.switchDefaultProfile(a)
+        assertEquals(a, profileDao.getDefaultProfile()!!.id)
+
+        // 切到另一档案：旧默认清除 + 新默认设置在同一事务，结束时恰好一个默认。
+        profileDao.switchDefaultProfile(b)
+        val default = profileDao.getDefaultProfile()!!
+        assertEquals(b, default.id)
+
+        val defaults = listOf(a, b, c).mapNotNull { profileDao.getProfileById(it) }.filter { it.isDefault }
+        assertEquals(1, defaults.size)
+        assertEquals(b, defaults.single().id)
     }
 }

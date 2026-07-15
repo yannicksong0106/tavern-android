@@ -282,6 +282,21 @@ not valid json
     }
 
     @Test
+    fun `importChat fails gracefully on deeply nested JSON without crashing`() = runTest {
+        // 恶意/损坏的深嵌套数组触发 kotlinx 递归下降解析栈溢出（StackOverflowError 是 Error 非 Exception）。
+        // 修复前 catch(Exception) 漏掉 Error → 崩溃；修复后 catch(StackOverflowError) → 优雅 failure。
+        val depth = 50_000
+        val jsonStr = "[".repeat(depth) + "]".repeat(depth)
+        val file = writeFile("deep.json", jsonStr)
+
+        val result = importer.importChat(1L, file)
+        advanceUntilIdle()
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { chatRepository.createChat(any(), any()) }
+    }
+
+    @Test
     fun `importChat treats JsonNull chatName and message fields as missing`() = runTest {
         coEvery { chatRepository.createChat(1L, null) } returns 40L
         coEvery { chatRepository.sendMessage(40L, any(), any()) } returns 1L
