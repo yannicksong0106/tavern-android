@@ -1,5 +1,57 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-16 — 健壮性加固 + 两轮优化审计（3 批提交）✅
+
+**背景**: v1.4.0 收口期，按"优化优先于扩展"原则，先做健壮性 bug 修复，再跑两轮多维度优化审计（Workflow fan-out + 对抗验证 + 排序），只落地零/低行为风险项，架构性重构（请求体流式化、reasoning 剪枝）判负收益暂缓。
+
+### 批次一 — 健壮性加固（`b92e282`）
+
+| 项 | 文件 | 改动 |
+|----|------|------|
+| 流断保留部分回复 | `MessageExecutionHelper.kt` | 流中途断开时保留 `responseBuffer` 已累积文本 + 中断标记，仅无内容时才只存错误标记 |
+| setDefaultProfile 原子化 | `ApiConfigProfileDao.kt` | 新增 `@Transaction switchDefaultProfile()`，clear+set 单事务，防进程被杀留零默认/并发留双默认 |
+| createBranchFromMessage 事务 | `ChatRepository.kt` | 整个建分支+复制消息包 `tx.run{}`，防半途失败留孤儿分支 |
+| regenerate swipe 一致性 | `ContinueGenerationUseCase.kt` | 先跑脚本，swipe 数组与 content 存同一处理后文本，防左右滑回退未处理原文 |
+| Gemini SSE 流式修复 | `ChatApiService.kt` | streamGenerateContent URL 加 `?alt=sse` |
+
+### 批次二 — 优化审计稳赢批（`b71d3ce`，5 项零行为风险）
+
+| 项 | 文件 | 改动 |
+|----|------|------|
+| O1 摘要触发免全表反序列化 | `MessageDao.kt` / `SummaryUseCase.kt` | 加 `getMessageCountSince` 索引 COUNT 替代全表 load 数消息（每次发消息热路径）|
+| O2 图片编码离主线程 | `SendMessageUseCase.kt` | 三处 base64 编码包 `withContext(Dispatchers.IO)`，发图不卡 UI |
+| O3 变量扫描 memoize | `QuickReplyDialogs.kt` | `collectStScriptVariableNames` 包 `remember(script)` |
+| O5 模板缓存改 LRU | `TemplateEngine.kt` | 无界 map → access-order LRU(cap 32) + synchronizedMap |
+| O7 文件名正则提常量 | `ChatExporter.kt` | 循环内重编译 → companion 常量 `UNSAFE_FILENAME` |
+
+### 批次三 — 优化审计第二轮（`dc1dbb0`，8 项零行为风险 + 测试适配）
+
+| 项 | 文件 | 改动 |
+|----|------|------|
+| 冷启动免 keystore 阻塞 | `CryptoHelper.kt` | init{} 同步建密钥 → 惰性首次 crypto 时建（已在 IO 线程），加锁防并发交错 |
+| 头像 stat 缓存 | `CharacterAvatar.kt` | `File().exists()` 主线程 stat 包 `remember(avatarPath)`，防快滚掉帧 |
+| 世界书匹配零分配 | `WorldBookMatcher.kt` | 急建两 `List<Boolean>` → 短路布尔表达式（每消息×每 entry×递归 3 轮）|
+| 记忆总数免全行 load | `MemoryAtomDao.kt` / `MemoryViewModel.kt` | 加 `getAtomCountFlow` 索引 COUNT flow，替代全行 load 只为 .size；pulse 派生自 count flow 消除重复订阅 |
+| 标签解析 memoize | `HomeViewModel.kt` | `parseTags` 结果按角色列表缓存，点标签不重解析整列表 |
+| StateFlow 去抖 | `QuickReplyViewModel.kt` | sets/characters/chats/replies 补 `distinctUntilChanged` |
+
+**判负收益暂缓**: O4 请求体流式化（改 RequestBody.writeTo，风险中高，收益局限图片+低端机）、O9 reasoning LRU 剪枝（按任意 id 查，剪错丢重生成上下文，需活跃窗口信息）。
+
+### 验证
+
+| 命令 | 结果 |
+|------|------|
+| `testDebugUnitTest` | BUILD SUCCESSFUL — 1197 tests，全绿 |
+| `lintDebug` | 通过 |
+| `detekt` | 0 code smells |
+| importer 回归 / DAO 集成 / MemoryViewModel / SummaryUseCase | 全绿 |
+
+**测试适配**: 新增 DAO 抽象方法致 3 个 Fake DAO + 2 处 MockK setup + 3 处 SummaryUseCaseTest stub 需补实现，同批修复。
+
+**待办**: 真人设备 smoke（#12 编辑器命令面板 + 流断部分回复 + 分支创建正常路径）。
+
+---
+
 ## 2026-07-12 — A2 收尾判定（P2-1）：主链已实质外提，放弃 <300 硬拆 ✅
 
 **背景**: P2-1 要求 `ChatStreamingManager` send/continue/regenerate 编排外提 + manager <300 行。审计发现主链编排**已实质外提**——`sendSingle`/`sendGroup`/`sendDirect` 在 `GenerationSendCoordinator`，`continueGeneration`/`regenerate` 在 `GenerationContinuationCoordinator`，manager 侧仅剩 `launchGenerationJob`（job 生命周期 + mutex + 错误分类）+ 薄委托。
