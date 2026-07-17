@@ -196,7 +196,7 @@ fun BgmSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.heightIn(max = 400.dp)
                 ) {
-                    items(bgms) { bgm ->
+                    items(bgms, key = { it.id }) { bgm ->
                         BgmItem(
                             bgm = bgm,
                             onDelete = { deleteTarget = bgm }

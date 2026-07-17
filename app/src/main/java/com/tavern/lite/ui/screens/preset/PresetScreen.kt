@@ -70,11 +70,14 @@ fun PresetScreen(
     var editingPreset by remember { mutableStateOf<PresetEntity?>(null) }
     var deletingPreset by remember { mutableStateOf<PresetEntity?>(null) }
 
-    val filteredPresets = if (selectedTab == 0) {
-        presets
-    } else {
-        val scope = SCOPE_TABS[selectedTab]
-        presets.filter { it.scope == scope }
+    // 按输入 memoize：原本每次重组都重建过滤列表，喂新 list 实例进 LazyColumn 破坏 item 级跳过（X3 审计 Low）。
+    val filteredPresets = remember(presets, selectedTab) {
+        if (selectedTab == 0) {
+            presets
+        } else {
+            val scope = SCOPE_TABS[selectedTab]
+            presets.filter { it.scope == scope }
+        }
     }
 
     if (showAddDialog) {

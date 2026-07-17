@@ -194,7 +194,7 @@ fun SpriteSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.heightIn(max = 400.dp)
                 ) {
-                    items(sprites) { sprite ->
+                    items(sprites, key = { it.id }) { sprite ->
                         SpriteItem(
                             sprite = sprite,
                             onDelete = { deleteTarget = sprite }

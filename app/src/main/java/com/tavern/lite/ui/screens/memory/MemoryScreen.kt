@@ -723,7 +723,7 @@ private fun AddMemoryDialog(
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(MemoryCategory.entries.toList()) { cat ->
+                    items(MemoryCategory.entries) { cat ->
                         FilterChip(
                             selected = selectedCategory == cat,
                             onClick = { selectedCategory = cat },
