@@ -80,8 +80,7 @@ class SummaryUseCaseTest {
             id = 1, chatId = 1L, content = "Previous summary",
             messageRangeStart = 1, messageRangeEnd = 15, tokenCount = 100, createdAt = System.currentTimeMillis()
         )
-        coEvery { chatRepository.getRecentMessages(1L, 2) } returns listOf(makeMessage(16, "user", "Hi"))
-        coEvery { chatRepository.getAllMessagesForChat(1L) } returns (1..16).map { makeMessage(it.toLong(), "user", "msg") }
+        coEvery { chatRepository.getMessageCountSince(1L, 15L) } returns 1
 
         val result = useCase.shouldGenerateSummary(1L)
 
@@ -95,8 +94,7 @@ class SummaryUseCaseTest {
             id = 1, chatId = 1L, content = "Previous summary",
             messageRangeStart = 1, messageRangeEnd = 10, tokenCount = 100, createdAt = System.currentTimeMillis()
         )
-        coEvery { chatRepository.getRecentMessages(1L, 2) } returns listOf(makeMessage(60, "user", "Hi"))
-        coEvery { chatRepository.getAllMessagesForChat(1L) } returns (1..60).map { makeMessage(it.toLong(), "user", "msg") }
+        coEvery { chatRepository.getMessageCountSince(1L, 10L) } returns 50
 
         val result = useCase.shouldGenerateSummary(1L)
 
@@ -107,8 +105,7 @@ class SummaryUseCaseTest {
     fun `shouldGenerateSummary returns true when no existing summary and enough messages`() = runTest {
         coEvery { chatRepository.getMessageCount(1L) } returns 60
         coEvery { summaryRepository.getLatestSummary(1L) } returns null
-        coEvery { chatRepository.getRecentMessages(1L, 2) } returns listOf(makeMessage(60, "user", "Hi"))
-        coEvery { chatRepository.getAllMessagesForChat(1L) } returns (1..60).map { makeMessage(it.toLong(), "user", "msg") }
+        coEvery { chatRepository.getMessageCountSince(1L, 0L) } returns 60
 
         val result = useCase.shouldGenerateSummary(1L)
 

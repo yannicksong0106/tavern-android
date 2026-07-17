@@ -80,6 +80,9 @@ class MemoryRepository @Inject constructor(
     fun getAtomsForCharacter(characterId: Long): Flow<List<MemoryAtomEntity>> =
         memoryAtomDao.getAtomsForCharacter(characterId)
 
+    fun getAtomCountFlow(characterId: Long): Flow<Int> =
+        memoryAtomDao.getAtomCountFlow(characterId)
+
     fun getCategoryCounts(characterId: Long): Flow<List<CategoryCount>> =
         memoryAtomDao.getCategoryCounts(characterId)
 

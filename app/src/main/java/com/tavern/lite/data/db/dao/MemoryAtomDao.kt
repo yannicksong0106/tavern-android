@@ -104,6 +104,9 @@ interface MemoryAtomDao {
     @Query("SELECT COUNT(*) FROM memory_atoms WHERE character_id = :characterId AND superseded = 0")
     suspend fun getAtomCount(characterId: Long): Int
 
+    @Query("SELECT COUNT(*) FROM memory_atoms WHERE character_id = :characterId AND superseded = 0")
+    fun getAtomCountFlow(characterId: Long): Flow<Int>
+
     @Query("SELECT * FROM memory_atoms WHERE character_id = :characterId AND superseded = 0 ORDER BY created_at DESC LIMIT :limit")
     suspend fun getRecentAtoms(characterId: Long, limit: Int): List<MemoryAtomEntity>
 

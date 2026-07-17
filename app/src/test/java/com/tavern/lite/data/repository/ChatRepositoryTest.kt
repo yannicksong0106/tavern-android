@@ -169,6 +169,8 @@ private class FakeMessageDao : MessageDao {
     override suspend fun getMessageById(id: Long): MessageEntity? = messages[id]
     override suspend fun getMessageCount(chatId: Long): Int =
         messages.values.count { it.chatId == chatId && it.isActive }
+    override suspend fun getMessageCountSince(chatId: Long, sinceId: Long): Int =
+        messages.values.count { it.chatId == chatId && it.isActive && it.id > sinceId }
     override suspend fun insert(message: MessageEntity): Long {
         val id = nextId++
         val msg = message.copy(id = id)

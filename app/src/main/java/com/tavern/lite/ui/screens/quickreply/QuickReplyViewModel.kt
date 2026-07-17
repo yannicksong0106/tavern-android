@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -28,13 +29,18 @@ class QuickReplyViewModel @Inject constructor(
     characterRepository: CharacterRepository,
     chatRepository: ChatRepository
 ) : ViewModel() {
+    // distinctUntilChanged 与项目其它 VM 一致：Room 表失效即重发新 list 对象，即便行内容相同；
+    // 无 dUC 会让 init 的 sets 选择逻辑与 Compose collector 在无关写入时做冗余工作（X2 审计 Low）。
     val sets: StateFlow<List<QuickReplySetEntity>> = repository.getAllSets()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val characters: StateFlow<List<CharacterEntity>> = characterRepository.getAllCharacters()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val chats: StateFlow<List<ChatEntity>> = chatRepository.getAllChats()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _selectedSetId = MutableStateFlow<Long?>(null)
@@ -44,6 +50,7 @@ class QuickReplyViewModel @Inject constructor(
         .flatMapLatest { setId ->
             if (setId == null) flowOf(emptyList()) else repository.getRepliesForSet(setId)
         }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

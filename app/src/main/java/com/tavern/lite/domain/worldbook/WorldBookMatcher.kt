@@ -206,18 +206,18 @@ class WorldBookMatcher @Inject constructor() {
         val (primaryKeys, secondaryKeys) = keys
         if (primaryKeys.isEmpty() && secondaryKeys.isEmpty()) return false
 
-        val primaryMatches = primaryKeys.map { key -> lowerText.contains(key) }
-        val secondaryMatches = secondaryKeys.map { key -> lowerText.contains(key) }
-
+        // 每消息发送 × 每 entry × 递归最多 3 轮：原本急建两个 List<Boolean> 再 any/none，
+        // 非选择路径 secondaryMatches 纯废、contains 不短路。改短路布尔表达式零分配（X2 审计 Med）。
+        val primaryMatch = primaryKeys.any { lowerText.contains(it) }
         return if (entry.selective && secondaryKeys.isNotEmpty()) {
             when (entry.selectiveLogic) {
-                SELECTIVE_AND -> primaryMatches.any { it } && secondaryMatches.any { it }
-                SELECTIVE_OR -> primaryMatches.any { it } || secondaryMatches.any { it }
-                SELECTIVE_NOT -> primaryMatches.any { it } && secondaryMatches.none { it }
-                else -> primaryMatches.any { it }
+                SELECTIVE_AND -> primaryMatch && secondaryKeys.any { lowerText.contains(it) }
+                SELECTIVE_OR -> primaryMatch || secondaryKeys.any { lowerText.contains(it) }
+                SELECTIVE_NOT -> primaryMatch && secondaryKeys.none { lowerText.contains(it) }
+                else -> primaryMatch
             }
         } else {
-            primaryMatches.any { it }
+            primaryMatch
         }
     }
 

@@ -53,6 +53,7 @@ class MemoryViewModelTest {
         every { characterRepository.getAllCharacters() } returns flowOf(emptyList())
         every { memoryRepository.getCategoryCounts(characterId) } returns flowOf(emptyList())
         every { memoryRepository.getAtomsForCharacter(characterId) } returns flowOf(emptyList())
+        every { memoryRepository.getAtomCountFlow(characterId) } returns flowOf(0)
         every { memoryRepository.getLastExtractionTime(characterId) } returns flowOf(null)
         coEvery { memoryRepository.purgeExpired() } returns Unit
 
@@ -225,6 +226,7 @@ class MemoryViewModelTest {
         every { characterRepository.getAllCharacters() } returns flowOf(chars)
         every { memoryRepository.getCategoryCounts(5) } returns flowOf(emptyList())
         every { memoryRepository.getAtomsForCharacter(5) } returns flowOf(emptyList())
+        every { memoryRepository.getAtomCountFlow(5) } returns flowOf(0)
         every { memoryRepository.getLastExtractionTime(5) } returns flowOf(null)
 
         val savedStateHandle = SavedStateHandle(mapOf("characterId" to 0L))

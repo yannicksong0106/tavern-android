@@ -157,6 +157,7 @@ private class FakeGroupMessageDao : MessageDao {
     override suspend fun getLastUserMessage(chatId: Long): MessageEntity? = null
     override suspend fun getMessageById(id: Long): MessageEntity? = null
     override suspend fun getMessageCount(chatId: Long): Int = 0
+    override suspend fun getMessageCountSince(chatId: Long, sinceId: Long): Int = 0
     override suspend fun insert(message: MessageEntity): Long = 1
     override suspend fun insertAll(messages: List<MessageEntity>) {}
     override suspend fun updateContent(id: Long, content: String) {}

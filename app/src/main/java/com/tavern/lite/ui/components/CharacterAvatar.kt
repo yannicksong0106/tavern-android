@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,7 +28,10 @@ fun CharacterAvatar(
     size: Dp = 48.dp,
     modifier: Modifier = Modifier
 ) {
-    if (avatarPath != null && File(avatarPath).exists()) {
+    // File().exists() 是主线程磁盘 stat；快滚列表每个新可见头像都会命中组合体，
+    // 未 remember 会在滚动组合路径反复同步 stat 掉帧。按 avatarPath 缓存（X2 审计 Med）。
+    val exists = remember(avatarPath) { avatarPath != null && File(avatarPath).exists() }
+    if (exists) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(File(avatarPath))

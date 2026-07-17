@@ -110,9 +110,11 @@ class MemoryViewModel @Inject constructor(
     val showPulse: StateFlow<Boolean> = _showPulse.asStateFlow()
 
     // --- Total memory count ---
+    // 用索引 COUNT flow 而非全行 load .size：原本每次记忆写触发全 MemoryAtomEntity 行(含 content)
+    // 反序列化只为算个整数，且与 atoms/pulse 重复订阅同查询（X2 审计 Med）。
     val totalMemoryCount: StateFlow<Int> = _selectedCharacterId.flatMapLatest { id ->
         if (id == 0L) flowOf(0)
-        else memoryRepository.getAtomsForCharacter(id).map { it.size }
+        else memoryRepository.getAtomCountFlow(id)
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -131,18 +133,20 @@ class MemoryViewModel @Inject constructor(
         }
 
         // Observe new memory additions for pulse animation
+        // 从 COUNT flow 派生而非再独立全订阅 getAtomsForCharacter：原本每次记忆写全行 load
+        // 只为比较 size，且订阅活整个 VM 生命周期（X2 审计 Med）。size 语义不变。
         viewModelScope.launch {
             var previousSize = 0
             _selectedCharacterId.flatMapLatest { id ->
-                if (id == 0L) flowOf(emptyList())
-                else memoryRepository.getAtomsForCharacter(id)
-            }.collect { newList ->
-                if (newList.size > previousSize && previousSize > 0) {
+                if (id == 0L) flowOf(0)
+                else memoryRepository.getAtomCountFlow(id)
+            }.collect { newSize ->
+                if (newSize > previousSize && previousSize > 0) {
                     _showPulse.value = true
                     delay(2000)
                     _showPulse.value = false
                 }
-                previousSize = newList.size
+                previousSize = newSize
             }
         }
 

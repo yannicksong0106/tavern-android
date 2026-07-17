@@ -23,11 +23,12 @@ class CryptoHelper @Inject constructor() {
         private const val TAG_SIZE = 128
     }
 
-    init {
-        ensureKeyExists()
-    }
+    // 惰性建密钥：init{} 同步 keystore IPC + 首启 generateKey(几十~几百ms) 原本卡在冷启动首帧路径
+    // （CryptoHelper 经 SettingsStore→MainActivity 字段注入在主线程构造）。改为首次 encrypt/decrypt
+    // 时按需建，那时已在 DataStore flow mapper 的 IO 线程。加锁防首启并发两路 crypto 交错建密钥（X2 审计 Med）。
+    private val keyLock = Any()
 
-    private fun ensureKeyExists() {
+    private fun ensureKeyExists() = synchronized(keyLock) {
         val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         if (!ks.containsAlias(KEY_ALIAS)) {
             val keyGen = KeyGenerator.getInstance("AES", ANDROID_KEYSTORE)
@@ -77,6 +78,7 @@ class CryptoHelper @Inject constructor() {
     }
 
     private fun getKey(): SecretKey {
+        ensureKeyExists()
         val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         return ks.getKey(KEY_ALIAS, null) as SecretKey
     }

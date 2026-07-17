@@ -54,17 +54,22 @@ class HomeViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val characters: StateFlow<List<CharacterEntity>> = combine(_allCharacters, _selectedTag) { chars, tag ->
+    // 标签解析结果按角色列表 memoize：parseTags 做 JSONArray 构造，原本 combine/allTags 每次
+    // 上游 tick 都重解析整列表。点标签只 _selectedTag 变，list 未变时不该重解析（X2 审计 Low）。
+    private val tagsByCharacter: StateFlow<Map<Long, List<String>>> = _allCharacters
+        .map { chars -> chars.associate { it.id to parseTags(it.tags) } }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val characters: StateFlow<List<CharacterEntity>> = combine(_allCharacters, tagsByCharacter, _selectedTag) { chars, tagsMap, tag ->
         if (tag.isNullOrBlank()) chars
         else chars.filter { character ->
-            parseTags(character.tags).contains(tag)
+            tagsMap[character.id]?.contains(tag) == true
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allTags: StateFlow<List<String>> = _allCharacters
-        .map { chars ->
-            chars.flatMap { parseTags(it.tags) }.distinct().sorted()
-        }
+    val allTags: StateFlow<List<String>> = tagsByCharacter
+        .map { it.values.flatten().distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val groupChats: StateFlow<List<ChatEntity>> = chatRepository.getAllGroupChats()

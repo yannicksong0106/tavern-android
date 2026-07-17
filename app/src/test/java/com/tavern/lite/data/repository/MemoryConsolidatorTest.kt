@@ -124,6 +124,7 @@ private class FakeMemoryAtomDao : MemoryAtomDao {
     private var nextId = 1L
 
     override fun getAtomsForCharacter(characterId: Long): Flow<List<MemoryAtomEntity>> = flowOf(emptyList())
+    override fun getAtomCountFlow(characterId: Long): Flow<Int> = flowOf(atomCount)
     override suspend fun getAtomsByCategory(characterId: Long, category: String, limit: Int): List<MemoryAtomEntity> =
         categoryAtoms[category]?.take(limit) ?: emptyList()
     override suspend fun searchAtoms(characterId: Long, keyword: String, limit: Int): List<MemoryAtomEntity> = emptyList()
