@@ -65,7 +65,7 @@ import com.tavern.lite.data.db.entity.ApiConfigProfileEntity
         QuickReplyEntity::class,
         ApiConfigProfileEntity::class,
     ],
-    version = 33,
+    version = 34,
     exportSchema = true
 )
 abstract class TavernDatabase : RoomDatabase() {
@@ -1533,6 +1533,18 @@ abstract class TavernDatabase : RoomDatabase() {
                 db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_is_default")
                 db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_bound_character_id")
                 db.execSQL("DROP INDEX IF EXISTS index_api_config_profiles_bound_chat_id")
+            }
+        }
+
+        // 删冗余单列索引：messages.chat_id/parent_id/character_id 与 sprites.character_id 均被
+        // 复合索引前缀或 FK 覆盖，无任何 @Query 使用，纯占写入维护开销（X3 审计 CONFIRMED）。
+        // 索引是派生数据，DROP 最坏只让查询退化（已验证无查询用），永不丢用户数据。
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS index_messages_chat_id")
+                db.execSQL("DROP INDEX IF EXISTS index_messages_parent_id")
+                db.execSQL("DROP INDEX IF EXISTS index_messages_character_id")
+                db.execSQL("DROP INDEX IF EXISTS index_sprites_character_id")
             }
         }
     }

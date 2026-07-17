@@ -41,7 +41,8 @@ class TavernDatabaseMigrationTest {
         TavernDatabase.MIGRATION_29_30,
         TavernDatabase.MIGRATION_30_31,
         TavernDatabase.MIGRATION_31_32,
-        TavernDatabase.MIGRATION_32_33
+        TavernDatabase.MIGRATION_32_33,
+        TavernDatabase.MIGRATION_33_34
     )
 
     private val earlyEntryMigrations = listOf(
@@ -63,23 +64,23 @@ class TavernDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration chain covers version 1 to 33 without gaps`() {
+    fun `migration chain covers version 1 to 34 without gaps`() {
         val chain = mutableMapOf<Int, Int>()
         for (migration in mainMigrationChain) {
             chain[migration.startVersion] = migration.endVersion
         }
 
-        // Walk the chain from 1 to 33.
+        // Walk the chain from 1 to 34.
         var current = 1
         val visited = mutableListOf(current)
-        while (current != 33) {
+        while (current != 34) {
             val next = chain[current]
                 ?: throw AssertionError("No migration found from version $current. Chain: $visited")
             visited.add(next)
             current = next
         }
 
-        assertEquals("Chain should end at version 33", 33, current)
+        assertEquals("Chain should end at version 34", 34, current)
     }
 
     @Test
@@ -122,24 +123,24 @@ class TavernDatabaseMigrationTest {
     }
 
     @Test
-    fun `final migration reaches current database version 33`() {
-        val lastMigration = TavernDatabase.MIGRATION_32_33
-        assertEquals(33, lastMigration.endVersion)
+    fun `final migration reaches current database version 34`() {
+        val lastMigration = TavernDatabase.MIGRATION_33_34
+        assertEquals(34, lastMigration.endVersion)
     }
 
     @Test
     fun `database version matches final migration target`() {
-        // The @Database(version = 33) should match the end of the migration chain.
+        // The @Database(version = 34) should match the end of the migration chain.
         val maxVersion = mainMigrationChain.maxOf { it.endVersion }
-        assertEquals("Final migration target should match @Database version", 33, maxVersion)
+        assertEquals("Final migration target should match @Database version", 34, maxVersion)
     }
 
     @Test
     fun `total migration count is correct`() {
-        // 1->8 jump, then step migrations from 8->9 through 32->33 = 1 + 25 = 26.
-        assertEquals(26, mainMigrationChain.size)
+        // 1->8 jump, then step migrations from 8->9 through 33->34 = 1 + 26 = 27.
+        assertEquals(27, mainMigrationChain.size)
         assertEquals(6, earlyEntryMigrations.size)
-        assertEquals(32, allMigrations.size)
+        assertEquals(33, allMigrations.size)
     }
 
     // ==================== BackupManager version comparison ====================

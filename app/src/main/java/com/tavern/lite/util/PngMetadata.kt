@@ -1,6 +1,7 @@
 package com.tavern.lite.util
 
 import android.util.Log
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -119,19 +120,17 @@ object PngMetadata {
         val lengthBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(data.size).array()
         val crcBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(crc.value.toInt()).array()
 
-        val newBytes = ByteArray(allBytes.size + 4 + 4 + data.size + 4)
-        // 复制到 IEND 之前
-        allBytes.copyInto(newBytes, 0, 0, iendPos)
-        // 插入 tEXt chunk
-        var pos = iendPos
-        lengthBytes.copyInto(newBytes, pos); pos += 4
-        chunkType.copyInto(newBytes, pos); pos += 4
-        data.copyInto(newBytes, pos); pos += data.size
-        crcBytes.copyInto(newBytes, pos); pos += 4
-        // 复制 IEND
-        allBytes.copyInto(newBytes, pos, iendPos)
-
-        file.writeBytes(newBytes)
+        // 直接流写而非再建一份整文件大小的 newBytes：allBytes 已全在内存，
+        // 第二份缓冲会造成 ~2x 文件大小峰值堆（20MB 上限时可达 ~40MB）。
+        // outputStream() 截断原文件，但 allBytes 已读入，重写同 path 安全（X3 审计 CONFIRMED）。
+        BufferedOutputStream(file.outputStream()).use { out ->
+            out.write(allBytes, 0, iendPos)      // IEND 之前
+            out.write(lengthBytes)               // tEXt 长度
+            out.write(chunkType)                 // "tEXt"
+            out.write(data)                      // key\0value
+            out.write(crcBytes)                  // CRC
+            out.write(allBytes, iendPos, allBytes.size - iendPos) // IEND 及之后
+        }
     }
 
     private fun RandomAccessFile.readBigEndianInt(): Int {

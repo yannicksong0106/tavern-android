@@ -19,9 +19,9 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index("chat_id"),
-        Index("parent_id"),
-        Index("character_id"),
+        // chat_id 单列索引被复合 index_messages_chat_active_created 前缀覆盖，FK 用它即可，无需独立索引。
+        // parent_id / character_id 无任何 @Query 过滤或 JOIN 使用（全库核验），纯占写入维护成本。
+        // 三者删除随 MIGRATION_33_34 DROP INDEX（X3 审计 Med，messages 是最热写路径）。
         Index("branch_id"),
         Index(value = ["chat_id", "is_active", "created_at"], name = "index_messages_chat_active_created"),
         Index(value = ["chat_id", "is_active", "is_pinned"], name = "index_messages_chat_active_pinned")

@@ -30,6 +30,69 @@ class TavernDatabaseIndexMigrationTest {
         }
     }
 
+    @Test
+    fun `migration 33 to 34 drops redundant single-column indices and keeps composites`() {
+        withRedundantIndexDatabase { db ->
+            TavernDatabase.MIGRATION_33_34.migrate(db)
+
+            // 冗余单列索引应删除
+            assertIndexNotExists(db, "messages", "index_messages_chat_id")
+            assertIndexNotExists(db, "messages", "index_messages_parent_id")
+            assertIndexNotExists(db, "messages", "index_messages_character_id")
+            assertIndexNotExists(db, "sprites", "index_sprites_character_id")
+
+            // 复合索引 + branch_id 单列索引应保留
+            assertIndexExists(db, "messages", "index_messages_branch_id")
+            assertIndexExists(db, "messages", "index_messages_chat_active_created")
+            assertIndexExists(db, "messages", "index_messages_chat_active_pinned")
+            assertIndexExists(db, "sprites", "index_sprites_character_id_emotion")
+        }
+    }
+
+    private fun withRedundantIndexDatabase(block: (SupportSQLiteDatabase) -> Unit) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase(TEST_DB_NAME)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(TEST_DB_NAME)
+            .callback(object : SupportSQLiteOpenHelper.Callback(33) {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    db.execSQL("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, chat_id INTEGER NOT NULL, parent_id INTEGER, character_id INTEGER, branch_id INTEGER, is_active INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, is_pinned INTEGER NOT NULL DEFAULT 0)")
+                    db.execSQL("CREATE INDEX index_messages_chat_id ON messages(chat_id)")
+                    db.execSQL("CREATE INDEX index_messages_parent_id ON messages(parent_id)")
+                    db.execSQL("CREATE INDEX index_messages_character_id ON messages(character_id)")
+                    db.execSQL("CREATE INDEX index_messages_branch_id ON messages(branch_id)")
+                    db.execSQL("CREATE INDEX index_messages_chat_active_created ON messages(chat_id, is_active, created_at)")
+                    db.execSQL("CREATE INDEX index_messages_chat_active_pinned ON messages(chat_id, is_active, is_pinned)")
+                    db.execSQL("CREATE TABLE sprites (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, character_id INTEGER NOT NULL, emotion TEXT NOT NULL DEFAULT 'neutral', display_order INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)")
+                    db.execSQL("CREATE INDEX index_sprites_character_id ON sprites(character_id)")
+                    db.execSQL("CREATE INDEX index_sprites_character_id_emotion ON sprites(character_id, emotion)")
+                }
+
+                override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+            })
+            .build()
+        val helper = FrameworkSQLiteOpenHelperFactory().create(config)
+        val db = helper.writableDatabase
+        try {
+            block(db)
+        } finally {
+            db.close()
+            helper.close()
+            context.deleteDatabase(TEST_DB_NAME)
+        }
+    }
+
+    private fun assertIndexNotExists(db: SupportSQLiteDatabase, table: String, indexName: String) {
+        db.query("PRAGMA index_list($table)").use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) {
+                if (cursor.getString(nameIndex) == indexName) {
+                    throw AssertionError("Index $indexName on table $table should have been dropped")
+                }
+            }
+        }
+    }
+
     private fun withSchemaDatabase(version: Int, block: (SupportSQLiteDatabase) -> Unit) {
         val helper = createSchemaDatabase(version)
         val db = helper.writableDatabase

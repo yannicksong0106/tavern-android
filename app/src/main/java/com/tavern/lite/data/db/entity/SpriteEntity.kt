@@ -17,7 +17,7 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index("character_id"),
+        // character_id 单列索引被两个复合索引前缀覆盖，FK 用前缀即可，删除随 MIGRATION_33_34（X3 审计）。
         Index(value = ["character_id", "display_order", "created_at"]),
         Index(value = ["character_id", "emotion"])
     ]
