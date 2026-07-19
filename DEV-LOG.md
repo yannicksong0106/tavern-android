@@ -35,7 +35,24 @@
 | 标签解析 memoize | `HomeViewModel.kt` | `parseTags` 结果按角色列表缓存，点标签不重解析整列表 |
 | StateFlow 去抖 | `QuickReplyViewModel.kt` | sets/characters/chats/replies 补 `distinctUntilChanged` |
 
-**判负收益暂缓**: O4 请求体流式化（改 RequestBody.writeTo，风险中高，收益局限图片+低端机）、O9 reasoning LRU 剪枝（按任意 id 查，剪错丢重生成上下文，需活跃窗口信息）。
+### 批次四 — 优化审计第三轮稳赢批（`b3bc03d`，4 项 Compose stability 零行为）
+
+| 项 | 文件 | 改动 |
+|----|------|------|
+| 预设过滤列表 memoize | `PresetScreen.kt` | 内联 `.filter{}` 每重组重建列表 → `remember(presets, selectedTab)`，恢复 LazyColumn item 级跳过 |
+| 立绘列表稳定 key | `SpriteSheet.kt` | `items(sprites, key={it.id})`，增删/重排不再位置键化重组尾行 |
+| BGM 列表稳定 key | `BgmSheet.kt` | `items(bgms, key={it.id})` 同上 |
+| 记忆分类 chip 免分配 | `MemoryScreen.kt` | `MemoryCategory.entries.toList()` → `.entries`（EnumEntries 即 List，免每重组分配）|
+
+### 批次五 — 优化审计第三轮需仔细批（`f303840`，DB 冗余索引删除 + PngMetadata 双缓冲）
+
+| 项 | 文件 | 改动 |
+|----|------|------|
+| messages 删 3 冗余单列索引 | `MessageEntity.kt` + `MIGRATION_33_34` | 删 `chat_id`(复合前缀已覆盖)/`parent_id`/`character_id`(无任何查询用，全库 grep 核验)，减每次 INSERT 索引维护 |
+| sprites 删冗余单列索引 | `SpriteEntity.kt` | 删 `character_id`(复合前缀覆盖 FK)，折进同一 MIGRATION_33_34，version 33→34 |
+| PngMetadata 双缓冲消除 | `PngMetadata.kt` | `allBytes` + `newBytes` 双全量数组 → 单流写 `BufferedOutputStream`，导出角色卡峰值堆减半 |
+
+**判负收益暂缓**: O4 请求体流式化（改 RequestBody.writeTo，风险中高，收益局限图片+低端机）、O9 reasoning LRU 剪枝（按任意 id 查，剪错丢重生成上下文，需活跃窗口信息）。第三轮 429 限流致 7 个 verify agent 未验完 entity 索引，只落地 CONFIRMED 项（MessageEntity/SpriteEntity），其它 entity 索引留待补验。
 
 ### 验证
 
