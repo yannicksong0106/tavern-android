@@ -241,6 +241,7 @@
     <string name="no_world_books_hint">世界书用于存储角色的世界观设定</string>
     <string name="import_lorebook">导入 Lorebook</string>
     <string name="import_lorebook_hint">粘贴 SillyTavern 格式的 Lorebook JSON</string>
+    <string name="world_book_import_failed">导入失败：JSON 格式无效</string>
     <string name="import_btn">导入</string>
     <string name="export_lorebook">导出 Lorebook</string>
     <string name="export_copied">Lorebook JSON 已复制到剪贴板</string>

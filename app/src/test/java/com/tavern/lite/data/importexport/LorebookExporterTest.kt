@@ -4,6 +4,8 @@ import com.tavern.lite.data.db.entity.WorldBookEntity
 import com.tavern.lite.data.db.entity.WorldBookEntryEntity
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -90,7 +92,8 @@ class LorebookExporterTest {
         """.trimIndent()
 
         val entries = exporter.importFromJson(jsonStr, worldBookId = 5)
-        assertEquals(1, entries.size)
+        assertNotNull(entries)
+        assertEquals(1, entries!!.size)
         val entry = entries[0]
         assertEquals(5L, entry.worldBookId)
         assertEquals("Dragon lore", entry.comment)
@@ -101,10 +104,27 @@ class LorebookExporterTest {
     }
 
     @Test
-    fun `importFromJson handles empty entries map`() {
+    fun `importFromJson handles empty entries map as success empty list`() {
         val jsonStr = """{"entries": {}}"""
         val entries = exporter.importFromJson(jsonStr, 1)
-        assertTrue(entries.isEmpty())
+        assertNotNull(entries)
+        assertTrue(entries!!.isEmpty())
+    }
+
+    @Test
+    fun `importFromJson returns null for malformed json`() {
+        val entries = exporter.importFromJson("""{"entries":""", worldBookId = 1)
+        assertNull(entries)
+    }
+
+    @Test
+    fun `importFromJson returns null for deeply nested json instead of crashing`() {
+        // StackOverflowError is Error, not Exception; importer must catch both.
+        val depth = 100_000
+        val payload = "{\"entries\":{\"0\":{\"key\":[],\"content\":\"x\",\"extensions\":" +
+            "[".repeat(depth) + "]".repeat(depth) + "}}}"
+        val entries = exporter.importFromJson(payload, worldBookId = 1)
+        assertNull(entries)
     }
 
     @Test
@@ -126,7 +146,8 @@ class LorebookExporterTest {
         val exported = exporter.exportToJson(worldBook, originalEntries)
         val imported = exporter.importFromJson(exported, worldBookId = 1)
 
-        assertEquals(1, imported.size)
+        assertNotNull(imported)
+        assertEquals(1, imported!!.size)
         val entry = imported[0]
         assertEquals(originalEntries[0].comment, entry.comment)
         assertEquals(originalEntries[0].content, entry.content)
@@ -155,7 +176,8 @@ class LorebookExporterTest {
         val exported = exporter.exportToJson(worldBook, entries)
         val imported = exporter.importFromJson(exported, 1)
 
-        assertEquals(3, imported.size)
+        assertNotNull(imported)
+        assertEquals(3, imported!!.size)
         assertEquals("First entry", imported[0].content)
         assertEquals("Second entry", imported[1].content)
         assertEquals("Third entry", imported[2].content)
@@ -173,7 +195,8 @@ class LorebookExporterTest {
         val exported = exporter.exportToJson(worldBook, entries)
         val imported = exporter.importFromJson(exported, 1)
 
-        assertEquals(0, imported[0].selectiveLogic)
+        assertNotNull(imported)
+        assertEquals(0, imported!![0].selectiveLogic)
         assertEquals(1, imported[1].selectiveLogic)
         assertEquals(2, imported[2].selectiveLogic)
     }

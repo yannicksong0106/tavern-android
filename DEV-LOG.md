@@ -1,5 +1,117 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-19 — 世界书导入失败回滚收口 ✅
+
+**背景**: 长线 v1.4.x 收口第一刀。未提交的世界书导入稳健性补丁已在工作区：畸形/深嵌套 JSON 解析失败时返回 `null`，ViewModel 回滚屏幕先建的孤儿世界书并提示用户。本轮补齐单测锁行为，跑通相关门禁，形成可提交单元。
+
+### 改动
+
+| 层 | 文件 | 行为 |
+|----|------|------|
+| 解析 | `LorebookExporter.importFromJson` | 成功 → `List`（含合法空书）；`Exception`/`StackOverflowError` → `null` |
+| VM | `WorldBookListViewModel.importWorldBook` | `null` 时 `getWorldBookById` + `deleteWorldBook` 回滚，置 `importError` |
+| UI | `WorldBookListScreen` | `LaunchedEffect(importError)` Toast + `clearImportError` |
+| 文案 | zh/en/ja/ko `strings.xml` | `world_book_import_failed` |
+
+### 测试
+
+| 文件 | 覆盖 |
+|------|------|
+| `LorebookExporterTest` | 合法解析、空 entries 成功空列表、畸形 JSON → null、深嵌套 → null 不崩；既有 export/roundtrip 适配可空返回 |
+| `WorldBookListViewModelTest` | 成功插入不回滚；空列表成功不回滚；解析失败回滚孤儿 + 错误信号；书已不在仍置错误；`clearImportError` 复位 |
+
+### 验证
+
+| 命令 | 结果 |
+|------|------|
+| `testDebugUnitTest --tests LorebookExporterTest --tests WorldBookListViewModelTest` | BUILD SUCCESSFUL — 10 + 7 tests，0 failures / 0 errors（约 1m 28s） |
+
+**未验收（本批）**: 全量 `testDebugUnitTest` / `lintDebug` / `detekt` / `assembleDebug` 未在本批重跑；真机导入畸形 JSON 手测未做。
+
+**后续**: 提交本批 → 同步 ROADMAP/DEVELOPMENT-PLAN 与代码真相 → A6 世界书 automation 决策 → A8 剩余验收与主链路打磨。
+
+---
+
+## 2026-07-19 — 深度进度盘点 + 架构验收冻结 + 开发日志校准 🟡
+
+**背景**: 在不动业务代码的前提下，对照 `DEV-LOG.md` / `ROADMAP.md` / `DEVELOPMENT-PLAN.md` 与当前仓库实况做只读盘点。目标不是扩功能，而是把“现在到底做到哪、哪些只是文档勾选、哪些还没证据”冻成可复查基线，并纠正计划文档相对代码的滞后。
+
+**原则**（沿用 2026-06-12 架构整改口径）:
+- 没有证据只能写“未验收”，文档勾选不算结果。
+- 本轮为静态审计 + 工作树检查；**未重跑** `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` / Kover / 设备 smoke。
+- 业务代码零改动；仅优化开发日志。
+
+### 当前仓库基线
+
+| 项 | 实际结果 | 证据 |
+|----|----------|------|
+| HEAD | `5ec0a8c` — `docs: 记录第三轮优化审计两批（Compose stability + DB 索引迁移）` | `git rev-parse HEAD` / `git log -1` |
+| 相对 tag | `v1.4.0-17-g5ec0a8c`（tag `v1.4.0` 仍在 `62a4caf`，其后已有 17 个提交） | `git describe --tags --always` |
+| App 版本 | `versionCode 24` / `versionName 1.4.0` | `app/build.gradle.kts` |
+| DB 版本 | Room **v34**，含 `MIGRATION_33_34`（删 messages/sprites 冗余索引） | `TavernDatabase.kt` |
+| 工作树 | **不干净**（7 文件未提交） | `git status --short` |
+
+**未提交改动意图**（只读 diff，本轮未提交、未改写）:
+
+| 文件 | 意图 |
+|------|------|
+| `LorebookExporter.kt` | 导入解析失败返回 `null`，区分“合法空世界书”与“解析失败” |
+| `WorldBookListViewModel.kt` | 解析失败时删除屏幕先建的孤儿世界书，并置 `importError` |
+| `WorldBookListScreen.kt` | 消费失败信号，Toast 提示后复位 |
+| 4 份 `strings.xml`（zh/en/ja/ko） | `world_book_import_failed` 文案 |
+
+### 架构层验收结论（A0–A8）
+
+> 验收口径：规则来源 + 对应文件 + 验收方式 + 实际结果 + 是否通过。本轮未重跑 Gradle，历史“命令通过”只引用已有日志证据；本轮新证据仅限静态代码/仓库状态。
+
+| 项 | 规则来源 | 对应文件 | 验收方式 | 实际结果 | 是否通过 |
+|----|----------|----------|----------|----------|----------|
+| A0 架构护栏 | DEV-LOG 2026-06-12 A0；UI 禁直依 network/DAO | `ArchitectureBoundaryTest.kt`；`domain/port/*`（9 个 Port） | 静态：测试文件存在且扫描 `import com.tavern.lite.network.` / DAO；Port 目录枚举 | 边界测试存在；Port 现有 `ApiConfigStore/ChatApi/EmotionDetection/ImageGeneration/LegacyConfigReader/MemoryExtractor/PromptBuilder/TemplateRenderer/WebSearch` 共 9 个 | **静态通过**；本轮未重跑该测试 → 运行结果标 **未验收（本轮）** |
+| A1 数据迁移策略 | A1“禁止静默清库 + 迁移链可审计” | `TavernDatabase.kt` v34；历史 `MIGRATION_*` | 静态：`version = 34`、`MIGRATION_33_34` 存在；破坏性 fallback 此前日志已否 | 生产库版本 34，33→34 迁移入口在库内 | **静态通过**；完整真实旧库样本仍无 → 全历史无损迁移 **未验收** |
+| A2 聊天生成拆分 | A2 / P2-1：send/continue/regenerate 外提；manager 薄胶水 | `ChatStreamingManager.kt`（376 行）；`GenerationSendCoordinator` / `GenerationContinuationCoordinator` / `ImageGenerationCoordinator` / `ProactiveDialogueCoordinator` | 静态：manager 仅 `launchGenerationJob` + 薄委托；coordinator 文件在位；07-12 日志判负收益放弃 <300 | 主链已在 coordinator；manager 376 行剩余为声明/配线 | **实质通过**（编排目标）；物理 <300 **放弃（负收益）** |
+| A3 reasoning 收口 | A3：reasoning 随请求上下文，不串线 | `GenerationReasoningContext.kt`；相关 UseCase/Manager 历史记录 | 静态：上下文类型文件存在 | 文件与既有设计在位 | **静态通过**；并发串线设备/专项复跑 **未验收（本轮）** |
+| A4 Prompt 可解释化 | A4：`PromptSection` + Inspector 可看来源 | `PromptSection.kt` / `PromptSectionBuilder.kt` / `PromptBuilderPort` / `PromptInspector.kt` | 静态：section/source/port/inspector 链路存在 | buildWithSections + UI Inspector 接线在位 | **静态通过**；本轮未做 Inspector 手测 → 交互 **未验收（本轮）** |
+| A5 世界书匹配引擎 | A5：匹配从 Repository 外提 + MatchTrace | `WorldBookMatcher.kt` / `WorldBookMatchTrace.kt` | 静态：Matcher 产出 trace；Repository 不再内嵌匹配主逻辑（既有结构） | Matcher + MatchTrace 在位 | **静态通过**；本轮未重跑匹配单测 → 运行 **未验收（本轮）** |
+| A6 自动化 | A6：QR 事件自动化 + 世界书 automation 预留 | QR：`QuickReplyAutomationTriggerUseCase` / `ChatScreen` `chat_open`/`assistant_reply`；世界书：`WorldBookEntryEntity.automationId` + 迁移列 | 静态：QR 触发路径完整；世界书仅字段/DB 列，未见命中后触发 QR 的业务接线 | QR 自动化 **有实现**；世界书 automation **仅数据预留，未接线** | **部分通过**（QR）；世界书自动化闭环 **未验收/未完成** |
+| A7 配置档案建模 | A7：ApiConfigProfile + 设置接入 | profile entity/DAO/store 历史落地；Settings 接入 | 静态延续既有 done 结论 + 仓库结构 | 档案建模代码在主线 | **静态通过**；本轮未做设置页手测 → 交互 **未验收（本轮）** |
+| A8 质量门禁 | A8：本地 4 门禁 + Kover + 设备 smoke + 流程固化 | `.github/workflows/ci.yml`；`README` 门禁清单；DEV-LOG 07-16 验证表 | 静态：CI 含 assemble/test/lint/detekt/kover；历史 07-16 记 1197 tests 全绿；本轮未重跑；设备剩余 smoke 仍无新证据 | CI 定义在位；本轮无新命令输出；停止/继续/重生/VN/BGM/profile/预设预览/X4 面板真机/X5 分享真机仍无本轮证据；push 后真实 CI run 无本轮证据 | **部分通过**（流程与历史本地门禁有记录）；本轮门禁复跑 / 剩余设备 smoke / 真实 CI run **未验收** |
+
+### 功能进度真相（纠正文档滞后）
+
+| 模块 | 代码实况 | `ROADMAP` / `DEVELOPMENT-PLAN` 旧表述 | 本日志判定 |
+|------|----------|--------------------------------------|------------|
+| Phase X1–X3 | 解析器 / 内置命令 / 宏系统已在主线 | 已完成 | ✅ 完成 |
+| X4 编辑 UI 主体 | 命令面板、高亮、诊断、变量辅助已在 | 已完成 | ✅ 完成 |
+| X4 参数级补全 | `appendStScriptParam` + `/if` 操作符 / `/delay` 单位 chip（`6b576c8`）已在代码 | 仍写“未启动/后续” | ✅ **代码已落地**；真机手测 **未验收** |
+| X5 脚本包分享 | codec + repository + 导入导出 UI + 输入加固（`396ca7c`/`f9d4e3f`/`ffaf1fe`）已在 | 仍写“X5 未启动” | 🟡 **本地分享格式已落地**；非在线市场；真机手测 **未验收** |
+| v1.4.0 收口后优化 | 07-12～07-16 健壮性 + 三轮性能审计已提交至 `5ec0a8c` | 计划文首仍停在 07-12 / tag=`62a4caf` / 工作树干净 | 计划文档 **滞后于代码**（本轮只改 DEV-LOG，未改 ROADMAP/计划） |
+| 世界书导入失败回滚 | 工作区未提交修复 | 文档未记 | 🟡 **进行中（未提交）** |
+
+### 与 07-16 日志的关系
+
+- 07-16 条目仍是最近一次**带完整本地门禁数字**的实现记录（1197 tests / lint / detekt）。
+- 本条 **不覆盖、不重写** 07-16 验证表；只补充 07-19 盘点视角，并明确：那些数字属于历史证据，不是本轮复跑结果。
+- tag `v1.4.0` 未随后续 17 个提交前移；版本名仍为 1.4.0 / code 24，DB 已到 34。
+
+### 本轮明确未做
+
+- 未改任何业务/测试代码。
+- 未更新 `ROADMAP.md` / `DEVELOPMENT-PLAN.md`（避免无授权扩大文档改动面；其滞后已在上表点名）。
+- 未提交工作区 7 文件。
+- 未跑 Gradle / 未装机 / 未触发 CI。
+
+### 后续建议顺序（优化优先，不扩新大功能）
+
+1. **收口未提交世界书导入修复**：补单测（畸形 JSON / 栈溢出 / 合法空书）→ 本地 4 门禁 → 提交。
+2. **A8 剩余设备 smoke**：停止生成、继续、重生、VN/BGM、设置 profile、预设预览；另补 X4 命令/参数面板与 X5 导入导出真机。
+3. **关闭 A6 世界书 automation 决策**：要么接线“命中 entry → 触发同名 automationId QR”，要么在计划里明确降级为“仅字段预留，不做”。
+4. **文档与发布基线同步**：把 ROADMAP/DEVELOPMENT-PLAN 的 X4 参数补全、X5 本地分享状态改到与代码一致；评估是否需要新 tag / versionCode（DB 34 与 tag 17 提交漂移）。
+5. **再谈扩展**：W 图像增强 / Y 扩展框架 / Z 商店素材；X5“在线市场”若要做需另定后端/分发方案（当前产品无服务端）。
+
+**状态总结**: v1.4.0 功能主线 + 多轮优化已在 `5ec0a8c`；架构 A0–A5/A7 静态收口，A6 部分完成，A8 部分完成；工作树有世界书导入稳健性补丁未提交；计划文档对 X4 参数补全与 X5 的描述过时。本条为审计冻结点，不是发版记录。
+
+---
+
 ## 2026-07-16 — 健壮性加固 + 两轮优化审计（3 批提交）✅
 
 **背景**: v1.4.0 收口期，按"优化优先于扩展"原则，先做健壮性 bug 修复，再跑两轮多维度优化审计（Workflow fan-out + 对抗验证 + 排序），只落地零/低行为风险项，架构性重构（请求体流式化、reasoning 剪枝）判负收益暂缓。

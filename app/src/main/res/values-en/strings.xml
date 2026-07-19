@@ -241,6 +241,7 @@
     <string name="no_world_books_hint">World books store character world-building settings</string>
     <string name="import_lorebook">Import Lorebook</string>
     <string name="import_lorebook_hint">Paste SillyTavern format Lorebook JSON</string>
+    <string name="world_book_import_failed">Import failed: invalid JSON format</string>
     <string name="import_btn">Import</string>
     <string name="export_lorebook">Export Lorebook</string>
     <string name="export_copied">Lorebook JSON copied to clipboard</string>

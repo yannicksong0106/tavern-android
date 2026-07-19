@@ -241,6 +241,7 @@
     <string name="no_world_books_hint">ワールドブックはキャラクターの世界観設定を保存します</string>
     <string name="import_lorebook">Lorebookをインポート</string>
     <string name="import_lorebook_hint">SillyTavern形式のLorebook JSONを貼り付け</string>
+    <string name="world_book_import_failed">インポート失敗：JSON形式が不正です</string>
     <string name="import_btn">インポート</string>
     <string name="export_lorebook">Lorebookをエクスポート</string>
     <string name="export_copied">Lorebook JSONをクリップボードにコピーしました</string>

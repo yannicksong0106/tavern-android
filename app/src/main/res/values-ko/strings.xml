@@ -241,6 +241,7 @@
     <string name="no_world_books_hint">월드북은 캐릭터의 세계관 설정을 저장합니다</string>
     <string name="import_lorebook">Lorebook 가져오기</string>
     <string name="import_lorebook_hint">SillyTavern 형식의 Lorebook JSON을 붙여넣기</string>
+    <string name="world_book_import_failed">가져오기 실패: 잘못된 JSON 형식</string>
     <string name="import_btn">가져오기</string>
     <string name="export_lorebook">Lorebook 내보내기</string>
     <string name="export_copied">Lorebook JSON이 클립보드에 복사되었습니다</string>

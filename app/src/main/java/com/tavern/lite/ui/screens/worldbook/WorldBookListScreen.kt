@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,11 +65,20 @@ fun WorldBookListScreen(
     viewModel: WorldBookListViewModel = hiltViewModel()
 ) {
     val worldBooks by viewModel.worldBooks.collectAsStateWithLifecycle()
+    val importError by viewModel.importError.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     var deletingBook by remember { mutableStateOf<WorldBookEntity?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJson by remember { mutableStateOf("") }
     val context = LocalContext.current
+
+    // 导入解析失败：屏幕先建的孤儿世界书已被 ViewModel 回滚，这里只提示并复位信号。
+    LaunchedEffect(importError) {
+        if (importError) {
+            Toast.makeText(context, context.getString(R.string.world_book_import_failed), Toast.LENGTH_SHORT).show()
+            viewModel.clearImportError()
+        }
+    }
 
     // 创建对话框
     if (showCreateDialog) {

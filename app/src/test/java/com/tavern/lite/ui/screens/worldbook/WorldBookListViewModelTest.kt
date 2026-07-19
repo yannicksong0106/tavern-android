@@ -20,6 +20,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -95,5 +97,51 @@ class WorldBookListViewModelTest {
 
         coVerify { lorebookExporter.importFromJson("""{"entries":[]}""", 5L) }
         coVerify { worldBookRepository.insertEntry(importedEntries[0]) }
+        assertFalse(viewModel.importError.value)
+        coVerify(exactly = 0) { worldBookRepository.deleteWorldBook(any()) }
+    }
+
+    @Test
+    fun `importWorldBook empty list is success and does not rollback`() = runTest {
+        coEvery { lorebookExporter.importFromJson(any(), any()) } returns emptyList()
+
+        viewModel.importWorldBook("""{"entries":{}}""", 9L)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { worldBookRepository.insertEntry(any()) }
+        coVerify(exactly = 0) { worldBookRepository.deleteWorldBook(any()) }
+        assertFalse(viewModel.importError.value)
+    }
+
+    @Test
+    fun `importWorldBook parse failure rolls back orphan book and signals error`() = runTest {
+        val orphan = WorldBookEntity(id = 42, name = "Imported Lorebook")
+        coEvery { lorebookExporter.importFromJson(any(), any()) } returns null
+        coEvery { worldBookRepository.getWorldBookById(42L) } returns orphan
+        coEvery { worldBookRepository.deleteWorldBook(orphan) } returns Unit
+
+        viewModel.importWorldBook("""{"entries":""", 42L)
+        advanceUntilIdle()
+
+        coVerify { worldBookRepository.getWorldBookById(42L) }
+        coVerify { worldBookRepository.deleteWorldBook(orphan) }
+        coVerify(exactly = 0) { worldBookRepository.insertEntry(any()) }
+        assertTrue(viewModel.importError.value)
+
+        viewModel.clearImportError()
+        assertFalse(viewModel.importError.value)
+    }
+
+    @Test
+    fun `importWorldBook parse failure still signals error when book already gone`() = runTest {
+        coEvery { lorebookExporter.importFromJson(any(), any()) } returns null
+        coEvery { worldBookRepository.getWorldBookById(7L) } returns null
+
+        viewModel.importWorldBook("not-json", 7L)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { worldBookRepository.deleteWorldBook(any()) }
+        coVerify(exactly = 0) { worldBookRepository.insertEntry(any()) }
+        assertTrue(viewModel.importError.value)
     }
 }

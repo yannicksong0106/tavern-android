@@ -64,13 +64,22 @@ class LorebookExporter @Inject constructor(
     }
 
     /**
-     * 从 SillyTavern JSON 格式导入世界书条目
+     * 从 SillyTavern JSON 格式导入世界书条目。
+     * 解析失败（畸形/截断 JSON、深层嵌套栈溢出）返回 null，供调用方区分「合法空世界书」与「导入失败」并回滚。
      */
     fun importFromJson(
         jsonString: String,
         worldBookId: Long
-    ): List<WorldBookEntryEntity> {
-        val worldBook = json.decodeFromString(WorldBook.serializer(), jsonString)
+    ): List<WorldBookEntryEntity>? {
+        val worldBook = try {
+            json.decodeFromString(WorldBook.serializer(), jsonString)
+        } catch (e: Exception) {
+            Log.w("LorebookExporter", "导入解析失败: ${e.message}", e)
+            return null
+        } catch (e: StackOverflowError) {
+            Log.w("LorebookExporter", "导入解析栈溢出（嵌套过深）", e)
+            return null
+        }
         return worldBook.entries.map { (_, data) ->
             WorldBookEntryEntity(
                 worldBookId = worldBookId,
