@@ -1,7 +1,8 @@
 # 酒馆 AI (TavernAndroid) 路线图
 
-> 更新于 2026-07-12，反映实际代码状态（v1.4.0，versionCode 24）
+> 更新于 2026-07-19 | HEAD `73436cc` | versionCode 24 / 1.4.0 | DB Room v34 | tag `v1.4.0` 仍在 `62a4caf`（其后已有优化与修复提交）
 > **核心原则：优化优先于扩展，确保现有功能稳定可用、体验更好**
+> **验收原则：没有证据只能写未验收；文档勾选不算结果**
 
 ---
 
@@ -17,7 +18,7 @@
 - C1 角色卡 PNG 导入导出 | C2 chara_card_v3 spec | C3 WI 高级逻辑 | C4 正则脚本
 
 ### Phase D：质量保障 ✅
-- D1 单元测试（762 tests, 42 test files）| D2 UI 测试依赖 | D3 ProGuard/R8 + CI
+- D1 单元测试 | D2 UI 测试依赖 | D3 ProGuard/R8 + CI
 
 ### Phase E：对话导出 ✅
 - E1 多格式导出 | E2 批量导出 | E3 Share Sheet | E4 对话导入
@@ -68,9 +69,14 @@
 ### Phase U：群聊调度增强 ✅
 - U1-U5 全部完成：NATURAL/LIST_ORDER/ROUND_ROBIN 策略 + 间隔控制
 
+### 架构整改 A0–A7（摘要）
+- A0 护栏 | A1 迁移 | A2 生成拆分（实质 done）| A3 reasoning | A4 Prompt trace | A5 世界书 Matcher
+- A6：**QR automation 已接线**；世界书 `automation_id` **仅字段预留，不接线命中触发**（2026-07-19 决策）
+- A7 配置档案
+
 ---
 
-## 进行中
+## 进行中 / 收口中（v1.4.x）
 
 ### Phase V：Visual Novel 模式 — 核心完成，体验继续打磨
 - [x] V1 立绘系统（SpriteEntity + SpriteRepository）
@@ -81,61 +87,48 @@
 - [x] V7 DB Migration v26/v27
 - [ ] V4 转场动画优化（低优先级打磨）
 
-### v1.3.1 收口验证
-- [x] 全量 `testDebugUnitTest`
-- [x] `lintDebug`
-- [x] `assembleDebug`
-- [x] Quick Replies 管理页 + 聊天页真实 smoke
-- [x] 覆盖率报告核算（Kover debug：业务代码 line 70.19%，branch 42.85%）
+### A8 质量门禁与设备 smoke — partial
+- [x] 本地门禁流程 + CI workflow 定义（assemble / test / lint / detekt / kover）
+- [x] 历史本地全绿记录（含 07-16：1197 tests）
+- [x] 旧库启动 / 迁移 / 首页 / 核心流式对话 smoke（历史证据）
+- [ ] 剩余主交互 smoke：停止 / 继续 / 重生 / VN·BGM / profile / 预设预览
+- [ ] X4 编辑器面板 + X5 脚本包导入导出真机手测
+- [ ] push/PR 后真实 CI run 证据
+- [ ] 本轮全量门禁复跑（随当前 HEAD）
+
+### 稳健性 / 数据卫生（优先于新功能）
+- [x] 世界书导入解析失败回滚孤儿书（`73436cc`，相关 17 tests 绿）
+- [ ] 世界书导入真机畸形 JSON 手测
+- [ ] 文档基线与 tag/version 漂移评估（DB 34 vs tag@62a4caf）
 
 ---
 
-## 当前计划：优化优先 (v1.3.1 收口)
+## 当前计划：优化优先 (v1.4.x 收口)
 
-> 详见 AUDIT-REPORT.md 和 DEVELOPMENT-PLAN.md
+> 详见 DEVELOPMENT-PLAN.md 与 DEV-LOG.md。原则：扩展永远后置。
 
-### Phase 1：稳定性修复 (v1.2.9) — ✅
-1.1 DB Migration 测试 | 1.2 Backup 版本校验 | 1.3 SSE 断线重连
-1.4 API 限流退避 | 1.5 WebSearch 测试修复 | 1.6 reasoningContent 并发安全
-
-### Phase 2：ChatViewModel 拆分 (v1.2.9) — ✅
-2.1 ChatStreamingManager | 2.2 GroupChatManager | 2.3 BranchManager
-2.4 VnModeManager | 2.5 ViewModel 瘦身 | 2.6 ChatScreen 子组件拆分
-
-### Phase 3：VN 模式补全 (v1.3.0) — ✅
-3.1 VnScreen 输入框 | 3.2 BGM 播放器 | 3.3 EmotionDetector 增强
-3.4 VN 入口优化 | 3.5 VN 测试
-
-### Phase 4：UX 润色 (v1.3.0) — ✅
-4.1 消息分页 | 4.2 搜索失败提示 | 4.3 图像生成多 provider
-4.4 世界书匹配高亮 | 4.5 预设模板预览 | 4.6 LaunchedEffect 优化
-4.7 API 超时可配置
-
-### Phase 5：测试补全 (v1.3.1) — ✅，按覆盖率热点继续补分支
-5.1 DAO 测试 | 5.2 Migration 测试 | 5.3 VN 测试
-5.4 Integration 测试 | 5.5 Backup 测试
-
-### Phase 6：性能优化 (v1.3.1) — ✅
-6.1 Room 查询优化 | 6.2 图片内存池 | 6.3 大数据量验证 | 6.4 长 prompt 验证
-
-### Quick Replies / STscript Lite — ✅ 核心接入，收口验证中
-持久化 | 聊天页快捷回复栏 | 管理页 | 自动触发 | 备份恢复 | 结果清洗与安全边界
+### 已完成基线（不再重开）
+- Phase 1–6 稳定性/拆分/VN/UX/测试/性能 ✅
+- Quick Replies / STscript Lite 核心接入 ✅
+- Phase X1–X4 主体 + 参数级补全代码 ✅
+- X5 本地脚本包分享（codec + UI + 输入加固）✅ 代码落地；真机未验收
+- v1.4.0 后多轮健壮性与性能审计（至 DB v34）✅ 代码落地
 
 ---
 
-## 远期计划（v1.4.0+）
-
-> 仅在上述优化全部完成后才推进
+## 远期计划（仅主链路稳定后）
 
 ### Phase W：图像生成增强
 - W1 SD WebUI API | W2 ComfyUI API | W3 设置 | W4 /draw 命令 | W5 画廊
 
-### Phase X：STscript 命令引擎 — X1-X4 完成，X5 未启动
+### Phase X：STscript — 代码进度纠正
 - [x] X1 解析器 | [x] X2 内置命令（`/delay` `/cancel` `/clearvar` `/if`）
-- [x] X3 宏系统（`/macro` `/call` 单行+多行 block，深度上限 16，权限边界）
-- [x] X4 编辑 UI（命令面板 chip 插入、命令参考弹窗、语法高亮、行号诊断、变量引用辅助、未知命令预警）
-- [ ] X4 后续：参数级补全（`/if` 操作符、`/delay` 单位占位）
-- [ ] X5 脚本市场（未启动）
+- [x] X3 宏系统（`/macro` `/call`，深度上限 16，权限边界）
+- [x] X4 编辑 UI（命令面板、参考弹窗、高亮、行号诊断、变量辅助、未知命令预警）
+- [x] X4 参数级补全（`/if` 操作符、`/delay` 单位 chip；`appendStScriptParam`）— **代码已落地，真机未验收**
+- [x] X5 本地脚本包分享（JSON codec + 导入导出 UI + 权限重置 + 输入上限）— **非在线市场**
+- [ ] X5 真机手测 / 分享体验打磨
+- [ ] X5 在线市场（需另定分发方案；当前无服务端）— 远期
 
 ### Phase Y：扩展框架
 - Y1 ExtensionApi | Y2 Hook 系统 | Y3 内置扩展重构 | Y4-Y6 存储/UI/manifest
@@ -147,14 +140,15 @@
 
 ## 里程碑
 
-| 版本 | 内容 | 预估周期 |
-|------|------|----------|
+| 版本 | 内容 | 状态 |
+|------|------|------|
 | v1.2.9 | Phase 1 + 2（稳定性 + 架构优化） | ✅ |
 | v1.3.0 | Phase 3 + 4（VN 补全 + UX 润色） | ✅ |
-| v1.3.1 | Phase 5 + 6 + Quick Replies + M1-M5 收口加固 | ✅ |
-| v1.4.0 | Phase X1-X4（STscript 命令引擎 + 宏系统 + 编辑 UI），tag v1.4.0 @ `62a4caf` | ✅ |
-| v1.4.0+ | Phase W/X5/Y/Z（图像增强 / 脚本市场 / 扩展框架 / 发布） | 进行中 |
+| v1.3.1 | Phase 5 + 6 + Quick Replies + 收口加固 | ✅ |
+| v1.4.0 | Phase X1–X4 主体，tag @ `62a4caf` | ✅ |
+| v1.4.0+ / v1.4.x | 参数补全 + X5 本地分享 + 多轮优化 + 世界书导入回滚；A8/A6 决策收口 | 🔄 进行中 |
+| 更远 | W / Y / Z / X5 在线市场 | 远期 |
 
 ---
 
-*每个 Phase 完成后 `assembleDebug` 验证 + `testDebugUnitTest` + 安装到模拟器测试。*
+*每个可提交单元完成后：相关单测 + 按风险决定是否跑全量门禁；设备 smoke 单独记证据。*

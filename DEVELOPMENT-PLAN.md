@@ -1,52 +1,45 @@
 # 酒馆 AI (TavernAndroid) 开发计划
 
-> 更新于 2026-07-12 | 基于 DEV-LOG 深度复盘 + Phase X1-X4 STscript 命令引擎全量落地 + v1.4.0 打 tag（tag 已随 X4 完整体移到 HEAD `62a4caf`）+ 审计工作流 bug 修复三连 + 冷启动 ANR 修复 + 设备 smoke 复验
-> 当前状态：v1.3.1 收口加固全量完成并打 tag；v1.4.0 已发布，versionCode 24，`v1.4.0` tag 指向 HEAD `62a4caf`（含 X4 完整体 + 审计修复）；Phase X STscript 命令引擎 X1-X4 已完成（X1 解析器 / X2 内置命令 / X3 宏系统 / X4 编辑 UI），仅 X4 参数级补全与 X5 脚本市场未启动；本轮 `assembleDebug` / `testDebugUnitTest`（~1113 tests）/ `lintDebug` / `detekt`（213 文件 0 code smells）全绿；设备 smoke 已复验 APK 安装启动无 crash、冷启动 +4s / 热启动 +2.4s 无 ANR（验证 `841af3f` 冷启动 runBlocking 修复生效）、首页渲染正常；A0–A7 架构整改与端口-适配器迁移保持已完成；工作树干净，全部已 push 到 origin/main。
+> 更新于 2026-07-19 | HEAD `73436cc` | versionCode 24 / 1.4.0 | DB Room v34 | tag `v1.4.0` @ `62a4caf`（其后含优化审计与世界书导入回滚）
+> 当前状态：v1.4.0 功能主线已落地；X4 参数级补全与 X5 **本地脚本包分享**已在代码中（非在线市场）；07-12～07-16 多轮健壮性/性能优化已提交；2026-07-19 世界书导入解析失败回滚已提交（相关 17 tests 绿）。A0–A5/A7 静态收口；A6 = QR 自动化 done + 世界书 automation **字段预留不接线**；A8 = 流程/历史门禁 partial，剩余主交互 smoke 与本轮全量门禁复跑未验收。
 > **核心原则：扩展功能永远往后推，重点永远是优化目前版本，确保目前的功能能够使用，并且尽量使这些功能获得更好的体验。**
 > **验收原则：没有证据只能写"未验收"，文档勾选不算结果；"通过"只能来自实际命令、测试报告、设备手测或代码证据。**
-
----
 
 ## 一、当前进度总览
 
 ### 已完成（历史 Phases）
-- Phase 1 稳定性修复 ✅ | Phase 2 ChatViewModel 拆分（974→379 行）✅
-- Phase 2.5 PromptBuilder 重构（628→291 行）✅ | Phase 2.6 Repository 修复 ✅
+- Phase 1 稳定性修复 ✅ | Phase 2 ChatViewModel 拆分 ✅
+- Phase 2.5 PromptBuilder 重构 ✅ | Phase 2.6 Repository 修复 ✅
 - Phase 3 VN 模式补全 ✅ | Phase 4 UX 润色 ✅
-- Phase 5 测试补全（DAO 0→100%）✅ | Phase 6 性能优化 ✅
+- Phase 5 测试补全 ✅ | Phase 6 性能优化 ✅
 - Quick Replies / STscript Lite：持久化 + 聊天页 + 管理页 + 自动触发 + 备份恢复 + 多轮收口 ✅
 
-### 已完成（架构整改 A0–A7）
-- A0 架构护栏 ✅（UI 禁直依 ChatApiService/DAO，架构测试锁边界）
-- A1 数据迁移策略 ✅（移除破坏性 fallback，补 v2-v7 迁移入口）
-- A2 聊天生成拆分 ✅（send/continue/regenerate 编排已在 coordinator，manager 365 行为薄胶水）
-- A3 reasoning 收口 ✅（GenerationContext 随请求传递）
-- A4 Prompt 可解释化 ✅（PromptSection + trace）
-- A5 世界书匹配引擎 ✅（WorldBookMatcher + MatchTrace）
-- A6 automation id ✅（DB v31→v32）
-- A7 配置档案建模 ✅（ApiConfigProfile + 迁移 + SettingsVM 接入）
+### 已完成（架构整改）
+- A0 架构护栏 ✅ | A1 数据迁移策略 ✅ | A2 聊天生成拆分（实质 done，manager 薄胶水）✅
+- A3 reasoning 收口 ✅ | A4 Prompt 可解释化 ✅ | A5 世界书匹配引擎 ✅
+- A6 automation：**QR 事件自动化 ✅**；世界书 `automation_id` **仅字段预留，明确不接线命中触发（2026-07-19）**
+- A7 配置档案建模 ✅
 
-### 已完成（Phase X STscript 命令引擎 X1-X4，v1.4.0）
-- X1 解析器 ✅ | X2 内置命令 ✅（`/delay` `/cancel` `/clearvar` `/if`）
-- X3 宏系统 ✅（`/macro` `/call` 单行+多行 block，变量调用时解析，深度上限 16，`/send` 等不安全命令仍走权限/auto-run 检查）
-- X4 编辑 UI ✅（命令面板 chip 插入、命令参考弹窗、语法高亮命令/注释/`{{变量}}`/未知分色、行号诊断 `findUnknownCommandLines`、变量引用辅助 `collectStScriptVariableNames`、未知命令预警 `ContainsUnknownCommand`）
-- 2026-07-12 审计工作流 bug 修复：QuickReplyValidation 深度上限极性反向（安全门禁误判）、ChatImporter 截断 JSON 孤儿 chat + JsonNull 转字符串、云图片 -1 length 误 drop + InputBar 双重截断、冷启动 runBlocking DataStore ANR、SearchManager 缓存并发安全、图片边界加固；X4 审计 6 finding 全修（三路径未知命令对齐 + 变量扫描加固 + memoize）
+### 已完成（Phase X，v1.4.0 / v1.4.x）
+- X1 解析器 ✅ | X2 内置命令 ✅ | X3 宏系统 ✅
+- X4 编辑 UI 主体 ✅ | X4 参数级补全代码 ✅（真机手测未验收）
+- X5 本地脚本包分享：codec + repository + 导入导出 UI + 输入加固 ✅（真机手测未验收；非在线市场）
+- 世界书导入失败回滚 ✅（`73436cc`，LorebookExporter + ViewModel 17 tests）
 
-### 进行中
-- **端口-适配器架构迁移收尾**：domain/usecase 与 UI 主代码均已改为经 domain port 访问 network 实现，并已随 `d24700c` 提交；后续只保留边界回归扫描与必要测试复跑。
-- **A8 质量门禁复核**：本轮 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` 已全通，`:app:koverXmlReportDebug` 已生成；README 已新增本地开发门禁清单，现有 GitHub Actions CI 已同步覆盖本地 4 条门禁与 Kover；旧库覆盖安装启动、Room 迁移、首页渲染与核心流式对话 smoke 已通过，剩余主交互 smoke 与 push/PR 后真实 CI run 仍待验收。
+### 进行中（v1.4.x 收口，优化优先）
+1. **A8 质量门禁复核**：历史本地门禁与 CI 定义已有；需在当前 HEAD 复跑全量门禁，并补剩余主交互/X4/X5 设备证据。
+2. **文档与发布基线**：ROADMAP / 本计划已与代码对齐；评估 tag/versionCode 是否随 DB34+优化前移（未做发版动作）。
+3. **现有主链路打磨**：X5 分享体验、导入导出稳健性、已知低风险体验债；不做 W/Y/Z 大扩展。
 
 ### 当前风险与待验收
-- P0 仓库健康已闭合：`d24700c` 已提交 107 文件改动，HEAD 中 6 个历史 NUL 污染 `.kt` 文件复扫均为 0，`.gitattributes` 已落入 HEAD。
-- 设备 smoke 首轮使用 `Tavern_Phone` 保留旧数据覆盖安装，复现并修复 v32→v33 Room schema 校验崩溃；`MIGRATION_32_33` 已补齐 `messages` 重建、`world_book_entries.automation_id` 兜底与 `api_config_profiles` 索引一致性，迁移测试、构建、安装启动、logcat 与截图证据已写入 `DEV-LOG.md`
-- 2026-06-30 核心流式对话设备 smoke 已补证：截图 `tmp/m3_fresh_dialog_bottom_visible.png` 同屏可见用户消息 `real_dialog_visible_20260630_025758` 与助手回复 `Smoke reply from local stream at 03:00:55.`；API 日志与设备数据库记录已写入 `DEV-LOG.md`
-- P3-1 已降级 done：v2-v7 从未正式发布，真实迁移样本缺失作为历史风险保留，不再阻塞 v1.3.1；若后续拿到 dev build 用户库，再补真实样本迁移测试。
-- UI 层残余 network 包直接依赖已清到 0，并由 `ArchitectureBoundaryTest` 锁住回归；本轮全量本地门禁已补跑通过，仍需剩余主交互设备 smoke，并在后续提交前按改动范围复核。
-- branch 覆盖率、BgmPlayer 覆盖、UI Compose 测试破零均已补强；README 与现有 CI workflow 已补门禁清单，后续重点回到停止/继续/重生等剩余主交互 smoke、真实 CI run 验证与提交前边界整理。
+- A8 剩余设备 smoke：停止 / 继续 / 重生 / VN·BGM / profile / 预设预览 — **未验收**
+- X4 命令/参数面板真机、X5 导入导出真机 — **未验收**
+- 本轮全量 `assembleDebug` / `testDebugUnitTest` / `lintDebug` / `detekt` — **未验收**（世界书相关 17 tests 已绿）
+- push/PR 后真实 CI run — **未验收**
+- 世界书 automation 命中触发 — **明确不做**（字段保留兼容，避免生成热路径自动跑脚本的安全/体验风险）
 
-### 待完成（远期，v1.4.0+）
-- X4 后续：参数级补全（`/if` 操作符、`/delay` 单位占位）| X5 脚本市场（未启动）
-- W 图像生成增强 | Y 扩展框架 | Z 发布准备
+### 待完成（远期，主链路稳定后）
+- X5 在线市场（需服务端/分发方案）| W 图像增强 | Y 扩展框架 | Z 商店素材 | V4 转场打磨
 
 ---
 
@@ -372,7 +365,7 @@ Kover 基线：业务代码 line 70.19% / branch 42.85%
 6.1 Room 查询优化（v30 复合索引）| 6.2 图片内存池（Coil 20% 内存 + 3% 磁盘）| 6.3 大数据量验证（1200 消息 <5s）| 6.4 长 prompt 验证（150 历史 <1s）
 
 ### 架构整改 A0–A7 ✅（详见 DEV-LOG）
-A0 护栏 | A1 迁移策略 | A2 生成拆分（✅ send/continue/regenerate 已在 coordinator，P2-1 实质达成）| A3 reasoning 收口 | A4 Prompt 可解释化 | A5 世界书匹配引擎 | A6 automation id | A7 配置档案建模
+A0 护栏 | A1 迁移策略 | A2 生成拆分（✅ send/continue/regenerate 已在 coordinator，P2-1 实质达成）| A3 reasoning 收口 | A4 Prompt 可解释化 | A5 世界书匹配引擎 | A6 QR automation + 世界书字段预留 | A7 配置档案建模
 
 ---
 
@@ -382,8 +375,9 @@ A0 护栏 | A1 迁移策略 | A2 生成拆分（✅ send/continue/regenerate 已
 |------|------|------|
 | v1.2.9 | Phase 1 + 2（稳定性 + 架构优化）| ✅ |
 | v1.3.0 | Phase 3 + 4（VN 补全 + UX 润色）| ✅ |
-| v1.3.1 | Phase 5 + 6 + Quick Replies + A0-A7 + **P0-P4 收口加固** | 🔄 进行中 |
-| v1.4.0+ | Phase W/X/Y/Z（新功能）| 远期，待 v1.3.1 全部 done 后推进 |
+| v1.3.1 | Phase 5 + 6 + Quick Replies + A0-A7 + P0-P4 收口加固 | ✅ |
+| v1.4.x | X4 参数补全 + X5 本地分享 + 优化审计 + 导入回滚 + A8 收口 | 🔄 进行中 |
+| 更远 | W/Y/Z / X5 在线市场 | 远期 |
 
 ### v1.3.1 收口加固里程碑细分
 
