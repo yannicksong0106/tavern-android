@@ -1,5 +1,57 @@
 # 酒馆 AI (TavernAndroid) 开发日志
 
+## 2026-07-19 — 第四轮审计（正确性/健壮性）落地两批 ✅
+
+**背景**: A8 全量门禁在当前 HEAD 复跑通过后，按“可自动测试加强”方向推进。第四轮审计聚焦**正确性而非性能**（资源泄漏、并发竞态、边界条件、null 安全、被吞异常），fan-out 扫描 + 对抗验证 + 排序共 15 项。只落地 CONFIRMED 与零/低风险项，误判与需 UI 配合的项判缓。
+
+### 批次一 — 群聊事务化 + 记忆计数（`50679b7`）
+
+| 项 | 文件 | 问题 → 改动 |
+|----|------|------------|
+| #2 群聊创建原子化 | `GroupChatRepository.createGroupChat` | 建 chat 与写成员是两次独立写：`insertAll` 失败或进程被杀留下 `isGroup=true` 零成员孤儿群聊（UI 可见但永久不可用）→ 注入 `TransactionRunner`，整段包 `tx.run{}` |
+| #14 加成员读-改-写 | `GroupChatRepository.addCharacter` | 读 `size` 算 `nextOrder` 再插入，两次并发添加读到同一 size 产生重复 `displayOrder` → 读与写同包 `tx.run{}` |
+| #7 记忆计数跨聊天污染 | `MemoryExtractionUseCase` | `@Singleton` 持单个可变 `messageCount`，生产调用方均不传 `currentMessageCount`，`++messageCount` 跨所有聊天累加且切聊天不重置 → 改为按 `chatId` 查库真实条数；移除 `setMessageCount`/`getMessageCount` |
+
+### 批次二 — 越界防御 + 默认切换原子化 + 防御性解析（`678e624`）
+
+| 项 | 文件 | 问题 → 改动 |
+|----|------|------------|
+| #4 Author Note depth 越界 | `PromptBuilder` / `CharacterEditViewModel` | `coerceAtLeast(1)` 只 clamp 下界，用户输负 depth 使 `insertIndex > size` 触发 `IndexOutOfBoundsException`（该角色每次生成都失败）→ 双向 `coerceIn(0, size)`；输入层 `coerceIn(0, 999)` 阻断负值入库 |
+| #5 预设默认切换 | `PresetDao` / `PresetRepository` | `clearDefaultPresets()` + `setDefaultPreset()` 两次独立写 → 新增 `@Transaction switchDefaultPreset()`，照 `ApiConfigProfileDao.switchDefaultProfile` 既有范式 |
+| #6 人设默认切换 | `PersonaDao` / `PersonaRepository` | 同上非原子模式 → `@Transaction switchDefault()` |
+| #11 人设重新关联 | `PersonaDao` / `PersonaRepository` | `unlink` + `link` 两次独立写，崩在中间只提交 DELETE → `@Transaction relinkCharacter()`（保留显式 unlink，不依赖 `OnConflictStrategy.REPLACE`，因 `character_personas` 是复合主键） |
+| #13 空 catch | `MessageBubble` | 解析 `imagePaths` 的 `catch (_: Exception)` 静默吞异常，与同文件 `swipeContent` 分支（有 `Log.w`）不一致 → 补日志对齐 |
+| #15 Activity 硬转 | `Theme.kt` | `(view.context as Activity)` 在 `ContextThemeWrapper`/包装场景抛 `ClassCastException` → `generateSequence` 链式解包 `ContextWrapper.baseContext` 找 Activity，找不到跳过状态栏着色而非崩溃 |
+
+### 测试
+
+| 文件 | 覆盖 |
+|------|------|
+| `MemoryExtractionUseCaseTest` | 旧 `setMessageCount/getMessageCount` 用例替换为新语义：未传计数时按 `chatId` 查库；两聊天交替调用各自读自己条数，不累加 |
+| `PromptBuilderTest` | 新增负 depth（`-5`）安全注入回归 |
+| `GroupChatRepositoryTest` | 构造器补 fake `TransactionRunner`（直通 `block()`），照 `ChatRepositoryTest` 范式 |
+| `ChatViewModel` | 删除已移除的 `setMessageCount` 初始化调用 |
+
+### 验证
+
+| 命令 | 结果 |
+|------|------|
+| `assembleDebug` + `testDebugUnitTest` + `lintDebug` + `detekt` | BUILD SUCCESSFUL（约 4m 18s）；lint 14 警告、detekt 0 code smells |
+| 推送 | 4 commits 已同步 origin/main，`main...origin/main` 无 ahead/behind |
+
+### 判缓（含理由）
+
+| 项 | 结论 |
+|----|------|
+| #3 / #8 `ApiConfigStore` / `SettingsStore` blank fallback | **判缓**。原判定含误读（`tryDecrypt` 实际吞异常返 `null`，非抛出）；且 reinstall / keystore reset 场景下 blank fallback 反而是合理降级。真正修法需区分“瞬时解密失败”与“真实损坏”并向 UI 暴露独立状态，风险 med 且需 UI 配合，不在本轮 |
+| #9 `resendUserMessage` 删除循环 | PLAUSIBLE、低影响，留待下批 |
+| #10 `MemoryViewModel.deleteAll` 双表清理 | 同上 |
+| #12 `GroupChatSettingsManager` 写失败不回滚 UI 状态 | 同上 |
+
+**后续**: #9/#10/#12 三个纯防御性事务项 → 真机 smoke（#12 编辑器命令面板 + 流断部分回复 + 分支创建正常路径）。
+
+---
+
 ## 2026-07-19 — 文档基线同步 + A6 世界书 automation 决策 🟡
 
 **背景**: 世界书导入回滚已提交（`73436cc`）。按长线计划下一步：把 `ROADMAP.md` / `DEVELOPMENT-PLAN.md` 拉齐到代码真相，并关闭 A6 世界书 automation 悬空项，避免后续误做“命中即跑脚本”。
