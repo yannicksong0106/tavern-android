@@ -15,8 +15,6 @@ class MemoryExtractionUseCase @Inject constructor(
     private val memoryRepository: MemoryRepository,
     private val chatRepository: ChatRepository,
 ) {
-    private var messageCount: Int = 0
-
     /**
      * 通用记忆提取：正则快速提取 + LLM 批量提取（每 N 轮一次）
      *
@@ -25,7 +23,7 @@ class MemoryExtractionUseCase @Inject constructor(
      * @param characterName 角色名
      * @param userContent 用户消息内容
      * @param config API 配置（LLM 提取需要）
-     * @param currentMessageCount 当前消息计数（外部传入时使用，null 则用内部计数）
+     * @param currentMessageCount 当前消息计数（外部传入时使用，null 则按 chatId 查库真实条数）
      */
     suspend fun extractIfNeeded(
         chatId: Long,
@@ -41,8 +39,10 @@ class MemoryExtractionUseCase @Inject constructor(
             memoryConsolidator.insertWithDedup(quickFacts)
         }
 
-        // LLM 批量提取（每 10 轮一次）
-        val count = currentMessageCount ?: ++messageCount
+        // LLM 批量提取（每 10 轮一次）。
+        // 计数按 chatId 查库真实条数：此类是 @Singleton，原先的共享可变 messageCount 会跨聊天累加，
+        // 且只在 ChatViewModel init 时 seed 一次，导致提取节奏错乱 + 并发 ViewModel 间竞态（X 审计 CONFIRMED）。
+        val count = currentMessageCount ?: chatRepository.getMessageCount(chatId)
         if (memoryExtractorService.shouldExtract(count) && config != null) {
             val allMessages = chatRepository.getRecentMessages(chatId, 30)
             val llmFacts = memoryExtractorService.extractWithLLM(
@@ -54,16 +54,4 @@ class MemoryExtractionUseCase @Inject constructor(
             }
         }
     }
-
-    /**
-     * 设置消息计数（用于 ViewModel 同步）
-     */
-    fun setMessageCount(count: Int) {
-        messageCount = count
-    }
-
-    /**
-     * 获取当前消息计数
-     */
-    fun getMessageCount(): Int = messageCount
 }

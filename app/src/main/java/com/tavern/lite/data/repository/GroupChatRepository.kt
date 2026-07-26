@@ -1,5 +1,6 @@
 package com.tavern.lite.data.repository
 
+import com.tavern.lite.data.db.TransactionRunner
 import com.tavern.lite.data.db.dao.ChatCharacterDao
 import com.tavern.lite.data.db.dao.ChatDao
 import com.tavern.lite.data.db.dao.MessageDao
@@ -12,6 +13,7 @@ import javax.inject.Singleton
 
 @Singleton
 class GroupChatRepository @Inject constructor(
+    private val tx: TransactionRunner,
     private val chatDao: ChatDao,
     private val chatCharacterDao: ChatCharacterDao,
     private val messageDao: MessageDao
@@ -26,39 +28,47 @@ class GroupChatRepository @Inject constructor(
     ): Long {
         require(characterIds.size >= 2) { "Group chat needs at least 2 characters" }
 
-        val chatId = chatDao.insert(
-            ChatEntity(
-                characterId = characterIds.first(),
-                name = name,
-                isGroup = true
+        // 建 chat + 写成员必须原子：分两次独立写时，insertAll 失败或进程被杀会留下
+        // isGroup=true 但零成员的孤儿群聊，UI 可见却永久不可用（X 审计）。
+        return tx.run {
+            val chatId = chatDao.insert(
+                ChatEntity(
+                    characterId = characterIds.first(),
+                    name = name,
+                    isGroup = true
+                )
             )
-        )
 
-        val chatCharacters = characterIds.mapIndexed { index, characterId ->
-            ChatCharacterEntity(
-                chatId = chatId,
-                characterId = characterId,
-                displayOrder = index
-            )
+            val chatCharacters = characterIds.mapIndexed { index, characterId ->
+                ChatCharacterEntity(
+                    chatId = chatId,
+                    characterId = characterId,
+                    displayOrder = index
+                )
+            }
+            chatCharacterDao.insertAll(chatCharacters)
+
+            chatId
         }
-        chatCharacterDao.insertAll(chatCharacters)
-
-        return chatId
     }
 
     /**
      * Add a character to an existing group chat.
      */
     suspend fun addCharacter(chatId: Long, characterId: Long) {
-        val existing = chatCharacterDao.getCharactersForChat(chatId)
-        val nextOrder = existing.size
-        chatCharacterDao.insert(
-            ChatCharacterEntity(
-                chatId = chatId,
-                characterId = characterId,
-                displayOrder = nextOrder
+        // 读 size 再插入是读-改-写：两次并发添加会读到同一 size，产生重复 displayOrder（X 审计）。
+        // 包进事务让读与写在同一隔离边界内。
+        tx.run {
+            val existing = chatCharacterDao.getCharactersForChat(chatId)
+            val nextOrder = existing.size
+            chatCharacterDao.insert(
+                ChatCharacterEntity(
+                    chatId = chatId,
+                    characterId = characterId,
+                    displayOrder = nextOrder
+                )
             )
-        )
+        }
     }
 
     /**

@@ -126,7 +126,6 @@ class ChatViewModelTest {
             every { isGroup } returns false
         }
         coEvery { chatRepository.getMessageCount(CHAT_ID) } returns 0
-        every { memoryExtractionUseCase.setMessageCount(any()) } returns Unit
         every { summaryRepository.getSummariesForChat(CHAT_ID) } returns flowOf(emptyList())
         every { spriteRepository.getSpritesForCharacter(CHARACTER_ID) } returns flowOf(emptyList())
         coEvery { spriteRepository.getAvailableEmotions(CHARACTER_ID) } returns emptyList()
