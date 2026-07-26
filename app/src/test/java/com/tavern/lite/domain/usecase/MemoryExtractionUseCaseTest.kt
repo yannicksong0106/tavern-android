@@ -39,14 +39,21 @@ class MemoryExtractionUseCaseTest {
     }
 
     @Test
-    fun `setMessageCount and getMessageCount work correctly`() {
-        assertEquals(0, useCase.getMessageCount())
+    fun `extractIfNeeded reads per-chat count from repository when not supplied`() = runTest {
+        coEvery { memoryExtractorService.extractQuickFacts(any(), any(), any(), any()) } returns emptyList()
+        every { memoryExtractorService.shouldExtract(any()) } returns false
+        coEvery { chatRepository.getMessageCount(7L) } returns 20
 
-        useCase.setMessageCount(5)
-        assertEquals(5, useCase.getMessageCount())
+        useCase.extractIfNeeded(
+            chatId = 7L,
+            characterId = 10L,
+            characterName = "Alice",
+            userContent = "Hello"
+        )
 
-        useCase.setMessageCount(0)
-        assertEquals(0, useCase.getMessageCount())
+        // 计数来自该 chat 的库内真实条数，而非跨聊天共享的内部计数器
+        coVerify { chatRepository.getMessageCount(7L) }
+        verify { memoryExtractorService.shouldExtract(20) }
     }
 
     @Test
@@ -164,9 +171,12 @@ class MemoryExtractionUseCaseTest {
     }
 
     @Test
-    fun `extractIfNeeded uses internal counter when currentMessageCount is null`() = runTest {
+    fun `extractIfNeeded counts per chat from db when currentMessageCount is null`() = runTest {
         coEvery { memoryExtractorService.extractQuickFacts(any(), any(), any(), any()) } returns emptyList()
         every { memoryExtractorService.shouldExtract(any()) } returns false
+        // 两个不同聊天各自的真实条数：不共享计数器，不跨聊天累加。
+        coEvery { chatRepository.getMessageCount(1L) } returns 7
+        coEvery { chatRepository.getMessageCount(2L) } returns 3
 
         useCase.extractIfNeeded(
             chatId = 1L,
@@ -174,9 +184,13 @@ class MemoryExtractionUseCaseTest {
             characterName = "Alice",
             userContent = "Hello"
         )
-
-        assertEquals(1, useCase.getMessageCount())
-
+        useCase.extractIfNeeded(
+            chatId = 2L,
+            characterId = 20L,
+            characterName = "Bob",
+            userContent = "Hello"
+        )
+        // 再回到 chat 1：仍是该聊天自己的条数，不是 1+1+1 之类的累加值。
         useCase.extractIfNeeded(
             chatId = 1L,
             characterId = 10L,
@@ -184,6 +198,7 @@ class MemoryExtractionUseCaseTest {
             userContent = "Hello again"
         )
 
-        assertEquals(2, useCase.getMessageCount())
+        verify(exactly = 2) { memoryExtractorService.shouldExtract(7) }
+        verify(exactly = 1) { memoryExtractorService.shouldExtract(3) }
     }
 }

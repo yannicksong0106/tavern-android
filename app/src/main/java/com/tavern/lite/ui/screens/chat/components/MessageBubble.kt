@@ -350,7 +350,10 @@ fun MessageBubble(
                             Json.parseToJsonElement(message.imagePaths).jsonArray
                                 .map { it.jsonPrimitive.content }
                         } else emptyList()
-                    } catch (_: Exception) { emptyList() }
+                    } catch (e: Exception) {
+                        Log.w("MessageBubble", "Failed to parse imagePaths: ${e.message}", e)
+                        emptyList()
+                    }
                 }
                 if (imagePathsList.isNotEmpty()) {
                     LazyRow(

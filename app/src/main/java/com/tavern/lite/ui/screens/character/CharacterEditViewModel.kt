@@ -115,7 +115,7 @@ class CharacterEditViewModel @Inject constructor(
             "creator" -> _state.value.copy(creator = value)
             "tags" -> _state.value.copy(tags = value)
             "authorNoteContent" -> _state.value.copy(authorNoteContent = value)
-            "authorNoteDepth" -> _state.value.copy(authorNoteDepth = value.toIntOrNull() ?: 4)
+            "authorNoteDepth" -> _state.value.copy(authorNoteDepth = value.toIntOrNull()?.coerceIn(0, 999) ?: 4)
             "chattiness" -> _state.value.copy(chattiness = value.toIntOrNull()?.coerceIn(0, 100) ?: 50)
             else -> _state.value
         }

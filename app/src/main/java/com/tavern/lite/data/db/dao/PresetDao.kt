@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.tavern.lite.data.db.entity.PresetEntity
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,16 @@ interface PresetDao {
 
     @Query("UPDATE presets SET is_default = 1 WHERE id = :id")
     suspend fun setDefaultPreset(id: Long)
+
+    /**
+     * 原子地切换默认预设：清除旧默认 + 设置新默认在同一事务提交。
+     * 避免两次独立写入之间被进程杀死留下零默认，或并发调用留下双默认。
+     */
+    @Transaction
+    suspend fun switchDefaultPreset(id: Long) {
+        clearDefaultPresets()
+        setDefaultPreset(id)
+    }
 
     @Query("SELECT * FROM presets ORDER BY id ASC")
     suspend fun getAllPresetsSync(): List<PresetEntity>

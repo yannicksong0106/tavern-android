@@ -30,8 +30,7 @@ class PresetRepository @Inject constructor(
     suspend fun deletePreset(preset: PresetEntity) = presetDao.deletePreset(preset)
 
     suspend fun setDefaultPreset(id: Long) {
-        presetDao.clearDefaultPresets()
-        presetDao.setDefaultPreset(id)
+        presetDao.switchDefaultPreset(id)
     }
 
     fun getPresetsByScope(scope: String): Flow<List<PresetEntity>> = presetDao.getPresetsByScope(scope)

@@ -309,10 +309,6 @@ class ChatViewModel @Inject constructor(
             val chat = chatRepository.getChatById(chatId)
             _backgroundPath.value = chat?.backgroundPath ?: char?.backgroundPath
 
-            // 初始化记忆提取器的消息计数
-            val count = chatRepository.getMessageCount(chatId)
-            memoryExtractionUseCase.setMessageCount(count)
-
             // 加载健谈度
             if (char != null) groupChatSettingsManager.loadCharacterChattiness(char.chattiness)
 

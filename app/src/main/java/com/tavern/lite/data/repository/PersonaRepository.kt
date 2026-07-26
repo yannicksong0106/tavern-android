@@ -38,13 +38,11 @@ class PersonaRepository @Inject constructor(
     }
 
     suspend fun setDefault(id: Long) {
-        personaDao.clearAllDefaults()
-        personaDao.setDefault(id)
+        personaDao.switchDefault(id)
     }
 
     suspend fun linkToCharacter(characterId: Long, personaId: Long) {
-        personaDao.unlinkCharacterPersona(characterId)
-        personaDao.linkCharacterPersona(CharacterPersonaEntity(characterId, personaId))
+        personaDao.relinkCharacter(characterId, personaId)
     }
 
     suspend fun unlinkFromCharacter(characterId: Long) {

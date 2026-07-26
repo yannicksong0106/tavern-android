@@ -142,7 +142,9 @@ object PromptBuilder {
         // 5.5 Author's Note 注入
         if (config.authorNote != null && config.authorNote.content.isNotBlank()) {
             val noteContent = PromptSectionBuilder.replacePlaceholders(config.authorNote.content, effectiveUserName, respondingCharacter.name, respondingCharacter, config.persona)
-            val insertIndex = (messages.size - config.authorNote.depth).coerceAtLeast(1)
+            // depth 用户可输负值：只 clamp 下界会让 insertIndex > size 触发越界异常。
+            // 双向 clamp 到 [0, size]，负 depth 退化为插到末尾（X 审计）。
+            val insertIndex = (messages.size - config.authorNote.depth).coerceIn(0, messages.size)
             messages.add(insertIndex, ChatMessage(role = "system", content = noteContent))
             sections.add(PromptSection.create(PromptSource.AUTHOR_NOTE, noteContent))
         }

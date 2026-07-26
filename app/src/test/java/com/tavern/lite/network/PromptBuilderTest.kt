@@ -587,6 +587,32 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `build injects author note safely when depth is negative`() {
+        val character = makeCharacter(firstMes = "")
+        val authorNote = AuthorNoteEntity(
+            id = 1, characterId = 1,
+            content = "Remember: stay in character",
+            depth = -5
+        )
+        val history = listOf(
+            makeMessage(role = "user", content = "msg1"),
+            makeMessage(role = "assistant", content = "reply1"),
+            makeMessage(role = "user", content = "msg2")
+        )
+        // 负 depth 曾使 insertIndex > size 触发 IndexOutOfBoundsException；双向 clamp 后应安全注入。
+        val messages = PromptBuilder.build(
+            character = character,
+            userMessage = "current",
+            chatHistory = history,
+            authorNote = authorNote
+        )
+
+        val noteMsg = messages.find { it.content.contains("Remember: stay in character") }
+        assertTrue(noteMsg != null)
+        assertEquals("system", noteMsg!!.role)
+    }
+
+    @Test
     fun `build includes preset author note`() {
         val character = makeCharacter(firstMes = "")
         val preset = PresetEntity(

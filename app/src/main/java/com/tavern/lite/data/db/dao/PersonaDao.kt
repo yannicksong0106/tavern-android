@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.tavern.lite.data.db.entity.CharacterPersonaEntity
 import com.tavern.lite.data.db.entity.PersonaEntity
 import kotlinx.coroutines.flow.Flow
@@ -38,12 +39,32 @@ interface PersonaDao {
     @Query("UPDATE personas SET is_default = 1 WHERE id = :id")
     suspend fun setDefault(id: Long)
 
+    /**
+     * 原子地切换默认角色：清除旧默认 + 设置新默认在同一事务提交。
+     * 避免两次独立写入之间被进程杀死留下零默认，或并发调用留下双默认。
+     */
+    @Transaction
+    suspend fun switchDefault(id: Long) {
+        clearAllDefaults()
+        setDefault(id)
+    }
+
     // Character-Persona junction
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun linkCharacterPersona(link: CharacterPersonaEntity)
 
     @Query("DELETE FROM character_personas WHERE character_id = :characterId")
     suspend fun unlinkCharacterPersona(characterId: Long)
+
+    /**
+     * 原子地重绑角色的用户角色：解绑旧 + 绑定新在同一事务提交。
+     * 避免半途失败只提交 DELETE 而丢失绑定。
+     */
+    @Transaction
+    suspend fun relinkCharacter(characterId: Long, personaId: Long) {
+        unlinkCharacterPersona(characterId)
+        linkCharacterPersona(CharacterPersonaEntity(characterId, personaId))
+    }
 
     @Query("SELECT persona_id FROM character_personas WHERE character_id = :characterId LIMIT 1")
     suspend fun getLinkedPersonaId(characterId: Long): Long?
